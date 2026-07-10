@@ -1,0 +1,39 @@
+# --- Секреты ---
+.env
+.env.*
+!.env.example
+
+# --- Node / Medusa / Next.js ---
+node_modules/
+dist/
+.medusa/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+
+# --- Dart / Flutter ---
+.dart_tool/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.g.dart.bak
+mobile/**/ios/Pods/
+mobile/**/android/.gradle/
+mobile/**/*.iml
+
+# --- Логи и временное ---
+*.log
+logs/
+tmp/
+coverage/
+
+# --- IDE / ОС ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Артефакты источников ---
+*.docx
+~$*
