@@ -19,6 +19,7 @@ import {
 } from "./admin/products/validators"
 import { StoreGetAlternativesParams } from "./store/products/validators"
 import { filterProductsBySegment } from "./store/products/filter-by-segment"
+import { limitStockLocationsPerCity } from "./admin/stock-locations/limit-per-city"
 
 // Сквозные middleware кастомных роутов: аутентификация store-роутов компании
 // (все требуют залогиненного customer) и zod-валидация тел/query.
@@ -81,6 +82,13 @@ export default defineMiddlewares({
       matcher: "/admin/products/:id/product-card",
       method: "POST",
       middlewares: [validateAndTransformBody(AdminUpsertProductCard)],
+    },
+    {
+      // Лимит ≤5 складов на город поверх ядрового создания склада
+      // (см. limit-per-city.ts).
+      matcher: "/admin/stock-locations",
+      method: "POST",
+      middlewares: [limitStockLocationsPerCity],
     },
   ],
 })

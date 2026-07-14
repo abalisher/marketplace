@@ -48,6 +48,7 @@ FK на product в модели нет намеренно (правило изо
   изменение карточки.
 - До 5 складов на город: проверка count по `address.city` в middleware на
   `POST /admin/stock-locations` (ядро не ограничивает; своей модели склада не заводим).
+  Реализовано — см. «Ограничение складов» ниже.
 - Альтернативы при отсутствии товара (категория/сегмент/характеристики) — store-роут
   подбора, подзадача API.
 
@@ -111,9 +112,26 @@ FK на product в модели нет намеренно (правило изо
 - Сид демо-товаров для ручной проверки: `npx medusa exec ./src/scripts/seed-demo-catalog.ts`
   (3 товара с карточками: draft / proposed / rejected; идемпотентен).
 
+## Ограничение складов + сид региона KZ (подзадача 5 — готово)
+Код: `backend/src/api/admin/stock-locations/limit-per-city.ts`, `backend/src/scripts/seed-kz.ts`,
+тест — `integration-tests/http/stock-location-limit.spec.ts`, решение — DECISIONS (2026-07-14, склады+KZ).
+- **Ограничение ≤5 складов/город** — middleware `limitStockLocationsPerCity` на `POST /admin/stock-locations`
+  (статический матчер, встаёт раньше ядрового валидатора тела — читает сырой `req.body.address.city`).
+  Считает существующие склады с тем же городом через `query.graph(stock_location, ["address.city"])`,
+  сравнение регистронезависимое (trim + lowercase). ≥5 → `MedusaError.NOT_ALLOWED` (HTTP 400).
+  Склады без города не ограничиваются. Лимит — константа `MAX_STOCK_LOCATIONS_PER_CITY = 5`.
+- **Сид региона KZ** — `npx medusa exec ./src/scripts/seed-kz.ts` (идемпотентен по имени сущностей):
+  добавляет валюту KZT в магазин (дефолт не трогает), регион `Kazakhstan` (kzt, страна kz,
+  провайдер `pp_system_default`), 2 склада в Астане (`address.city = "Astana"`, привязаны к
+  Default Sales Channel), категорию «Строительные материалы», 4 published-товара стройматериалов
+  (эконом/комфорт/бизнес) с ценами в тенге и остатками по обоим складам. Товары проходят
+  реальный флоу модерации (create card → submit → approve) до `published`.
+  Fulfillment/доставку регион пока НЕ получает (оформление заказа — задача `placeOrder`).
+- **Витрина** — `storefront/.env`: `NEXT_PUBLIC_DEFAULT_REGION=kz` (был `de`).
+
 ## Подзадачи (порядок реализации — бэклог в STATE.md)
 1. [x] Дизайн + модуль `catalog` (модель, сервис, link, миграция, тесты).
 2. [x] Workflows модерации + subscriber повторной модерации.
 3. [x] Store/admin API + OAS-фрагменты + перегенерация контракта и Dart-клиента.
 4. [x] Админ-UI: очередь модерации + widget полей карточки на странице товара.
-5. [ ] Ограничение ≤5 складов/город (middleware) + сид региона KZ (KZT, Астана, склады, демо-каталог).
+5. [x] Ограничение ≤5 складов/город (middleware) + сид региона KZ (KZT, Астана, склады, демо-каталог).

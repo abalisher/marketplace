@@ -3,7 +3,7 @@
 > Обновляется агентом В КОНЦЕ КАЖДОЙ сессии/итерации цикла. Это главный файл «памяти» между сессиями.
 > Формат бэклога — чекбоксы: цикл (`/loop`) берёт первую невыполненную задачу, выполняет, проверяет, отмечает.
 
-**Последнее обновление:** 2026-07-14 (админ-UI модерации карточек) · **Фаза:** 2 — Ядро домена
+**Последнее обновление:** 2026-07-14 (ограничение складов + сид региона KZ — каталог готов) · **Фаза:** 2 — Ядро домена
 
 ## Что сделано
 - [x] Проанализировано ТЗ (выжимка → `docs/DOMAIN.md`), выбран объём: полный MVP (вариант Б).
@@ -31,8 +31,10 @@
 
 - [x] Каталог, подзадача 4 — админ-UI: очередь модерации карточек (`src/admin/routes/product-moderation/`, идиомы `routes/companies`: копия DataTableFilter ядра, статус точкой, server-side `q`/`order`; чип Status предустановлен на Proposed, данные — ядровый `GET /admin/products?fields=*product_card`, клик по строке → ядровая страница товара) + widget `src/admin/widgets/product-catalog-card.tsx` (зона `product.details.after`: сегмент/ед.изм./сертификаты/причина отклонения, Create/Edit в Drawer, Submit/Approve/Reject в «...»-меню; данные своим запросом — prop `data` link-полей не содержит). Попутно API: upsert-роут `POST /admin/products/:id/product-card` (роут выбирает create/update-workflow по наличию карточки) + новый workflow `update-product-card` — правка карточки published-товара возвращает его в `proposed` явно (правка нашей модели `product.updated` не эмитит; решение — DECISIONS 2026-07-14, админ-UI каталога). Сид демо-товаров: `npx medusa exec ./src/scripts/seed-demo-catalog.ts` (draft/proposed/rejected, идемпотентен). Верификация: 5 новых http-тестов (весь `test:integration:http` — 58 зелёных), tsc обоих tsconfig чистый, lint чистый, `medusa build` зелёный, UI прокликан headless-браузером (playwright-core + системный Edge, 14 шагов: пресет-чип, смена фильтра, поиск, row-actions, reject-диалог с обязательной причиной, approve без зацикливания subscriber'а, правка published-карточки → Proposed, submit черновика, причина отклонения, empty state без карточки) — 0 ошибок консоли, скриншоты сняты.
 
+- [x] Каталог, подзадача 5 (последняя) — ограничение складов + сид региона KZ: middleware `limitStockLocationsPerCity` на `POST /admin/stock-locations` (`backend/src/api/admin/stock-locations/limit-per-city.ts`; count по `address.city` через query.graph, регистронезависимо, ≥5 → NOT_ALLOWED/400, склады без города не ограничиваются, лимит-константа `MAX_STOCK_LOCATIONS_PER_CITY`) + сид `backend/src/scripts/seed-kz.ts` (`npx medusa exec ./src/scripts/seed-kz.ts`, идемпотентен): валюта KZT в магазин, регион `Kazakhstan` (kzt/kz/`pp_system_default`), 2 склада в Астане (linked к Default Sales Channel), категория «Строительные материалы», 4 published-товара стройматериалов по сегментам с ценами в тенге и остатками по обоим складам (через реальный флоу модерации create→submit→approve). Витрина переключена: `storefront/.env` → `NEXT_PUBLIC_DEFAULT_REGION=kz`. Решения — DECISIONS (2026-07-14, склады+KZ); нюанс supported_currencies (relation, тянуть через query.graph) и осознанно отложенный fulfillment — там же. Верификация: 4 новых http-теста (`stock-location-limit.spec.ts`), весь `test:integration:http` — 62 зелёных, tsc обоих tsconfig чистый, lint без ошибок; сид прогнан на dev-БД (и повторно — идемпотентен), вживую через API проверено: регион KZ (kzt/kz), цены вариантов в KZT (6000/3200/120/450000/8000), фильтр `?segment=economy` → 2 товара, `/availability` — Астана 40+30=70 по двум складам.
+
 ## В работе
-Каталог (Фаза 2) — подзадачи 1–4 из 5 готовы, следующая — ограничение складов + сид региона KZ (см. бэклог).
+Каталог (Фаза 2) — ГОТОВ (все 5 подзадач). Следующая крупная задача — workflow `placeOrder` + статусная модель заказа (см. бэклог Фазы 2).
 
 ## Бэклог — Фаза 1: Каркас (по порядку)
 - [x] Прогнать миграции ядра, создать первого admin-пользователя, задокументировать команды запуска в `CLAUDE.md` (раздел «Команды»).
@@ -49,7 +51,7 @@
   - [x] Workflows модерации карточек (`create-product-card`, `submit-product-for-moderation`, `approve`/`reject`, `remoderate`) + subscriber повторной модерации на `product.updated`.
   - [x] Store/admin API (фильтр по сегменту, остатки по городу/складу, очередь модерации) + OAS-фрагменты + перегенерация контракта и Dart-клиента.
   - [x] Админ-UI: очередь модерации карточек (в стиле `routes/companies`) + widget сегмента/ед.изм./сертификатов на странице товара ядра.
-  - [ ] Ограничение ≤5 складов/город (middleware на `POST /admin/stock-locations`) + сид региона KZ (KZT, Астана, склады, демо-каталог) + переключить `storefront/.env` на регион KZ.
+  - [x] Ограничение ≤5 складов/город (middleware на `POST /admin/stock-locations`) + сид региона KZ (KZT, Астана, склады, демо-каталог) + переключить `storefront/.env` на регион KZ.
 - [ ] Workflow `placeOrder` + статусная модель заказа (см. `docs/DOMAIN.md`).
 - [ ] Модуль `payment-kaspi` (за платёжным шлюзом Medusa).
 - [ ] Модуль `bonus`, затем `documents`, `logistics`, `scoring`, `estimator` — порядок по этапам ТЗ.
@@ -60,9 +62,9 @@
 - Redis-контейнер поднят, но `medusa-config.ts` пока не сконфигурирован на него (использует in-memory event bus/cache/locking — предупреждение «fake redis»). Достаточно для локальной разработки; подключить Redis-модули, когда появятся фоновые задачи/подписчики.
 - Скаффолд Medusa v2 (create-medusa-app) теперь делает turborepo-обёртку (`apps/backend`, `turbo.json`); мы вынимаем из неё `apps/backend/*` в наш `backend/` (без turbo). Учитывать при будущих апгрейдах стартера.
 - Org/bundle id мобильных приложений — placeholder `kz.marketplace` (например, `kz.marketplace.marketplace_buyer`): до публикации в сторы согласовать с владельцем реальный домен и переименовать (пока не опубликованы — переименование дешёвое).
-- Витрина пока работает на сид-данных: регион Europe (`NEXT_PUBLIC_DEFAULT_REGION=de`), валюта EUR, демо-товары. Регион KZ (KZT, ru/kz-локализация) и реальный каталог — Фаза 2; тогда же сменить дефолтный регион в `storefront/.env`.
+- Витрина переключена на регион KZ (`NEXT_PUBLIC_DEFAULT_REGION=kz`, валюта KZT); демо-каталог стройматериалов посеян `seed-kz.ts`. Осталось: fulfillment/доставка региона KZ (появится с `placeOrder`), ru/kz-локализация витрины, чистка старых apparel-товаров стартера (в KZ-регионе без цены). Витрину вживую с регионом KZ не прокликивали — проверить при следующей работе над storefront (`cd storefront && npm run dev`, бэкенд на :9000).
 
 ## Следующий шаг
-Каталог, подзадача 5 (последняя) — **ограничение ≤5 складов/город** (middleware на `POST /admin/stock-locations`, count по `address.city`) + **сид региона KZ**: регион KZT, город Астана, склады, демо-каталог с ценами/остатками; затем переключить `storefront/.env` на регион KZ (`NEXT_PUBLIC_DEFAULT_REGION`). План — `docs/modules/catalog.md`.
+Каталог (все 5 подзадач) готов. Следующая задача Фазы 2 — **workflow `placeOrder` + статусная модель заказа** (см. `docs/DOMAIN.md`): корзина/оформление на ядре Medusa, кастомные статусы/переходы заказа, резерв остатков. Тогда же региону KZ понадобятся fulfillment set / service zone / shipping options (сейчас осознанно отложены — см. DECISIONS 2026-07-14, склады+KZ).
 
-Для ручной проверки админ-UI: `npm run dev` → http://localhost:9000/app (admin@example.com / supersecret) → «Companies» (3 демо-компании) и «Product Moderation» (демо-товары draft/proposed/rejected посеяны `seed-demo-catalog.ts`; после прокликивания их статусы могли сместиться — пересеять нельзя тем же скриптом, он идемпотентен по названию, но submit/approve доступны из UI).
+Для ручной проверки: `cd backend && npm run dev` → http://localhost:9000/app (admin@example.com / supersecret) → «Companies» (3 демо-компании), «Product Moderation» (demo draft/proposed/rejected из `seed-demo-catalog.ts`), Settings → Locations (2 склада в Астане). Каталог KZ — `npx medusa exec ./src/scripts/seed-kz.ts` (регион KZ, 4 published-товара с ценами KZT и остатками). Витрина: `cd storefront && npm run dev` → http://localhost:8000 (регион KZ по умолчанию).
