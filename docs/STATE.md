@@ -3,7 +3,7 @@
 > Обновляется агентом В КОНЦЕ КАЖДОЙ сессии/итерации цикла. Это главный файл «памяти» между сессиями.
 > Формат бэклога — чекбоксы: цикл (`/loop`) берёт первую невыполненную задачу, выполняет, проверяет, отмечает.
 
-**Последнее обновление:** 2026-07-14 (ограничение складов + сид региона KZ — каталог готов) · **Фаза:** 2 — Ядро домена
+**Последнее обновление:** 2026-07-14 (заказ, подзадача 1 — дизайн + модуль `order-lifecycle`) · **Фаза:** 2 — Ядро домена
 
 ## Что сделано
 - [x] Проанализировано ТЗ (выжимка → `docs/DOMAIN.md`), выбран объём: полный MVP (вариант Б).
@@ -33,8 +33,10 @@
 
 - [x] Каталог, подзадача 5 (последняя) — ограничение складов + сид региона KZ: middleware `limitStockLocationsPerCity` на `POST /admin/stock-locations` (`backend/src/api/admin/stock-locations/limit-per-city.ts`; count по `address.city` через query.graph, регистронезависимо, ≥5 → NOT_ALLOWED/400, склады без города не ограничиваются, лимит-константа `MAX_STOCK_LOCATIONS_PER_CITY`) + сид `backend/src/scripts/seed-kz.ts` (`npx medusa exec ./src/scripts/seed-kz.ts`, идемпотентен): валюта KZT в магазин, регион `Kazakhstan` (kzt/kz/`pp_system_default`), 2 склада в Астане (linked к Default Sales Channel), категория «Строительные материалы», 4 published-товара стройматериалов по сегментам с ценами в тенге и остатками по обоим складам (через реальный флоу модерации create→submit→approve). Витрина переключена: `storefront/.env` → `NEXT_PUBLIC_DEFAULT_REGION=kz`. Решения — DECISIONS (2026-07-14, склады+KZ); нюанс supported_currencies (relation, тянуть через query.graph) и осознанно отложенный fulfillment — там же. Верификация: 4 новых http-теста (`stock-location-limit.spec.ts`), весь `test:integration:http` — 62 зелёных, tsc обоих tsconfig чистый, lint без ошибок; сид прогнан на dev-БД (и повторно — идемпотентен), вживую через API проверено: регион KZ (kzt/kz), цены вариантов в KZT (6000/3200/120/450000/8000), фильтр `?segment=economy` → 2 товара, `/availability` — Астана 40+30=70 по двум складам.
 
+- [x] Заказ, подзадача 1 — дизайн + модуль `order-lifecycle`: полный дизайн в `docs/modules/order.md` (что закрывает ядро — completeCart+резерв, fulfillment/shipment/deliver/complete/cancel; сопоставление статусов ТЗ↔ядро — этапы «Подтверждён»/«В сборке» ядро не знает → кастомный статус как source of truth; стейт-машина переходов; хуки событий и осознанные отложки — оплата/лимиты/документы/уведомления/бонус/скоринг/fulfillment KZ). Модуль `order-lifecycle` (ключ `order_lifecycle` — НЕ `order`, тот занят ядром): модели `OrderLifecycle` (status enum из 10 статусов ТЗ, default `new`, previous_status, note) + `OrderLifecycleEvent` (лог переходов: from/to/actor_type/actor_id/reason, бессрочно) + сервис (чистая функция-инвариант `assertOrderStatusTransition` + метод `recordTransition`: проверка+лог+обновление) + link `order-lifecycle.ts` (1:1 к order ядра) + регистрация в `medusa-config.ts`, миграция прогнана (таблицы `order_lifecycle`, `order_lifecycle_event`, link-таблица). Решение (DECISIONS 2026-07-14): имя сущности `OrderLifecycle`, НЕ `OrderStatus` — GraphQL-тип `OrderStatus` занят ядровым enum, совпадение ломало db:generate («Cannot extend type OrderStatus»). Верификация: 6 интеграционных тестов модуля зелёные (всего modules 16), tsc обоих tsconfig чистый, lint без ошибок, приложение с модулем+линком поднимается (db:migrate + links sync прошли).
+
 ## В работе
-Каталог (Фаза 2) — ГОТОВ (все 5 подзадач). Следующая крупная задача — workflow `placeOrder` + статусная модель заказа (см. бэклог Фазы 2).
+Заказ (Фаза 2) — подзадача 1 из 4 готова (дизайн + модуль). Следующая — подзадача 2: `placeOrder` + переходы жизненного цикла (обёртки над ядровыми workflow) + subscriber уведомлений. Разбивка — `docs/modules/order.md` (низ) и бэклог Фазы 2 ниже.
 
 ## Бэклог — Фаза 1: Каркас (по порядку)
 - [x] Прогнать миграции ядра, создать первого admin-пользователя, задокументировать команды запуска в `CLAUDE.md` (раздел «Команды»).
@@ -52,7 +54,11 @@
   - [x] Store/admin API (фильтр по сегменту, остатки по городу/складу, очередь модерации) + OAS-фрагменты + перегенерация контракта и Dart-клиента.
   - [x] Админ-UI: очередь модерации карточек (в стиле `routes/companies`) + widget сегмента/ед.изм./сертификатов на странице товара ядра.
   - [x] Ограничение ≤5 складов/город (middleware на `POST /admin/stock-locations`) + сид региона KZ (KZT, Астана, склады, демо-каталог) + переключить `storefront/.env` на регион KZ.
-- [ ] Workflow `placeOrder` + статусная модель заказа (см. `docs/DOMAIN.md`).
+- [ ] Заказ: статусная модель + `placeOrder` + переходы жизненного цикла. Дизайн — `docs/modules/order.md`; подзадачи:
+  - [x] Дизайн + модуль `order-lifecycle` (модели `OrderLifecycle`/`OrderLifecycleEvent`, сервис с инвариантом переходов, link 1:1 к order ядра, миграция, тесты).
+  - [ ] `placeOrder` (обёртка `completeCartWorkflow` + резерв) + переходы (confirm/assemble/ship/deliver/close/cancel над ядровыми workflow) + subscriber уведомлений (заглушка) + события `order.placed`/`order.status_changed`/`order.closed`.
+  - [ ] Store/admin API (store: оформление, свой статус; admin: очередь заказов, переходы) + OAS-фрагменты + перегенерация контракта и Dart-клиента.
+  - [ ] Админ-UI: очередь заказов (в стиле `routes/companies`) + переходы статуса + виджет статуса на странице заказа ядра.
 - [ ] Модуль `payment-kaspi` (за платёжным шлюзом Medusa).
 - [ ] Модуль `bonus`, затем `documents`, `logistics`, `scoring`, `estimator` — порядок по этапам ТЗ.
 
@@ -65,6 +71,8 @@
 - Витрина переключена на регион KZ (`NEXT_PUBLIC_DEFAULT_REGION=kz`, валюта KZT); демо-каталог стройматериалов посеян `seed-kz.ts`. Осталось: fulfillment/доставка региона KZ (появится с `placeOrder`), ru/kz-локализация витрины, чистка старых apparel-товаров стартера (в KZ-регионе без цены). Витрину вживую с регионом KZ не прокликивали — проверить при следующей работе над storefront (`cd storefront && npm run dev`, бэкенд на :9000).
 
 ## Следующий шаг
-Каталог (все 5 подзадач) готов. Следующая задача Фазы 2 — **workflow `placeOrder` + статусная модель заказа** (см. `docs/DOMAIN.md`): корзина/оформление на ядре Medusa, кастомные статусы/переходы заказа, резерв остатков. Тогда же региону KZ понадобятся fulfillment set / service zone / shipping options (сейчас осознанно отложены — см. DECISIONS 2026-07-14, склады+KZ).
+Заказ, подзадача 1 (дизайн + модуль `order-lifecycle`) готова. Следующая — **подзадача 2: `placeOrder` + переходы жизненного цикла** (см. `docs/modules/order.md`): workflow `place-order` обёрткой над `completeCartWorkflow` (резерв остатков даёт ядро) → создание `OrderLifecycle=new` + link к order (+ link к company, если покупатель-сотрудник) → событие `order.placed`; сценарные переходы (confirm/start-assembly/complete-assembly/ship/deliver/close/cancel) обёртками над ядровыми `createOrderFulfillment/createOrderShipment/markDelivered/completeOrder/cancelOrder` с записью через `recordTransition`; subscriber на `order.status_changed` (уведомления — заглушка, notification-провайдера пока нет). Тогда же региону KZ понадобятся fulfillment set / service zone / shipping options для `ship-order` (сейчас осознанно отложены — DECISIONS 2026-07-14, склады+KZ).
+
+Для ручной проверки модуля: `cd backend && npm run test:integration:modules -- --testPathPattern=order-lifecycle` (нужен docker-postgres + `.env.test`).
 
 Для ручной проверки: `cd backend && npm run dev` → http://localhost:9000/app (admin@example.com / supersecret) → «Companies» (3 демо-компании), «Product Moderation» (demo draft/proposed/rejected из `seed-demo-catalog.ts`), Settings → Locations (2 склада в Астане). Каталог KZ — `npx medusa exec ./src/scripts/seed-kz.ts` (регион KZ, 4 published-товара с ценами KZT и остатками). Витрина: `cd storefront && npm run dev` → http://localhost:8000 (регион KZ по умолчанию).

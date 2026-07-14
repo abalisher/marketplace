@@ -40,6 +40,7 @@
 | Модуль | Отвечает за | Ключевые модели |
 |---|---|---|
 | `company` | Юрлица-покупатели: БИН, документы, сотрудники, их лимиты | Company, Employee, SpendLimit |
+| `order-lifecycle` | Жизненный цикл заказа из ТЗ (Новый…Закрыт/Отменён/Возврат) поверх order ядра + лог переходов | OrderLifecycle, OrderLifecycleEvent |
 | `scoring` | Рейтинг покупателя, лимит отсрочки/кредита | ScoreCard, ScoringRule |
 | `bonus` | Бонусный счёт: начисление % после закрытия заказа, списание при оплате | BonusAccount, BonusTransaction |
 | `logistics` | Рейсы, назначение водителей, GPS-точки, тарифная сетка доставки | Trip, TripStop, DeliveryTariff, GpsPing |
