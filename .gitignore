@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# креды временной тест-БД (локальный docker) — намеренно в репо
+!.env.test
 
 # --- Node / Medusa / Next.js ---
 node_modules/

@@ -1,0 +1,23 @@
+name: marketplace_buyer
+description: "Buyer app: catalog, cart, orders, bonuses, delivery tracking."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  core:
+  ui_kit:
+  api_client:
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

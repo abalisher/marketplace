@@ -1,0 +1,465 @@
+{
+  "paths": {
+    "/store/companies": {
+      "post": {
+        "operationId": "PostCompanies",
+        "summary": "Register a Company",
+        "description": "Регистрация юрлица текущим покупателем: компания создаётся в статусе pending, покупатель становится сотрудником-админом. Лимиты/отсрочка активируются после модерации.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoreCreateCompany" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданная компания и сотрудник-админ.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCompanyRegistrationRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/companies/me": {
+      "get": {
+        "operationId": "GetCompaniesMe",
+        "summary": "Get My Company",
+        "description": "Компания текущего покупателя и его роль в ней. 404 — покупатель не состоит в компании.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Компания и запись сотрудника текущего покупателя.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreCompanyMeRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/companies/me/employees": {
+      "get": {
+        "operationId": "GetCompaniesMeEmployees",
+        "summary": "List Company Employees",
+        "description": "Сотрудники компании с данными customer и лимитами. Только для админа компании.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список сотрудников компании.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCompanyEmployeesRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostCompaniesMeEmployees",
+        "summary": "Add Company Employee",
+        "description": "Принять существующего customer в компанию. Только для админа компании.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoreCreateEmployee" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный сотрудник.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreEmployeeRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/companies/me/employees/{id}": {
+      "delete": {
+        "operationId": "DeleteCompaniesMeEmployeesId",
+        "summary": "Remove Company Employee",
+        "description": "Уволить сотрудника: снимается привязка к customer, лимиты удаляются. Только для админа компании; админ не может удалить сам себя.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Подтверждение удаления.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreEmployeeDeleteRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/companies/me/employees/{id}/spend-limits": {
+      "post": {
+        "operationId": "PostCompaniesMeEmployeesIdSpendLimits",
+        "summary": "Create Employee Spend Limit",
+        "description": "Назначить сотруднику лимит на оформление заявок. У сотрудника может быть несколько лимитов с разными периодами. Только для админа компании.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreCreateSpendLimit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный лимит.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreSpendLimitRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/companies/me/employees/{id}/spend-limits/{limit_id}": {
+      "delete": {
+        "operationId": "DeleteCompaniesMeEmployeesIdSpendLimitsLimitId",
+        "summary": "Delete Employee Spend Limit",
+        "description": "Снять лимит с сотрудника. Только для админа компании.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Подтверждение удаления.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreSpendLimitDeleteRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreCompanyDocument": {
+        "type": "object",
+        "required": ["name", "url"],
+        "properties": {
+          "name": { "type": "string" },
+          "url": { "type": "string" }
+        }
+      },
+      "StoreCompany": {
+        "type": "object",
+        "required": ["id", "name", "bin", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "bin": { "type": "string", "description": "БИН — 12 цифр." },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "rejected"]
+          },
+          "rejection_reason": { "type": "string", "nullable": true },
+          "documents": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/StoreCompanyDocument" }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreEmployee": {
+        "type": "object",
+        "required": ["id", "role"],
+        "properties": {
+          "id": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin", "member"] },
+          "company_id": { "type": "string", "nullable": true },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreEmployeeCustomer": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "nullable": true },
+          "first_name": { "type": "string", "nullable": true },
+          "last_name": { "type": "string", "nullable": true }
+        }
+      },
+      "StoreSpendLimit": {
+        "type": "object",
+        "required": ["id", "amount", "period", "currency_code"],
+        "properties": {
+          "id": { "type": "string" },
+          "amount": { "type": "number" },
+          "currency_code": { "type": "string" },
+          "period": {
+            "type": "string",
+            "enum": ["order", "day", "week", "month"]
+          },
+          "employee_id": { "type": "string", "nullable": true },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreCompanyEmployee": {
+        "type": "object",
+        "required": ["id", "role"],
+        "properties": {
+          "id": { "type": "string" },
+          "role": { "type": "string", "enum": ["admin", "member"] },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "customer": {
+            "$ref": "#/components/schemas/StoreEmployeeCustomer"
+          },
+          "spend_limits": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreSpendLimit" }
+          }
+        }
+      },
+      "StoreCreateCompany": {
+        "type": "object",
+        "required": ["name", "bin"],
+        "properties": {
+          "name": { "type": "string" },
+          "bin": {
+            "type": "string",
+            "description": "БИН — ровно 12 цифр."
+          },
+          "documents": {
+            "type": "array",
+            "nullable": true,
+            "items": { "$ref": "#/components/schemas/StoreCompanyDocument" }
+          }
+        }
+      },
+      "StoreCreateEmployee": {
+        "type": "object",
+        "required": ["customer_id"],
+        "properties": {
+          "customer_id": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": ["admin", "member"],
+            "nullable": true
+          }
+        }
+      },
+      "StoreCreateSpendLimit": {
+        "type": "object",
+        "required": ["amount", "period"],
+        "properties": {
+          "amount": { "type": "number" },
+          "period": {
+            "type": "string",
+            "enum": ["order", "day", "week", "month"]
+          },
+          "currency_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "ISO-код валюты; по умолчанию kzt."
+          }
+        }
+      },
+      "StoreCompanyRegistrationRes": {
+        "type": "object",
+        "required": ["company", "employee"],
+        "properties": {
+          "company": { "$ref": "#/components/schemas/StoreCompany" },
+          "employee": { "$ref": "#/components/schemas/StoreEmployee" }
+        }
+      },
+      "StoreCompanyMeRes": {
+        "type": "object",
+        "required": ["company", "employee"],
+        "properties": {
+          "company": { "$ref": "#/components/schemas/StoreCompany" },
+          "employee": { "$ref": "#/components/schemas/StoreEmployee" }
+        }
+      },
+      "StoreCompanyEmployeesRes": {
+        "type": "object",
+        "required": ["employees"],
+        "properties": {
+          "employees": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreCompanyEmployee" }
+          }
+        }
+      },
+      "StoreEmployeeRes": {
+        "type": "object",
+        "required": ["employee"],
+        "properties": {
+          "employee": { "$ref": "#/components/schemas/StoreEmployee" }
+        }
+      },
+      "StoreEmployeeDeleteRes": {
+        "type": "object",
+        "required": ["id", "object", "deleted"],
+        "properties": {
+          "id": { "type": "string" },
+          "object": { "type": "string" },
+          "deleted": { "type": "boolean" }
+        }
+      },
+      "StoreSpendLimitRes": {
+        "type": "object",
+        "required": ["spend_limit"],
+        "properties": {
+          "spend_limit": { "$ref": "#/components/schemas/StoreSpendLimit" }
+        }
+      },
+      "StoreSpendLimitDeleteRes": {
+        "type": "object",
+        "required": ["id", "object", "deleted"],
+        "properties": {
+          "id": { "type": "string" },
+          "object": { "type": "string" },
+          "deleted": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+// GENERATED CODE - DO NOT MODIFY BY HAND
+
+part of 'store_shipping_option.dart';
+
+// **************************************************************************
+// JsonSerializableGenerator
+// **************************************************************************
+
+StoreShippingOption _$StoreShippingOptionFromJson(Map<String, dynamic> json) =>
+    StoreShippingOption(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      priceType: StoreShippingOptionPriceType.fromJson(
+        json['price_type'] as String,
+      ),
+      serviceZoneId: json['service_zone_id'] as String,
+      providerId: json['provider_id'] as String,
+      provider: BaseFulfillmentProvider.fromJson(
+        json['provider'] as Map<String, dynamic>,
+      ),
+      shippingOptionTypeId: json['shipping_option_type_id'] as String,
+      type: StoreShippingOptionType.fromJson(
+        json['type'] as Map<String, dynamic>,
+      ),
+      shippingProfileId: json['shipping_profile_id'] as String,
+      amount: json['amount'] as num,
+      isTaxInclusive: json['is_tax_inclusive'] as bool,
+      data: json['data'],
+      metadata: json['metadata'],
+    );
+
+Map<String, dynamic> _$StoreShippingOptionToJson(
+  StoreShippingOption instance,
+) => <String, dynamic>{
+  'id': instance.id,
+  'name': instance.name,
+  'price_type': _$StoreShippingOptionPriceTypeEnumMap[instance.priceType]!,
+  'service_zone_id': instance.serviceZoneId,
+  'provider_id': instance.providerId,
+  'provider': instance.provider,
+  'shipping_option_type_id': instance.shippingOptionTypeId,
+  'type': instance.type,
+  'shipping_profile_id': instance.shippingProfileId,
+  'amount': instance.amount,
+  'is_tax_inclusive': instance.isTaxInclusive,
+  'data': instance.data,
+  'metadata': instance.metadata,
+};
+
+const _$StoreShippingOptionPriceTypeEnumMap = {
+  StoreShippingOptionPriceType.flat: 'flat',
+  StoreShippingOptionPriceType.calculated: 'calculated',
+  StoreShippingOptionPriceType.$unknown: r'$unknown',
+};

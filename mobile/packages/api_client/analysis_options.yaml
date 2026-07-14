@@ -1,0 +1,6 @@
+# Сгенерированный код не линтуем — его корректность проверяется компиляцией (смоук-тест).
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - lib/src/generated/**

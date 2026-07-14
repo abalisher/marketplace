@@ -1,0 +1,15 @@
+# Конфиг Dart-кодогена из контракта API (см. contracts/README.md).
+# Запуск из этого каталога: dart run swagger_parser && dart run build_runner build --delete-conflicting-outputs
+swagger_parser:
+  schema_path: ../../../contracts/openapi.json
+  output_directory: lib/src/generated
+  language: dart
+  json_serializer: json_serializable
+  root_client: true
+  root_client_name: MedusaStoreApi
+  put_clients_in_folder: true
+  export_file: true
+  # Модель Options из спеки Medusa конфликтует по имени с Options из dio.
+  replacement_rules:
+    - pattern: "^Options$"
+      replacement: "VariantOptions"

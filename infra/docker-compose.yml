@@ -1,5 +1,7 @@
 # Локальная среда разработки: docker compose -f infra/docker-compose.yml up -d
-# Сервис backend добавляется после скаффолдинга Medusa (Фаза 1).
+# Здесь только инфраструктура (postgres/redis). Бэкенд Medusa в dev-режиме запускается
+# на хосте (`cd backend && npm run dev`) и ходит в эти контейнеры через проброшенные порты.
+# Контейнеризация бэкенда (Dockerfile + сервис) — отдельная задача перед деплоем на VPS.
 name: marketplace
 
 services:

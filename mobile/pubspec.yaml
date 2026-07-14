@@ -1,0 +1,15 @@
+# Корень Pub Workspace: общий резолв зависимостей и единый pubspec.lock для всех
+# приложений и пакетов mobile/. Члены workspace помечены `resolution: workspace`.
+name: _marketplace_mobile_workspace
+publish_to: none
+
+environment:
+  sdk: ^3.12.2
+
+workspace:
+  - apps/buyer
+  - apps/partner
+  - apps/driver
+  - packages/core
+  - packages/ui_kit
+  - packages/api_client
