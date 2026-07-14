@@ -1,7 +1,11 @@
 # Модуль `catalog` — сегменты, модерация карточек, мульти-склад
 
-**Статус:** спроектирован; реализована модель `ProductCard` (модуль + link + миграция + тесты) ·
-**Код:** `backend/src/modules/catalog/`
+**Статус:** реализованы модель `ProductCard` (модуль + link + миграция + тесты), workflows модерации
+с subscriber'ом повторной модерации, store/admin API с OAS-фрагментами и админ-UI
+(очередь модерации + widget карточки) ·
+**Код:** `backend/src/modules/catalog/`, `backend/src/workflows/`, `backend/src/subscribers/product-updated.ts`,
+`backend/src/api/store/products/`, `backend/src/api/admin/products/`,
+`backend/src/admin/routes/product-moderation/`, `backend/src/admin/widgets/product-catalog-card.tsx`
 
 ## Назначение
 Расширение каталога ядра Medusa под требования ТЗ: сегмент товара (эконом/комфорт/бизнес),
@@ -47,30 +51,69 @@ FK на product в модели нет намеренно (правило изо
 - Альтернативы при отсутствии товара (категория/сегмент/характеристики) — store-роут
   подбора, подзадача API.
 
-## Планируемые workflows (подзадача 2)
-- `create-product-card` — карточка модуля к товару ядра + link (создание товара — ядро).
-- `submit-product-for-moderation` — `draft|rejected` → `proposed`; валидация: сегмент задан,
-  сертификаты непусты.
+## Workflows модерации (подзадача 2 — готово)
+Код: `backend/src/workflows/` (шаги — в `steps/`), тесты — `integration-tests/http/catalog-workflows.spec.ts`.
+- `create-product-card` — карточка модуля к существующему товару ядра + link 1:1
+  (создание товара — ядро; вторая карточка на товар запрещена).
+- `submit-product-for-moderation` — `draft|rejected` → `proposed`; валидация: карточка есть,
+  сертификаты непусты (сегмент обязателен на уровне модели); сброс `rejection_reason`.
 - `approve-product-card` — `proposed` → `published`, сброс `rejection_reason`.
-- `reject-product-card` — `proposed` → `rejected`, комментарий обязателен.
-- Subscriber `product-updated` — повторная модерация одобренных.
+- `reject-product-card` — `proposed` → `rejected`, комментарий обязателен (инвариант сервиса).
+- `remoderate-product` — `published` → `proposed`; вызывается subscriber'ом.
+- `update-product-card` — правка полей карточки (сегмент/ед.изм./сертификаты);
+  у published-товара дополнительно переводит статус в `proposed` — правка нашей модели
+  `product.updated` не эмитит, subscriber не сработает, поэтому переход явный в workflow.
+- Subscriber `src/subscribers/product-updated.ts` — повторная модерация: правка published-товара
+  с карточкой возвращает его в `proposed`.
 
-## API (план, подзадача 3)
-- **Store**: каталог — ядровый `/store/products` (только published) + кастом:
-  фильтр по `segment` (двухшагово: ids карточек по сегменту из модуля → фильтр products по ids;
-  масштаб MVP ~1000 SKU это позволяет), остатки в разрезе город/склад, подбор альтернатив.
-  OAS-фрагменты обязательны (store-часть — в контракт).
-- **Admin**: очередь модерации карточек (FIFO по дате отправки, `q`/`order` как у companies),
-  approve/reject.
+Ключевое решение (см. DECISIONS 2026-07-14): статус меняется общим шагом `update-product-status`
+через СЕРВИС модуля product (не через ядровый `updateProductsWorkflow`) — сервис не эмитит
+`product.updated`, поэтому approve не зацикливается с subscriber'ом; событие эмитят только
+правки через ядровые workflows (API продавца/админа).
 
-## Админ-UI (план, подзадача 4)
-- Очередь модерации карточек — в стиле `routes/companies` (идиомы ядра, английский).
-- Поля сегмента/ед.изм./сертификатов на странице товара ядра — widget
-  (зона `product.details.after`), не отдельная страница.
+## API (подзадача 3 — готово)
+Код: `backend/src/api/store/products/` и `backend/src/api/admin/products/`,
+тесты — `integration-tests/http/catalog-routes.spec.ts`, решения — DECISIONS (2026-07-14, API каталога).
+- **Store, фильтр по сегменту** — параметр `?segment=` у ЯДРОВОГО `GET /store/products`
+  (цены/каналы/пагинация ядра сохраняются). Middleware `filter-by-segment.ts` на
+  wildcard-матчере `/store/products*` (wildcard регистрируются раньше статических ядровых
+  валидаторов) вырезает `segment` до ядровой валидации и подменяет фильтром `id`
+  (двухшагово: ids карточек по сегменту из модуля → пересечение с client-`id`;
+  пусто → пустая страница сразу). Масштаб MVP ~1000 SKU это позволяет.
+- **Store, остатки** — `GET /store/products/:id/availability`: вариант → города →
+  склады (`город = stock_location.address.city`), `available = stocked − reserved`;
+  неопубликованный товар → 404.
+- **Store, альтернативы** — `GET /store/products/:id/alternatives?limit=1..20` (дефолт 5):
+  published-товары той же категории и того же сегмента, исключая сам товар;
+  товар без карточки → пустой список.
+- **Admin, очередь модерации** — БЕЗ кастомного роута: ядровый
+  `GET /admin/products?status[]=proposed&order=updated_at&q=...&fields=*product_card`
+  (link отдаёт поля карточки, `q`/`order` — штатные).
+- **Admin, действия** — `POST /admin/products/:id/moderation/{submit,approve,reject}`
+  поверх workflows (reject — обязательный `reason`, zod в `admin/products/validators.ts`).
+- **Admin, карточка (upsert)** — `POST /admin/products/:id/product-card` создаёт или
+  обновляет карточку (роут выбирает workflow по наличию карточки; инварианты — в workflows).
+  Правка карточки published-товара возвращает его в `proposed` (workflow
+  `update-product-card`, см. ниже). В контракт admin-роуты не входят (спека — Store API).
+- **Контракт** — фрагмент `store/products/products.oas.json`; для `segment` в ядровом пути
+  используется `x-extendPaths` (расширение существующих операций в `generate-contract.mjs`).
+
+## Админ-UI (подзадача 4 — готово)
+- Очередь модерации — `backend/src/admin/routes/product-moderation/page.tsx`, идиомы
+  `routes/companies` (копия DataTableFilter ядра, статус точкой, server-side `q`/`order`);
+  чип Status предустановлен на `Proposed`; данные — ядровый
+  `GET /admin/products?fields=*product_card`; клик по строке → ядровая страница товара.
+- Widget `backend/src/admin/widgets/product-catalog-card.tsx` (зона `product.details.after`):
+  сегмент/ед.изм./сертификаты/причина отклонения + «...»-меню (Create/Edit в Drawer,
+  Submit/Approve/Reject); данные — своим запросом (`fields=id,status,*product_card`),
+  prop `data` ядра link-полей не содержит. Общий код — `hooks/use-product-moderation.ts`,
+  `components/{product-card-drawer,reject-product-card-prompt}.tsx`, `lib/catalog.ts`.
+- Сид демо-товаров для ручной проверки: `npx medusa exec ./src/scripts/seed-demo-catalog.ts`
+  (3 товара с карточками: draft / proposed / rejected; идемпотентен).
 
 ## Подзадачи (порядок реализации — бэклог в STATE.md)
 1. [x] Дизайн + модуль `catalog` (модель, сервис, link, миграция, тесты).
-2. [ ] Workflows модерации + subscriber повторной модерации.
-3. [ ] Store/admin API + OAS-фрагменты + перегенерация контракта и Dart-клиента.
-4. [ ] Админ-UI: очередь модерации + widget полей карточки на странице товара.
+2. [x] Workflows модерации + subscriber повторной модерации.
+3. [x] Store/admin API + OAS-фрагменты + перегенерация контракта и Dart-клиента.
+4. [x] Админ-UI: очередь модерации + widget полей карточки на странице товара.
 5. [ ] Ограничение ≤5 складов/город (middleware) + сид региона KZ (KZT, Астана, склады, демо-каталог).
