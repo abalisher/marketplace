@@ -141,6 +141,22 @@ for (const file of fragments) {
     }
     spec.paths[path] = item
   }
+  // x-extendPaths — точечное расширение УЖЕ существующих в базовой спеке
+  // операций (например, кастомный query-параметр ядрового роута). Пока
+  // поддерживаются только parameters; новые пути объявляются через paths.
+  for (const [path, ops] of Object.entries(fragment["x-extendPaths"] ?? {})) {
+    const target = spec.paths[path]
+    if (!target) {
+      throw new Error(`x-extendPaths: путь ${path} не найден в базовой спеке (${file})`)
+    }
+    for (const [method, extension] of Object.entries(ops)) {
+      const op = target[method]
+      if (!op) {
+        throw new Error(`x-extendPaths: операция ${method} ${path} не найдена (${file})`)
+      }
+      op.parameters = [...(op.parameters ?? []), ...(extension.parameters ?? [])]
+    }
+  }
   for (const [section, entries] of Object.entries(fragment.components ?? {})) {
     spec.components[section] ??= {}
     for (const [name, schema] of Object.entries(entries)) {

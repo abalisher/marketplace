@@ -28,6 +28,7 @@ import 'clients/returns_client.dart';
 import 'clients/shipping_options_client.dart';
 import 'clients/store_credit_accounts_client.dart';
 import 'clients/companies_client.dart';
+import 'clients/catalog_client.dart';
 
 /// Medusa Storefront API `v2.0.0`
 class MedusaStoreApi {
@@ -63,6 +64,7 @@ class MedusaStoreApi {
   ShippingOptionsClient? _shippingOptions;
   StoreCreditAccountsClient? _storeCreditAccounts;
   CompaniesClient? _companies;
+  CatalogClient? _catalog;
 
   AuthClient get auth => _auth ??= AuthClient(_dio, baseUrl: _baseUrl);
 
@@ -134,4 +136,7 @@ class MedusaStoreApi {
 
   CompaniesClient get companies =>
       _companies ??= CompaniesClient(_dio, baseUrl: _baseUrl);
+
+  CatalogClient get catalog =>
+      _catalog ??= CatalogClient(_dio, baseUrl: _baseUrl);
 }

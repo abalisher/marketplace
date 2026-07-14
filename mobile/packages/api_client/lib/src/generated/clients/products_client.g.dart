@@ -50,6 +50,7 @@ class _ProductsClient implements ProductsClient {
     dynamic externalId,
     dynamic optionValueId,
     dynamic optionId,
+    Segment? segment,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
@@ -80,6 +81,7 @@ class _ProductsClient implements ProductsClient {
       r'external_id': externalId.toJson(),
       r'option_value_id': optionValueId.toJson(),
       r'option_id': optionId.toJson(),
+      r'segment': segment,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{

@@ -1,0 +1,193 @@
+{
+  "x-extendPaths": {
+    "/store/products": {
+      "get": {
+        "parameters": [
+          {
+            "name": "segment",
+            "in": "query",
+            "required": false,
+            "description": "Фильтр каталога по сегменту карточки товара (модуль catalog).",
+            "schema": {
+              "type": "string",
+              "enum": ["economy", "comfort", "business"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/store/products/{id}/availability": {
+      "get": {
+        "operationId": "GetProductsIdAvailability",
+        "summary": "Get Product Availability by City and Warehouse",
+        "description": "Остатки опубликованного товара в разрезе город → склад. available = stocked - reserved. 404 — товар не найден или не опубликован.",
+        "tags": ["Catalog"],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Остатки по вариантам товара.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProductAvailabilityRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/products/{id}/alternatives": {
+      "get": {
+        "operationId": "GetProductsIdAlternatives",
+        "summary": "List Product Alternatives",
+        "description": "Подбор альтернатив: опубликованные товары той же категории и того же сегмента, исключая сам товар. 404 — товар не найден или не опубликован.",
+        "tags": ["Catalog"],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Размер выдачи (1–20, по умолчанию 5).",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 5
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список альтернативных товаров.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreProductAlternativesRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreWarehouseAvailability": {
+        "type": "object",
+        "required": ["id", "name", "available"],
+        "properties": {
+          "id": { "type": "string", "description": "Id склада (stock location)." },
+          "name": { "type": "string" },
+          "available": { "type": "number" }
+        }
+      },
+      "StoreCityAvailability": {
+        "type": "object",
+        "required": ["available", "stock_locations"],
+        "properties": {
+          "city": {
+            "type": "string",
+            "nullable": true,
+            "description": "Город склада (stock_location.address.city); null — адрес без города."
+          },
+          "available": { "type": "number" },
+          "stock_locations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreWarehouseAvailability"
+            }
+          }
+        }
+      },
+      "StoreVariantAvailability": {
+        "type": "object",
+        "required": ["id", "cities"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string", "nullable": true },
+          "sku": { "type": "string", "nullable": true },
+          "cities": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreCityAvailability" }
+          }
+        }
+      },
+      "StoreProductAvailabilityRes": {
+        "type": "object",
+        "required": ["product_id", "variants"],
+        "properties": {
+          "product_id": { "type": "string" },
+          "variants": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreVariantAvailability"
+            }
+          }
+        }
+      },
+      "StoreProductCardSummary": {
+        "type": "object",
+        "required": ["segment", "unit"],
+        "properties": {
+          "segment": {
+            "type": "string",
+            "enum": ["economy", "comfort", "business"]
+          },
+          "unit": { "type": "string" }
+        }
+      },
+      "StoreProductAlternative": {
+        "type": "object",
+        "required": ["id", "title"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "handle": { "type": "string", "nullable": true },
+          "thumbnail": { "type": "string", "nullable": true },
+          "product_card": {
+            "$ref": "#/components/schemas/StoreProductCardSummary"
+          }
+        }
+      },
+      "StoreProductAlternativesRes": {
+        "type": "object",
+        "required": ["alternatives"],
+        "properties": {
+          "alternatives": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreProductAlternative" }
+          }
+        }
+      }
+    }
+  }
+}

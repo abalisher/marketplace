@@ -5,6 +5,7 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
+import '../models/segment.dart';
 import '../models/store_product_list_response.dart';
 import '../models/store_product_response.dart';
 
@@ -67,6 +68,8 @@ abstract class ProductsClient {
   /// [cartId] - The product's cart id.
   ///
   /// [locale] - The locale in BCP 47 format to retrieve localized content.
+  ///
+  /// [segment] - Фильтр каталога по сегменту карточки товара (модуль catalog).
   @GET('/store/products')
   Future<StoreProductListResponse> getProducts({
     @Header('x-publishable-api-key') required String xPublishableApiKey,
@@ -98,6 +101,7 @@ abstract class ProductsClient {
     @Query('external_id') dynamic externalId,
     @Query('option_value_id') dynamic optionValueId,
     @Query('option_id') dynamic optionId,
+    @Query('segment') Segment? segment,
   });
 
   /// Get a Product.
