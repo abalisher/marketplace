@@ -1,0 +1,138 @@
+{
+  "paths": {
+    "/store/carts/{id}/payment/kaspi": {
+      "post": {
+        "operationId": "PostCartsIdPaymentKaspi",
+        "summary": "Initialize Kaspi Payment",
+        "description": "Инициализация оплаты корзины через Kaspi: создаёт payment collection ядра на сумму корзины (если ещё нет) и платёжную сессию провайдера Kaspi — внутри создаётся инвойс, в ответе QR/ссылка для оплаты. Идемпотентен: повторный вызов возвращает существующую сессию. 404 — корзина не принадлежит покупателю.",
+        "tags": ["Payment"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoreInitKaspiPayment" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Платёжная сессия Kaspi с QR/ссылкой для оплаты.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreKaspiPaymentRes" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "GetCartsIdPaymentKaspi",
+        "summary": "Get Kaspi Payment Status",
+        "description": "Статус оплаты Kaspi (polling): синхронизирует платёжную сессию с состоянием инвойса. Оплачено → status=authorized (можно оформлять заказ POST /store/orders). 400 — оплата для корзины не инициализирована; 404 — корзина не принадлежит покупателю.",
+        "tags": ["Payment"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный статус платёжной сессии Kaspi.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreKaspiPaymentRes" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreInitKaspiPayment": {
+        "type": "object",
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "enum": ["pending", "paid", "canceled", "error"],
+            "description": "ТОЛЬКО для мока (dev/тесты): детерминированный исход оплаты инвойса. В live-режиме игнорируется."
+          }
+        }
+      },
+      "StoreKaspiPayment": {
+        "type": "object",
+        "required": ["payment_collection_id", "payment_session_id", "status"],
+        "properties": {
+          "payment_collection_id": {
+            "type": "string",
+            "description": "Payment collection ядра, привязанная к корзине."
+          },
+          "payment_session_id": {
+            "type": "string",
+            "description": "Платёжная сессия провайдера Kaspi."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "requires_more",
+              "authorized",
+              "captured",
+              "canceled",
+              "error"
+            ],
+            "description": "Статус сессии ядра. authorized/captured — оплачено, можно оформлять заказ."
+          },
+          "kaspi_state": {
+            "type": "string",
+            "nullable": true,
+            "description": "Состояние инвойса Kaspi (pending|paid|canceled|error)."
+          },
+          "qr_payload": {
+            "type": "string",
+            "nullable": true,
+            "description": "Данные для отрисовки QR-кода оплаты."
+          },
+          "payment_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ссылка на оплату (редирект в приложение Kaspi)."
+          }
+        }
+      },
+      "StoreKaspiPaymentRes": {
+        "type": "object",
+        "required": ["payment"],
+        "properties": {
+          "payment": { "$ref": "#/components/schemas/StoreKaspiPayment" }
+        }
+      }
+    }
+  }
+}

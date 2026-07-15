@@ -196,3 +196,66 @@ payment collection и веткой workflow, НЕ логика провайде�
 **Отвергнуто:** своя платёжная подсистема/шлюз (дублировала бы ядро, ломала «параллельные эквайеры»); хранение
 Kaspi-состояния в отдельной таблице (сессия `data` для этого и предназначена); жёсткая зависимость от реального
 Kaspi API в коде оформления (без песочницы заблокировало бы разработку — отсюда адаптер+мок).
+
+## 2026-07-15 — payment-kaspi, подзадача 1: провайдер (мок) + регистрация под шлюзом ядра
+**Что:** `backend/src/modules/payment-kaspi/` — класс `KaspiPaymentProvider extends AbstractPaymentProvider`
+(`static identifier="kaspi"`, все 10 методов Payment Provider API), интерфейс `KaspiClient` + `types.ts`,
+детерминированный `KaspiMockClient`, фабрика `create-kaspi-client.ts` (выбор mock|live по env), регистрация
+через `ModuleProvider(Modules.PAYMENT, {services:[KaspiPaymentProvider]})` в `index.ts`, подключение в
+`medusa-config.ts` внутри `options.providers` ядрового `@medusajs/medusa/payment`. Своих моделей домена НЕТ
+(состояние — в `data` сессии, как в дизайне).
+**Решения:**
+- **Сигнатуры Payment Provider API выяснены через tsc, не по памяти** (node_modules закрыт для чтения агентом —
+  риск из STATE.md). Метод: временный зонд-класс, пустой наследник → TS2655 перечисляет абстрактные члены;
+  затем каждый метод с типом-«ловушкой» → TS2416 печатает ожидаемую сигнатуру (`--noErrorTruncation`); поля
+  Input/Output — присваиванием `{}` (обязательные поля в тексте ошибки). Зонд удалён после сверки.
+  Факты 2.17.2: Output'ы capture/cancel/delete/refund/retrieve = `{ data? }`; `initiate` возвращает обяз. `id`
+  (= id платёжной сессии провайдера); webhook — `getWebhookActionAndData({data,rawData,headers}) → WebhookActionResult`.
+- **Мок СТАТЕЛЕСС: исход оплаты закодирован в `invoice_id`** (`kaspi_mock_<state>_<uuid>`), `getInvoiceStatus`
+  парсит состояние из id. Значит тесты гоняют сценарии через `data.kaspi_scenario` сессии, не залезая во
+  внутреннее состояние мока; незнакомый формат id → `error` (страховка от рассинхрона, НЕ «оплачено»).
+- **`session_id` в webhook = наш `invoice_id`** (ядро сохраняет возвращённый из `initiate` `id` и по нему находит
+  сессию при webhook — как Stripe возвращает `paymentIntent.id`). `paid`→`AUTHORIZED` (не сразу `CAPTURED`):
+  списание оставлено явным capture'ом ядра.
+- **`MedusaError.Types.NOT_IMPLEMENTED` не существует** в 2.17.2 — для «live ещё не готов» использован `NOT_ALLOWED`.
+  live-режим фабрики бросает до появления `KaspiHttpClient` (подзадача 3), а не молча уходит в мок.
+- Тесты — **чистые unit** (`__tests__/*.unit.spec.ts`, раннер `test:unit`, без БД/docker → входят в CI): 16 шт.
+**Верификация:** tsc обоих tsconfig 0 ошибок, lint 0 ошибок, `test:unit` 16/16, dev-сервер поднят —
+в таблице `payment_provider` появился `pp_kaspi_kaspi` (enabled) рядом с `pp_system_default` (регистрация под
+ядровым шлюзом работает, конструктор корректен с реальным DI). API-роутов пока нет → контракт/Dart не трогали
+(это подзадача 2).
+
+## 2026-07-15 — payment-kaspi, подзадача 2: оплата в оформлении заказа
+**Что:** store-роуты `POST/GET /store/carts/:id/payment/kaspi` (инициализация оплаты: payment collection +
+сессия Kaspi + QR; и статус/polling) поверх workflows `init-cart-kaspi-payment` / `sync-cart-kaspi-payment`,
+плюс предусловие 100% предоплаты в `place-order` (шаг `ensure-cart-payment-authorized`).
+**Решения:**
+- **Polling статуса = попытка авторизации ядром.** У `IPaymentModuleService` НЕТ метода «спросить статус у
+  провайдера без побочных эффектов» (полный список членов снят tsc-зондом; есть только `retrievePaymentSession`
+  + `authorizePaymentSession(id, context) → Promise<PaymentDTO|null>`). Поэтому опрос реализован честно по
+  дизайн-флоу: пока сессия pending — `authorizePaymentSession` (провайдер внутри опрашивает инвойс Kaspi);
+  оплачено → сессия authorized + Payment ядра, не оплачено → остаётся pending, ошибка авторизации глотается
+  (не-оплата — штатное состояние опроса). Общий хелпер — `workflows/utils/settle-kaspi-payment-session.ts`,
+  его используют и polling-шаг, и предусловие placeOrder.
+- **Предусловие в `place-order` — шаг `ensure-cart-payment-authorized` ПЕРЕД `completeCartWorkflow`:** сессия
+  обязана существовать (иначе 400 «no payment session»), Kaspi-сессия — быть оплаченной (перед проверкой
+  синхронизируется с инвойсом — страховка от гонки «оплатил, но не дождался polling'а»). Прочие провайдеры
+  (pp_system_default, будущая постоплата юрлиц через scoring) авторизует сам completeCart. Дружественная
+  ошибка вместо внутренней ошибки авторизации ядра.
+- **Порядок шагов в workflow — зависимостью по данным, не порядком строк.** Движок workflow исполняет шаги по
+  графу данных: шаг без входной зависимости от when-ветки может выполниться раньше неё. Приём: результат
+  when().then() пропускается через transform, формирующий input следующего шага (`transform({input, created},
+  d => ({cart_id: d.input.cart_id}))`), а completeCart получает `payment.cart_id` из шага-предусловия.
+  Подтверждено эмпирически (тест «init создаёт collection + сессию» проверяет порядок collection→session).
+- **Init идемпотентен через переиспользование:** существующая Kaspi-сессия возвращается как есть (новый инвойс
+  не создаётся). Актуальность суммы collection при правках корзины поддерживают сами cart-workflows ядра.
+- **Путь `/store/carts/:id/payment/kaspi`** — под-ресурс корзины (ядровые пути корзины не перекрываются);
+  auth customer обязателен (ядровые роуты корзины гостевые), владение — `requireOwnCart` (чужая → 404,
+  симметрично `requireOwnOrder`). `scenario` в теле POST — ТОЛЬКО для мока, live-транспорт игнорирует.
+- **Сид `seed-kz.ts` дополнен блоком 2a:** идемпотентно добавляет `pp_kaspi_kaspi` в `payment_providers`
+  региона Kazakhstan (иначе сессию Kaspi в dev не создать; `payment_providers` — link, читается query.graph).
+**Верификация:** 12 новых http-тестов (`kaspi-payment.spec.ts`: init+QR/идемпотентность/чужая корзина 404/401/
+polling pending→paid/сквозное оформление с оплатой/оформление без polling/отказы unpaid+canceled+без сессии),
+весь `test:integration:http` — 87 зелёных, unit 16/16, tsc обоих tsconfig 0 ошибок, lint 0 ошибок, контракт
+86 путей/633 схемы/5 фрагментов, Dart-клиент 26 клиентов/99 запросов, сид прогнан дважды (идемпотентен),
+`bash scripts/ci.sh` — CI OK.

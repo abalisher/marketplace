@@ -135,12 +135,24 @@ webhook) логируются: суммы — ядровые Payment/Capture/Ref
   если понадобится синхронизация нашего продавца с Kaspi Магазином.
 
 ## Подзадачи (порядок реализации — бэклог в STATE.md)
-1. [ ] **Дизайн + провайдер (мок) + интеграция 100% предоплаты**: класс `KaspiPaymentProvider`
-   (`AbstractPaymentProvider`, все методы), интерфейс `KaspiClient` + `KaspiMockClient`, регистрация под
-   `@medusajs/payment` в `medusa-config.ts`, тесты провайдера (initiate/authorize/capture/refund/webhook на моке).
-2. [ ] **Оплата в оформлении заказа**: store-роут инициализации оплаты корзины (collection + сессия Kaspi + QR),
-   статус/polling, увязка с `placeOrder` (предусловие «сессия авторизована»); OAS-фрагменты + перегенерация
-   контракта и Dart-клиента; http-тесты сквозного оформления с оплатой (на моке).
+1. [x] **Провайдер (мок) + регистрация под шлюзом ядра** — ГОТОВО (2026-07-15). Класс `KaspiPaymentProvider`
+   (`AbstractPaymentProvider`, все 10 методов), интерфейс `KaspiClient` (`types.ts`) + детерминированный
+   `KaspiMockClient` (стателесс: исход закодирован в `invoice_id`) + фабрика `create-kaspi-client.ts` (mock|live
+   по env `KASPI_MODE`), регистрация `ModuleProvider(Modules.PAYMENT, ...)` (`index.ts`) → подключение в
+   `medusa-config.ts` внутри `options.providers` ядрового `@medusajs/medusa/payment`. Своих моделей нет
+   (состояние — в `data` сессии). Тесты — 16 unit (`__tests__/payment-kaspi.unit.spec.ts`). Сигнатуры Provider
+   API сверены через tsc (node_modules закрыт), полный id провайдера — `pp_kaspi_kaspi`. Детали — DECISIONS 2026-07-15.
+2. [x] **Оплата в оформлении заказа** — ГОТОВО (2026-07-15). Store-роуты `POST /store/carts/:id/payment/kaspi`
+   (инициализация: collection ядра + сессия Kaspi + QR/ссылка; идемпотентен) и `GET` того же пути (статус/
+   polling: пока сессия pending — попытка авторизации ядром, внутри провайдер опрашивает инвойс; оплачено →
+   authorized + Payment ядра). Workflows `init-cart-kaspi-payment` (оркестрация ядровых
+   `createPaymentCollectionForCartWorkflow`/`createPaymentSessionsWorkflow`) и `sync-cart-kaspi-payment`;
+   общий хелпер `workflows/utils/settle-kaspi-payment-session.ts`. Предусловие 100% предоплаты — шаг
+   `ensure-cart-payment-authorized` перед `completeCartWorkflow` в `place-order` (сессия обязана быть,
+   Kaspi-сессия — оплачена; перед проверкой синхронизируется с инвойсом). Владение корзиной —
+   `requireOwnCart` (чужая → 404), auth customer обязателен. OAS-фрагмент `store/carts/carts.oas.json`,
+   контракт и Dart-клиент перегенерированы. `seed-kz.ts` идемпотентно подключает `pp_kaspi_kaspi` к региону
+   Kazakhstan. 12 http-тестов (`kaspi-payment.spec.ts`). Решения — DECISIONS 2026-07-15 (подзадача 2).
 3. [ ] **Живой транспорт `KaspiHttpClient`** (порт флоу tapter-dev за адаптером) + webhook-разбор
    (`getWebhookActionAndData`) + возвраты (`refundPayment`); тесты на моках HTTP. Реальные ключи — от клиента.
 4. [ ] **Отложенные сценарии** (по мере появления модулей): частичная предоплата, постоплата юрлиц

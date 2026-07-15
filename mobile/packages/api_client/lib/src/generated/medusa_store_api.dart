@@ -27,6 +27,7 @@ import 'clients/return_reasons_client.dart';
 import 'clients/returns_client.dart';
 import 'clients/shipping_options_client.dart';
 import 'clients/store_credit_accounts_client.dart';
+import 'clients/payment_client.dart';
 import 'clients/companies_client.dart';
 import 'clients/catalog_client.dart';
 
@@ -63,6 +64,7 @@ class MedusaStoreApi {
   ReturnsClient? _returns;
   ShippingOptionsClient? _shippingOptions;
   StoreCreditAccountsClient? _storeCreditAccounts;
+  PaymentClient? _payment;
   CompaniesClient? _companies;
   CatalogClient? _catalog;
 
@@ -133,6 +135,9 @@ class MedusaStoreApi {
 
   StoreCreditAccountsClient get storeCreditAccounts => _storeCreditAccounts ??=
       StoreCreditAccountsClient(_dio, baseUrl: _baseUrl);
+
+  PaymentClient get payment =>
+      _payment ??= PaymentClient(_dio, baseUrl: _baseUrl);
 
   CompaniesClient get companies =>
       _companies ??= CompaniesClient(_dio, baseUrl: _baseUrl);

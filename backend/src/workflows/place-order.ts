@@ -12,6 +12,7 @@ import { Modules } from "@medusajs/framework/utils"
 import { ORDER_LIFECYCLE_MODULE } from "../modules/order-lifecycle"
 import { COMPANY_MODULE } from "../modules/company"
 import { createOrderLifecycleStep } from "./steps/create-order-lifecycle"
+import { ensureCartPaymentAuthorizedStep } from "./steps/ensure-cart-payment-authorized"
 import { resolveOrderCompanyStep } from "./steps/resolve-order-company"
 
 export type PlaceOrderWorkflowInput = {
@@ -23,11 +24,17 @@ export type PlaceOrderWorkflowInput = {
 // навешивается наш жизненный цикл: OrderLifecycle=new + link 1:1 к заказу, и
 // (если покупатель — сотрудник компании) link заказа к компании. Ядро само
 // эмитит order.placed — свой дубль не шлём (см. modules/order-lifecycle/events.ts).
+// Предусловие 100% предоплаты: сессия есть, Kaspi-сессия оплачена (шаг ниже);
+// completeCart зависит от шага по данным (cart_id через его результат).
 export const placeOrderWorkflow = createWorkflow(
   "place-order",
   (input: WorkflowData<PlaceOrderWorkflowInput>) => {
+    const payment = ensureCartPaymentAuthorizedStep({
+      cart_id: input.cart_id,
+    })
+
     const order = completeCartWorkflow.runAsStep({
-      input: { id: input.cart_id },
+      input: { id: payment.cart_id },
     })
 
     const lifecycle = createOrderLifecycleStep()

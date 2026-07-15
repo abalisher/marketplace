@@ -24,6 +24,7 @@ import {
   StoreCancelOrder,
   StorePlaceOrder,
 } from "./store/orders/validators"
+import { StoreInitKaspiPayment } from "./store/carts/validators"
 import {
   AdminCancelOrder,
   AdminCompleteAssembly,
@@ -100,6 +101,18 @@ export default defineMiddlewares({
       matcher: "/admin/stock-locations",
       method: "POST",
       middlewares: [limitStockLocationsPerCity],
+    },
+    // --- Оплата корзины (payment-kaspi) ---
+    // Ядровые роуты корзины доступны гостям; наша Kaspi-оплата — только
+    // залогиненному покупателю (владение корзиной проверяет requireOwnCart).
+    {
+      matcher: "/store/carts/:id/payment/kaspi",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
+      matcher: "/store/carts/:id/payment/kaspi",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreInitKaspiPayment)],
     },
     // --- Заказ (order-lifecycle) ---
     // Все store-роуты заказа требуют залогиненного покупателя.
