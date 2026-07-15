@@ -36,7 +36,7 @@ OrderExchange _$OrderExchangeFromJson(Map<String, dynamic> json) =>
           : DateTime.parse(json['updated_at'] as String),
       order: json['order'] == null
           ? null
-          : Order.fromJson(json['order'] as Map<String, dynamic>),
+          : Order.fromJson(json['order'] as String),
       rawDifferenceDue: json['raw_difference_due'],
       allowBackorder: json['allow_backorder'] as bool?,
       createdBy: json['created_by'] as String?,
@@ -63,7 +63,7 @@ Map<String, dynamic> _$OrderExchangeToJson(OrderExchange instance) =>
       'metadata': instance.metadata,
       'created_at': instance.createdAt?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
-      'order': instance.order,
+      'order': _$OrderEnumMap[instance.order],
       'order_version': instance.orderVersion,
       'raw_difference_due': instance.rawDifferenceDue,
       'allow_backorder': instance.allowBackorder,
@@ -71,3 +71,11 @@ Map<String, dynamic> _$OrderExchangeToJson(OrderExchange instance) =>
       'deleted_at': instance.deletedAt?.toIso8601String(),
       'canceled_at': instance.canceledAt?.toIso8601String(),
     };
+
+const _$OrderEnumMap = {
+  Order.createdAt: 'created_at',
+  Order.minusCreatedAt: '-created_at',
+  Order.updatedAt: 'updated_at',
+  Order.minusUpdatedAt: '-updated_at',
+  Order.$unknown: r'$unknown',
+};

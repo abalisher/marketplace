@@ -1,0 +1,222 @@
+{
+  "paths": {
+    "/store/orders": {
+      "post": {
+        "operationId": "PostOrders",
+        "summary": "Place an Order",
+        "description": "Оформление заказа текущим покупателем: завершает его корзину (ядровый completeCart + резерв остатков) и заводит жизненный цикл заказа (статус new). Список и детали заказов покупателя обслуживает ядро (GET /store/orders[/{id}]); бизнес-статус ТЗ — GET /store/orders/{id}/lifecycle.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StorePlaceOrder" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Оформленный заказ и его жизненный цикл.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StorePlaceOrderRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/lifecycle": {
+      "get": {
+        "operationId": "GetOrdersIdLifecycle",
+        "summary": "Get Order Lifecycle Status",
+        "description": "Бизнес-статус заказа (ТЗ) и лог переходов для текущего покупателя. Единое поле статуса вместо склейки трёх ядровых. 404 — заказ не принадлежит покупателю или не найден.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Статус заказа и история переходов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreOrderLifecycleRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/cancel": {
+      "post": {
+        "operationId": "PostOrdersIdCancel",
+        "summary": "Cancel My Order",
+        "description": "Покупатель отменяет свой заказ. Разрешено стейт-машиной только до отгрузки (new..assembled → canceled); ядро дополнительно откажет при наличии неотменённых fulfillment'ов. 404 — заказ не принадлежит покупателю.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoreCancelOrder" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Заказ отменён; новый бизнес-статус.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreOrderStatusRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StorePlaceOrder": {
+        "type": "object",
+        "required": ["cart_id"],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "description": "Id корзины покупателя, которую нужно завершить."
+          }
+        }
+      },
+      "StoreCancelOrder": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "Причина отмены (опционально; логируется в истории)."
+          }
+        }
+      },
+      "StoreOrderLifecycleSummary": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "confirmed",
+              "assembling",
+              "partially_assembled",
+              "assembled",
+              "in_delivery",
+              "delivered",
+              "closed",
+              "canceled",
+              "returned"
+            ]
+          },
+          "previous_status": { "type": "string", "nullable": true },
+          "note": { "type": "string", "nullable": true }
+        }
+      },
+      "StoreOrderLifecycleEvent": {
+        "type": "object",
+        "required": ["id", "to_status", "actor_type"],
+        "properties": {
+          "id": { "type": "string" },
+          "from_status": { "type": "string", "nullable": true },
+          "to_status": { "type": "string" },
+          "actor_type": {
+            "type": "string",
+            "enum": ["buyer", "seller", "admin", "system"]
+          },
+          "actor_id": { "type": "string", "nullable": true },
+          "reason": { "type": "string", "nullable": true },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StorePlaceOrderRes": {
+        "type": "object",
+        "required": ["order", "lifecycle"],
+        "properties": {
+          "order": {
+            "type": "object",
+            "description": "Заказ ядра (schema StoreOrder базовой спеки).",
+            "properties": { "id": { "type": "string" } }
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/StoreOrderLifecycleSummary"
+          }
+        }
+      },
+      "StoreOrderLifecycleRes": {
+        "type": "object",
+        "required": ["order_id", "history"],
+        "properties": {
+          "order_id": { "type": "string" },
+          "status": { "type": "string", "nullable": true },
+          "previous_status": { "type": "string", "nullable": true },
+          "note": { "type": "string", "nullable": true },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreOrderLifecycleEvent"
+            }
+          }
+        }
+      },
+      "StoreOrderStatusRes": {
+        "type": "object",
+        "required": ["order_id", "status"],
+        "properties": {
+          "order_id": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    }
+  }
+}

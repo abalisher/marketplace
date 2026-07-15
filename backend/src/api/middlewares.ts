@@ -20,6 +20,17 @@ import {
 import { StoreGetAlternativesParams } from "./store/products/validators"
 import { filterProductsBySegment } from "./store/products/filter-by-segment"
 import { limitStockLocationsPerCity } from "./admin/stock-locations/limit-per-city"
+import {
+  StoreCancelOrder,
+  StorePlaceOrder,
+} from "./store/orders/validators"
+import {
+  AdminCancelOrder,
+  AdminCompleteAssembly,
+  AdminDeliverOrder,
+  AdminGetOrderLifecyclesParams,
+  AdminShipOrder,
+} from "./admin/orders/validators"
 
 // Сквозные middleware кастомных роутов: аутентификация store-роутов компании
 // (все требуют залогиненного customer) и zod-валидация тел/query.
@@ -89,6 +100,52 @@ export default defineMiddlewares({
       matcher: "/admin/stock-locations",
       method: "POST",
       middlewares: [limitStockLocationsPerCity],
+    },
+    // --- Заказ (order-lifecycle) ---
+    // Все store-роуты заказа требуют залогиненного покупателя.
+    {
+      matcher: "/store/orders*",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
+      matcher: "/store/orders",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StorePlaceOrder)],
+    },
+    {
+      matcher: "/store/orders/:id/cancel",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreCancelOrder)],
+    },
+    {
+      matcher: "/admin/order-lifecycles",
+      method: "GET",
+      middlewares: [
+        validateAndTransformQuery(AdminGetOrderLifecyclesParams, {
+          isList: true,
+          defaults: ["id", "status", "previous_status", "created_at"],
+        }),
+      ],
+    },
+    {
+      matcher: "/admin/orders/:id/lifecycle/complete-assembly",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminCompleteAssembly)],
+    },
+    {
+      matcher: "/admin/orders/:id/lifecycle/ship",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminShipOrder)],
+    },
+    {
+      matcher: "/admin/orders/:id/lifecycle/deliver",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminDeliverOrder)],
+    },
+    {
+      matcher: "/admin/orders/:id/lifecycle/cancel",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminCancelOrder)],
     },
   ],
 })

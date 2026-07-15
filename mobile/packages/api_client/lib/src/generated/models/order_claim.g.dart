@@ -35,9 +35,7 @@ OrderClaim _$OrderClaimFromJson(Map<String, dynamic> json) => OrderClaim(
   updatedAt: json['updated_at'] == null
       ? null
       : DateTime.parse(json['updated_at'] as String),
-  order: json['order'] == null
-      ? null
-      : Order.fromJson(json['order'] as Map<String, dynamic>),
+  order: json['order'] == null ? null : Order.fromJson(json['order'] as String),
   rawRefundAmount: json['raw_refund_amount'],
   createdBy: json['created_by'] as String?,
   deletedAt: json['deleted_at'] == null
@@ -65,7 +63,7 @@ Map<String, dynamic> _$OrderClaimToJson(OrderClaim instance) =>
       'created_at': instance.createdAt?.toIso8601String(),
       'updated_at': instance.updatedAt?.toIso8601String(),
       'type': _$OrderClaimTypeEnumMap[instance.type]!,
-      'order': instance.order,
+      'order': _$OrderEnumMap[instance.order],
       'order_version': instance.orderVersion,
       'raw_refund_amount': instance.rawRefundAmount,
       'created_by': instance.createdBy,
@@ -77,4 +75,12 @@ const _$OrderClaimTypeEnumMap = {
   OrderClaimType.replace: 'replace',
   OrderClaimType.refund: 'refund',
   OrderClaimType.$unknown: r'$unknown',
+};
+
+const _$OrderEnumMap = {
+  Order.createdAt: 'created_at',
+  Order.minusCreatedAt: '-created_at',
+  Order.updatedAt: 'updated_at',
+  Order.minusUpdatedAt: '-updated_at',
+  Order.$unknown: r'$unknown',
 };

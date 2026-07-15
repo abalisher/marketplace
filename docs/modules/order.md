@@ -100,10 +100,17 @@ emit `order.status_changed`). Поверх — сценарные workflow, де
 - `cancel-order` — `cancelOrderWorkflow` → `canceled`.
 
 ## События (хуки для будущих модулей)
-- `order.placed` → счёт (`documents`), уведомление обеим сторонам (`notification`). Модулей пока нет —
-  subscriber-заглушка/отложено.
-- `order.status_changed` → уведомление обеим сторонам на каждом переходе (ТЗ).
-- `order.closed` → начисление бонуса (`bonus`, после окна возврата) + пересчёт скоринга (`scoring`).
+**Реализация (подзадача 2, отступ от первоначального наброска — см. DECISIONS 2026-07-14):**
+одно кастомное событие `order_lifecycle.status_changed` (namespace `order_lifecycle.*`) на КАЖДЫЙ переход,
+payload `{ order_id, order_lifecycle_id, from, to, actor_type }`. Своих `order.*` НЕ эмитим — ядро уже
+шлёт `order.placed` (completeCart), `order.completed` (complete), `order.canceled` (cancel); дубли/коллизии
+не нужны. Хуки будущих модулей:
+- «заказ размещён» → счёт (`documents`), уведомление обеим сторонам (`notification`) — подписка на
+  ядровый `order.placed`.
+- `order_lifecycle.status_changed` → уведомление обеим сторонам на каждом переходе (ТЗ). Сейчас
+  subscriber `order-status-changed` — заглушка (notification-провайдера нет).
+- «заказ закрыт» → бонус (`bonus`, после окна возврата) + скоринг (`scoring`) — подписка на
+  `order_lifecycle.status_changed` с `to=closed`.
 
 ## Осознанно отложено (зависит от будущих модулей/задач)
 - **Оплата** — сценарии предоплата/частичная/постоплата/Kaspi: `payment-kaspi` + payment collection в
@@ -117,11 +124,34 @@ emit `order.status_changed`). Поверх — сценарные workflow, де
 - **returnFlow** (Возврат, 14 дней, чек-лист водителя) — отдельный сквозной сценарий (ARCHITECTURE).
 
 ## Подзадачи (порядок реализации — бэклог в STATE.md)
-1. [ ] Дизайн + модуль `order-status` (модели `OrderStatus`/`OrderStatusHistory`, сервис с инвариантом
-   переходов, link 1:1 к order ядра, миграция, тесты модуля). ← текущая.
-2. [ ] `placeOrder` + переходы жизненного цикла (обёртки над ядровыми workflow) + subscriber уведомлений
-   (заглушка) + события. Частичная сборка внутри `complete-order-assembly`.
-3. [ ] Store/admin API (store: оформление, свой статус заказа; admin: очередь заказов, переходы) +
-   OAS-фрагменты + перегенерация контракта и Dart-клиента.
-4. [ ] Админ-UI: очередь заказов (в стиле `routes/companies`) + переходы статуса + виджет статуса на
-   странице заказа ядра.
+1. [x] Дизайн + модуль (реализован как `order-lifecycle` — имя `order-status`/`OrderStatus` конфликтует
+   с ядром, см. DECISIONS 2026-07-14): модели `OrderLifecycle`/`OrderLifecycleEvent`, сервис с инвариантом
+   переходов, link 1:1 к order ядра, миграция, тесты модуля.
+2. [x] `placeOrder` + переходы жизненного цикла (обёртки над ядровыми workflow) + subscriber уведомлений
+   (заглушка) + событие `order_lifecycle.status_changed`. Частичная сборка внутри `complete-order-assembly`.
+   Файлы: `src/workflows/place-order.ts` + `confirm-order`/`start-order-assembly`/`complete-order-assembly`/
+   `ship-order`/`deliver-order`/`close-order`/`cancel-order` + шаги `steps/{create-order-lifecycle,
+   record-status-transition,determine-assembly-status,resolve-order-company}` + `apply-order-transition` +
+   subscriber `subscribers/order-status-changed`. Тесты — `integration-tests/http/order-lifecycle-workflows.spec.ts`.
+3. [x] Store/admin API (тонкие роуты поверх workflow из подзадачи 2, не перекрывают ядровые
+   роуты заказа — см. DECISIONS 2026-07-15):
+   - store: `POST /store/orders` (`{cart_id}` → placeOrder), `GET /store/orders/:id/lifecycle`
+     (свой статус + лог, владение через `requireOwnOrder`), `POST /store/orders/:id/cancel`;
+   - admin: `GET /admin/order-lifecycles` (очередь: фильтр статуса, сортировка FIFO, пагинация;
+     отдельный ресурс, НЕ переопределение ядрового `/admin/orders`), `GET /admin/orders/:id/lifecycle`
+     (статус + история), переходы `POST /admin/orders/:id/lifecycle/{confirm,start-assembly,
+     complete-assembly,ship,deliver,close,cancel}` (namespace `/lifecycle/` — не перекрывает
+     ядровые `/admin/orders/:id/{cancel,complete}`);
+   - OAS-фрагменты `store/orders/orders.oas.json` + `admin/orders/orders.oas.json`, контракт
+     перегенерирован (85 путей, 630 схем, 4 фрагмента; `generate-contract.mjs` обобщён — мерджит
+     новые методы на уже существующий путь `/store/orders`), Dart-клиент перегенерирован.
+4. [x] Админ-UI: очередь заказов (`src/admin/routes/order-queue/` — путь `order-queue`, НЕ `orders`:
+   статик `/orders` конфликтует с ядровым списком заказов; данные `GET /admin/order-lifecycles`, статус
+   точкой, server-side фильтр по статусу + сортировка FIFO, поиска нет — эндпоинт очереди его не отдаёт;
+   клик по строке → ядровая страница заказа) + widget `src/admin/widgets/order-lifecycle-card.tsx`
+   (зона `order.details.after`): статус StatusBadge'ом, доступные из него переходы в «...»-меню (карта
+   `ORDER_TRANSITIONS` в `lib/order.ts` — подмножество стейт-машины сервиса), лог переходов; позиции/
+   fulfillment для сборки/отгрузки/доставки берутся из данных ядровой страницы (prop `data`), отмена —
+   через диалог (необязательная причина). Общий hook `hooks/use-order-lifecycle.ts` инвалидирует наш
+   статус и ядровый заказ (`["orders"]`). Демо-данные — `npx medusa exec ./src/scripts/seed-demo-order.ts`
+   (3 заказа: new/confirmed/in_delivery; строит минимальную доставку KZ).

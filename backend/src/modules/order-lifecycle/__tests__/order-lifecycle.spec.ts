@@ -49,7 +49,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
       it("records a transition: updates status, sets previous, appends log", async () => {
         const lc = await service.createOrderLifecycles({})
 
-        const updated = await service.recordTransition({
+        const { lifecycle: updated, event } = await service.recordTransition({
           order_lifecycle_id: lc.id,
           to: "confirmed",
           actor_type: "seller",
@@ -58,6 +58,9 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
 
         expect(updated.status).toEqual("confirmed")
         expect(updated.previous_status).toEqual("new")
+        // Запись лога возвращается — её id нужен шагу для компенсации.
+        expect(event.id).toMatch(/^ordlce_/)
+        expect(event.to_status).toEqual("confirmed")
 
         const [events, count] =
           await service.listAndCountOrderLifecycleEvents({
@@ -93,7 +96,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
       it("logs the reason on a transition (e.g. cancellation)", async () => {
         const lc = await service.createOrderLifecycles({})
 
-        const canceled = await service.recordTransition({
+        const { lifecycle: canceled } = await service.recordTransition({
           order_lifecycle_id: lc.id,
           to: "canceled",
           actor_type: "buyer",

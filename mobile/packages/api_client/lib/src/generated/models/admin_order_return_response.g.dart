@@ -9,10 +9,21 @@ part of 'admin_order_return_response.dart';
 AdminOrderReturnResponse _$AdminOrderReturnResponseFromJson(
   Map<String, dynamic> json,
 ) => AdminOrderReturnResponse(
-  order: Order.fromJson(json['order'] as Map<String, dynamic>),
+  order: Order.fromJson(json['order'] as String),
   returnValue: AdminReturn.fromJson(json['return'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$AdminOrderReturnResponseToJson(
   AdminOrderReturnResponse instance,
-) => <String, dynamic>{'order': instance.order, 'return': instance.returnValue};
+) => <String, dynamic>{
+  'order': _$OrderEnumMap[instance.order]!,
+  'return': instance.returnValue,
+};
+
+const _$OrderEnumMap = {
+  Order.createdAt: 'created_at',
+  Order.minusCreatedAt: '-created_at',
+  Order.updatedAt: 'updated_at',
+  Order.minusUpdatedAt: '-updated_at',
+  Order.$unknown: r'$unknown',
+};

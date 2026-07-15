@@ -32,9 +32,7 @@ Return _$ReturnFromJson(Map<String, dynamic> json) => Return(
       ? null
       : DateTime.parse(json['canceled_at'] as String),
   rawRefundAmount: json['raw_refund_amount'],
-  order: json['order'] == null
-      ? null
-      : Order.fromJson(json['order'] as Map<String, dynamic>),
+  order: json['order'] == null ? null : Order.fromJson(json['order'] as String),
   exchangeId: json['exchange_id'] as String?,
   exchange: json['exchange'],
   claimId: json['claim_id'] as String?,
@@ -68,7 +66,7 @@ Map<String, dynamic> _$ReturnToJson(Return instance) => <String, dynamic>{
   'updated_at': instance.updatedAt?.toIso8601String(),
   'canceled_at': instance.canceledAt?.toIso8601String(),
   'raw_refund_amount': instance.rawRefundAmount,
-  'order': instance.order,
+  'order': _$OrderEnumMap[instance.order],
   'exchange_id': instance.exchangeId,
   'exchange': instance.exchange,
   'claim_id': instance.claimId,
@@ -88,4 +86,12 @@ const _$ReturnStatusEnumMap = {
   ReturnStatus.received: 'received',
   ReturnStatus.partiallyReceived: 'partially_received',
   ReturnStatus.$unknown: r'$unknown',
+};
+
+const _$OrderEnumMap = {
+  Order.createdAt: 'created_at',
+  Order.minusCreatedAt: '-created_at',
+  Order.updatedAt: 'updated_at',
+  Order.minusUpdatedAt: '-updated_at',
+  Order.$unknown: r'$unknown',
 };

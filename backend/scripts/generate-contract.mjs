@@ -136,10 +136,22 @@ const fragments = collectFragmentFiles(apiDir)
 for (const file of fragments) {
   const fragment = JSON.parse(readFileSync(file, "utf8"))
   for (const [path, item] of Object.entries(fragment.paths ?? {})) {
-    if (spec.paths[path]) {
-      throw new Error(`Конфликт пути ${path} во фрагменте ${file}`)
+    const existing = spec.paths[path]
+    if (!existing) {
+      spec.paths[path] = item
+      continue
     }
-    spec.paths[path] = item
+    // Путь уже есть в базовой спеке (например ядровый GET /store/orders) —
+    // дописываем НОВЫЕ методы, не затирая существующие. Коллизия того же
+    // метода — ошибка (иначе кастом молча перекрыл бы ядровую операцию).
+    for (const [method, op] of Object.entries(item)) {
+      if (existing[method]) {
+        throw new Error(
+          `Конфликт операции ${method.toUpperCase()} ${path} во фрагменте ${file}`
+        )
+      }
+      existing[method] = op
+    }
   }
   // x-extendPaths — точечное расширение УЖЕ существующих в базовой спеке
   // операций (например, кастомный query-параметр ядрового роута). Пока

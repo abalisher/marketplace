@@ -49,6 +49,8 @@ class OrderLifecycleModuleService extends MedusaService({
 }) {
   // Применить переход: проверить инвариант, дописать лог, обновить статус.
   // Трогает только локальные модели — атомарность на уровне модуля.
+  // Возвращает и обновлённый статус, и созданную запись лога — id события
+  // нужен workflow-шагу для компенсации (откат перехода при сбое дальше).
   async recordTransition(input: {
     order_lifecycle_id: string
     to: OrderStatusValue
@@ -60,7 +62,7 @@ class OrderLifecycleModuleService extends MedusaService({
     const from = current.status as OrderStatusValue
     assertOrderStatusTransition(from, input.to)
 
-    await this.createOrderLifecycleEvents({
+    const event = await this.createOrderLifecycleEvents({
       order_lifecycle: input.order_lifecycle_id,
       from_status: from,
       to_status: input.to,
@@ -69,12 +71,14 @@ class OrderLifecycleModuleService extends MedusaService({
       reason: input.reason ?? null,
     })
 
-    return await this.updateOrderLifecycles({
+    const lifecycle = await this.updateOrderLifecycles({
       id: input.order_lifecycle_id,
       status: input.to,
       previous_status: from,
       note: input.reason ?? null,
     })
+
+    return { lifecycle, event }
   }
 }
 

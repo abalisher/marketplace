@@ -5,10 +5,25 @@
 import 'package:dio/dio.dart';
 import 'package:retrofit/retrofit.dart';
 
+import '../models/admin_cancel_order.dart';
+import '../models/admin_complete_assembly.dart';
+import '../models/admin_deliver_order.dart';
+import '../models/admin_order_fulfillment_res.dart';
+import '../models/admin_order_lifecycle_list_res.dart';
+import '../models/admin_order_lifecycle_res.dart';
+import '../models/admin_order_status_res.dart';
+import '../models/admin_ship_order.dart';
 import '../models/get_store_orders_response.dart';
+import '../models/order.dart';
+import '../models/status.dart';
 import '../models/store_accept_order_transfer.dart';
+import '../models/store_cancel_order.dart';
 import '../models/store_decline_order_transfer.dart';
+import '../models/store_order_lifecycle_res.dart';
 import '../models/store_order_response.dart';
+import '../models/store_order_status_res.dart';
+import '../models/store_place_order.dart';
+import '../models/store_place_order_res.dart';
 import '../models/store_request_order_transfer.dart';
 
 part 'orders_client.g.dart';
@@ -50,6 +65,15 @@ abstract class OrdersClient {
     @Query('status') dynamic status,
     @Query('with_deleted') bool? withDeleted,
     @Query('locale') String? locale,
+  });
+
+  /// Place an Order.
+  ///
+  /// Оформление заказа текущим покупателем: завершает его корзину (ядровый completeCart + резерв остатков) и заводит жизненный цикл заказа (статус new). Список и детали заказов покупателя обслуживает ядро (GET /store/orders[/{id}]); бизнес-статус ТЗ — GET /store/orders/{id}/lifecycle.
+  @POST('/store/orders')
+  Future<StorePlaceOrderRes> postOrders({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Body() required StorePlaceOrder body,
   });
 
   /// Get an Order.
@@ -171,5 +195,107 @@ abstract class OrdersClient {
     @Header('x-medusa-locale') String? xMedusaLocale,
     @Query('fields') String? fields,
     @Query('locale') String? locale,
+  });
+
+  /// List Order Lifecycle Queue.
+  ///
+  /// Очередь заказов по бизнес-статусу ТЗ. Отдельный ресурс, а не переопределение ядрового GET /admin/orders. Фильтр по статусу, сортировка (дефолт — FIFO по created_at), пагинация. Каждая запись несёт связанный заказ (номер/почта/дата).
+  ///
+  /// [status] - Фильтр по бизнес-статусу заказа.
+  ///
+  /// [order] - Поле сортировки (префикс «-» — по убыванию).
+  @GET('/admin/order-lifecycles')
+  Future<AdminOrderLifecycleListRes> getOrderLifecycles({
+    @Query('order') Order? order = Order.createdAt,
+    @Query('limit') int? limit = 20,
+    @Query('offset') int? offset = 0,
+    @Query('status') Status? status,
+  });
+
+  /// Get Order Lifecycle Status (Admin).
+  ///
+  /// Бизнес-статус заказа и полный лог переходов. 404 — заказ не найден.
+  @GET('/admin/orders/{id}/lifecycle')
+  Future<AdminOrderLifecycleRes> getOrdersIdLifecycleAdmin({
+    @Path('id') required String id,
+  });
+
+  /// Confirm Order.
+  ///
+  /// Подтверждение заявки менеджером: new → confirmed.
+  @POST('/admin/orders/{id}/lifecycle/confirm')
+  Future<AdminOrderStatusRes> postOrdersIdLifecycleConfirm({
+    @Path('id') required String id,
+  });
+
+  /// Start Order Assembly.
+  ///
+  /// Кладовщик начал комплектацию: confirmed → assembling.
+  @POST('/admin/orders/{id}/lifecycle/start-assembly')
+  Future<AdminOrderStatusRes> postOrdersIdLifecycleStartAssembly({
+    @Path('id') required String id,
+  });
+
+  /// Complete Order Assembly.
+  ///
+  /// Сборка (в т.ч. частичная): ядровый createOrderFulfillment фиксирует физику, статус синхронизируется (полная → assembled, частичная → partially_assembled).
+  @POST('/admin/orders/{id}/lifecycle/complete-assembly')
+  Future<AdminOrderFulfillmentRes> postOrdersIdLifecycleCompleteAssembly({
+    @Path('id') required String id,
+    @Body() required AdminCompleteAssembly body,
+  });
+
+  /// Ship Order.
+  ///
+  /// Отгрузка: ядровый createOrderShipment (fulfillment → shipped), статус → in_delivery.
+  @POST('/admin/orders/{id}/lifecycle/ship')
+  Future<AdminOrderStatusRes> postOrdersIdLifecycleShip({
+    @Path('id') required String id,
+    @Body() required AdminShipOrder body,
+  });
+
+  /// Deliver Order.
+  ///
+  /// Доставка: ядровый markOrderFulfillmentAsDelivered, статус → delivered.
+  @POST('/admin/orders/{id}/lifecycle/deliver')
+  Future<AdminOrderStatusRes> postOrdersIdLifecycleDeliver({
+    @Path('id') required String id,
+    @Body() required AdminDeliverOrder body,
+  });
+
+  /// Close Order.
+  ///
+  /// Закрытие после окна возврата: ядровый completeOrder (order.status → completed), статус → closed.
+  @POST('/admin/orders/{id}/lifecycle/close')
+  Future<AdminOrderStatusRes> postOrdersIdLifecycleClose({
+    @Path('id') required String id,
+  });
+
+  /// Cancel Order (Admin).
+  ///
+  /// Отмена админом: ядровый cancelOrder (order.status → canceled), статус → canceled. Под /lifecycle/, чтобы не перекрывать ядровый POST /admin/orders/{id}/cancel.
+  @POST('/admin/orders/{id}/lifecycle/cancel')
+  Future<AdminOrderStatusRes> postOrdersIdLifecycleCancel({
+    @Path('id') required String id,
+    @Body() AdminCancelOrder? body,
+  });
+
+  /// Get Order Lifecycle Status.
+  ///
+  /// Бизнес-статус заказа (ТЗ) и лог переходов для текущего покупателя. Единое поле статуса вместо склейки трёх ядровых. 404 — заказ не принадлежит покупателю или не найден.
+  @GET('/store/orders/{id}/lifecycle')
+  Future<StoreOrderLifecycleRes> getOrdersIdLifecycle({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Path('id') required String id,
+  });
+
+  /// Cancel My Order.
+  ///
+  /// Покупатель отменяет свой заказ. Разрешено стейт-машиной только до отгрузки (new..assembled → canceled); ядро дополнительно откажет при наличии неотменённых fulfillment'ов. 404 — заказ не принадлежит покупателю.
+  @POST('/store/orders/{id}/cancel')
+  Future<StoreOrderStatusRes> postOrdersIdCancel({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Path('id') required String id,
+    @Body() StoreCancelOrder? body,
   });
 }

@@ -15,7 +15,7 @@ OrderChangeAction _$OrderChangeActionFromJson(Map<String, dynamic> json) =>
       returnId: json['return_id'] as String,
       claimId: json['claim_id'] as String,
       exchangeId: json['exchange_id'] as String,
-      order: Order.fromJson(json['order'] as Map<String, dynamic>),
+      order: Order.fromJson(json['order'] as String),
       reference: OrderChangeActionReference.fromJson(
         json['reference'] as String,
       ),
@@ -37,7 +37,7 @@ Map<String, dynamic> _$OrderChangeActionToJson(OrderChangeAction instance) =>
       'return_id': instance.returnId,
       'claim_id': instance.claimId,
       'exchange_id': instance.exchangeId,
-      'order': instance.order,
+      'order': _$OrderEnumMap[instance.order]!,
       'reference': _$OrderChangeActionReferenceEnumMap[instance.reference]!,
       'reference_id': instance.referenceId,
       'action': _$OrderChangeActionActionEnumMap[instance.action]!,
@@ -47,6 +47,14 @@ Map<String, dynamic> _$OrderChangeActionToJson(OrderChangeAction instance) =>
       'updated_at': instance.updatedAt.toIso8601String(),
       'ordering': instance.ordering,
     };
+
+const _$OrderEnumMap = {
+  Order.createdAt: 'created_at',
+  Order.minusCreatedAt: '-created_at',
+  Order.updatedAt: 'updated_at',
+  Order.minusUpdatedAt: '-updated_at',
+  Order.$unknown: r'$unknown',
+};
 
 const _$OrderChangeActionReferenceEnumMap = {
   OrderChangeActionReference.claim: 'claim',
