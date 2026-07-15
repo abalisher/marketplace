@@ -23,5 +23,24 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/order-lifecycle",
     },
+    // Ядровый платёжный модуль с нашим провайдером Kaspi за шлюзом. Системный
+    // провайдер (pp_system_default) ядро регистрирует само — здесь только Kaspi.
+    // Транспорт выбирается по env KASPI_MODE (mock|live), см. create-kaspi-client.ts.
+    {
+      resolve: "@medusajs/medusa/payment",
+      options: {
+        providers: [
+          {
+            resolve: "./src/modules/payment-kaspi",
+            id: "kaspi",
+            options: {
+              mode: process.env.KASPI_MODE,
+              merchant_id: process.env.KASPI_MERCHANT_ID,
+              api_key: process.env.KASPI_API_KEY,
+            },
+          },
+        ],
+      },
+    },
   ],
 })
