@@ -23,6 +23,9 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/order-lifecycle",
     },
+    {
+      resolve: "./src/modules/bonus",
+    },
     // Ядровый платёжный модуль с нашим провайдером Kaspi за шлюзом. Системный
     // провайдер (pp_system_default) ядро регистрирует само — здесь только Kaspi.
     // Транспорт выбирается по env KASPI_MODE (mock|live), см. create-kaspi-client.ts.
