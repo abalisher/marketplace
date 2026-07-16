@@ -171,7 +171,5 @@ describe("createKaspiClient", () => {
     expect(createKaspiClient({ mode: "mock" })).toBeInstanceOf(KaspiMockClient)
   })
 
-  it("throws for live mode until KaspiHttpClient exists (subtask #3)", () => {
-    expect(() => createKaspiClient({ mode: "live" })).toThrow(/KaspiHttpClient/)
-  })
+  // Живой транспорт (сборка/валидация конфигурации) — kaspi-http-client.unit.spec.ts.
 })

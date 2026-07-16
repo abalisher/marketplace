@@ -153,8 +153,15 @@ webhook) логируются: суммы — ядровые Payment/Capture/Ref
    `requireOwnCart` (чужая → 404), auth customer обязателен. OAS-фрагмент `store/carts/carts.oas.json`,
    контракт и Dart-клиент перегенерированы. `seed-kz.ts` идемпотентно подключает `pp_kaspi_kaspi` к региону
    Kazakhstan. 12 http-тестов (`kaspi-payment.spec.ts`). Решения — DECISIONS 2026-07-15 (подзадача 2).
-3. [ ] **Живой транспорт `KaspiHttpClient`** (порт флоу tapter-dev за адаптером) + webhook-разбор
-   (`getWebhookActionAndData`) + возвраты (`refundPayment`); тесты на моках HTTP. Реальные ключи — от клиента.
+3. [x] **Живой транспорт `KaspiHttpClient`** — ГОТОВО (2026-07-16). Порт QR-флоу tapter-dev за адаптером
+   (`kaspi-http-client.ts`): `POST /api/qr/create` → `GET /api/qr/status` → `POST /api/refund/create`,
+   cancel через единственный cancel-эндпоинт референса. Маппинг статусов fail-safe (`paid` только на явный
+   `Processed`, незнакомое → `pending`). Webhook — подпись `X-Webhook-Signature` (HMAC SHA-256 от raw body)
+   ОБЯЗАТЕЛЬНА, невалидная → NOT_ALLOWED. Ветка `live` фабрики собирает клиент из `KASPI_API_URL`/
+   `KASPI_MERCHANT_ID`/`KASPI_API_KEY`/`KASPI_WEBHOOK_SECRET` (все обязательны, ошибка перечисляет
+   недостающие). HTTP — инжектируемый fetch (Node 18+), 21 unit-тест на фейковом fetch без сети.
+   ⚠ Транспорт неофициальный — заменить на официальный API при договоре эквайринга (меняется только этот
+   файл + фабрика). Реальные ключи — от клиента. Детали — DECISIONS 2026-07-16.
 4. [ ] **Отложенные сценарии** (по мере появления модулей): частичная предоплата, постоплата юрлиц
    (`scoring`+`SpendLimit`), оплата бонусами (`bonus`), пересчёт при частичном исполнении.
 </content>

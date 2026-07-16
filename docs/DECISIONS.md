@@ -259,3 +259,41 @@ polling pending→paid/сквозное оформление с оплатой/�
 весь `test:integration:http` — 87 зелёных, unit 16/16, tsc обоих tsconfig 0 ошибок, lint 0 ошибок, контракт
 86 путей/633 схемы/5 фрагментов, Dart-клиент 26 клиентов/99 запросов, сид прогнан дважды (идемпотентен),
 `bash scripts/ci.sh` — CI OK.
+
+## 2026-07-16 — payment-kaspi, подзадача 3: живой транспорт `KaspiHttpClient`
+**Что:** `backend/src/modules/payment-kaspi/kaspi-http-client.ts` — порт QR-флоу референса
+`tapter-dev/kaspi-pos-automation` за адаптером `KaspiClient` (инвойс → polling → refund → webhook),
+ветка `live` фабрики `create-kaspi-client.ts` перестала бросать, webhook с проверкой HMAC-подписи.
+**Решения:**
+- **QR-флоу референса, не invoice-флоу.** У референса два потока: invoice (`/api/invoice/create`, требует
+  `phoneNumber` покупателя — у нас его нет в `CreateInvoiceInput`) и QR (`/api/qr/create` — ровно наш
+  дизайн: покупатель сканирует QR). Портирован QR: `createInvoice` → `POST /api/qr/create`
+  (`invoice_id` = `QrOperationId`, `qr_payload` = `payment_url` = `QrToken` — ссылка pay.kaspi.kz),
+  `getInvoiceStatus` → `GET /api/qr/status?qrOperationId=`, `refund` → `POST /api/refund/create`
+  (`qrOperationId`+`returnAmount`), `cancel` → `POST /api/invoice/cancel` (единственный cancel-эндпоинт
+  референса; у QR своей отмены нет — QR истекает сам по `ExpireDate`, отмена best-effort).
+- **Маппинг статусов — fail-safe:** `paid` ТОЛЬКО на явный `Processed`; `Expired`/`QrTokenDiscarded`/
+  `CancelledByUser`/`RemotePaymentCanceled` → `canceled`; `Rejected`/`RemotePaymentRejected`/`Error` →
+  `error`; всё незнакомое → `pending` (продолжаем опрашивать, НЕ авторизуем и НЕ роняем: набор статусов
+  неофициального API может пополняться). Экспортированная чистая функция `mapKaspiStatus` покрыта тестами.
+- **Webhook: подпись обязательна.** `X-Webhook-Signature: sha256=<hex>`, hex = HMAC-SHA256(secret, raw body);
+  сравнение `timingSafeEqual`, отсутствие/невалидность → `MedusaError NOT_ALLOWED` (webhook меняет статус
+  денег — молча пропускать нельзя). Состояние берём из сырого `status` Kaspi (тот же `mapKaspiStatus`),
+  событие `payment.success|failed|expired` — запасной маппинг; `invoice_id` = `paymentId` пейлоуда.
+  Отсюда новый ОБЯЗАТЕЛЬНЫЙ для live env `KASPI_WEBHOOK_SECRET`.
+- **HTTP-транспорт — инжектируемый fetch, не nock/undici-mock.** Клиент принимает `fetch?: KaspiFetch`
+  (минимальная структурная типизация; по умолчанию `globalThis.fetch` Node 18+), тесты подсовывают фейк —
+  ни новых devDeps, ни перехвата глобалей. Таймаут — `AbortSignal.timeout` (10s). Ответы референса — конверт
+  `{StatusCode, Data, Message}`: не-2xx и `StatusCode !== 0` → `MedusaError UNEXPECTED_STATE` с сообщением
+  эквайера.
+- **Live-конфигурация обязана быть полной:** `KASPI_MODE=live` без любого из `KASPI_API_URL`/
+  `KASPI_MERCHANT_ID`/`KASPI_API_KEY`/`KASPI_WEBHOOK_SECRET` → ошибка со списком недостающих переменных
+  (молчаливый откат в мок недопустим — это оплата). `KASPI_API_URL` — адрес РАЗВЁРНУТОГО
+  automation-сервера, не kaspi.kz. Маппинг двух наших секретов на три заголовка референса
+  (`X-Token-SN`/`X-Profile-Id` = merchant_id, `X-Vtoken-Secret` = api_key) — временный, до официального API.
+- **Провайдер и оформление НЕ тронуты** — интерфейс `KaspiClient` не менялся; замена транспорта на
+  официальный API при договоре эквайринга затронет только этот файл + фабрику.
+**Верификация:** 21 новый unit-тест (`kaspi-http-client.unit.spec.ts`: запросы/заголовки/маппинги/конверт
+ошибок/подпись webhook: валидная, отсутствует, tampered body, чужой секрет/фабрика live из опций и env),
+unit всего 37/37, `test:integration:http --testPathPattern=kaspi-payment` — 12/12 (mock-путь не задет),
+tsc обоих tsconfig 0 ошибок, lint 0 ошибок (10 предупреждений — старые, в сид-скриптах).
