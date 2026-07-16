@@ -64,24 +64,35 @@ Link `backend/src/links/order-order-status.ts`: `order` ядра ↔ `orderStatu
 модели нет (правило изоляции — как `product-product-card`).
 
 ## Стейт-машина (разрешённые переходы)
-Инвариант — чистая функция `assertOrderStatusTransition(from, to)` (в `service.ts`, тестируется без БД
-и переиспользуется в шагах); применение перехода (лог + обновление статуса) — метод сервиса
-`recordTransition`; сами сценарные переходы с вызовом ядровых workflow — в `src/workflows/`.
+Инвариант — чистая функция `assertOrderStatusTransition(from, to, method)` (в `service.ts`, тестируется
+без БД и переиспользуется в шагах); применение перехода (лог + обновление статуса + проверка кода
+получения) — метод сервиса `recordTransition`; сами сценарные переходы с вызовом ядровых workflow —
+в `src/workflows/`. Карта переходов — на каждый способ получения (`delivery_method` фиксируется при
+создании lifecycle). Путь `delivery` (полный):
 ```
 new            → confirmed | canceled
 confirmed      → assembling | canceled
 assembling     → partially_assembled | assembled | canceled
 partially_assembled → assembled | in_delivery | canceled   (отгрузка собранной части)
 assembled      → in_delivery | canceled
-in_delivery    → delivered
+in_delivery    → delivered           (только с верным кодом получения)
 delivered      → closed | returned
 closed         → returned            (возврат в окне 14 дней после закрытия — см. returnFlow)
 canceled       → —  (терминальный)
 returned       → —  (терминальный)
 ```
+Отличия `pickup`: без `in_delivery` — выдача у окна `assembled → delivered` (без кода, по накладной);
+частичной выдачи нет (`partially_assembled → assembled | canceled`).
+Отличия `counter`: свёрнутый путь `new → delivered → closed` (плюс `new → canceled`); промежуточные
+статусы недостижимы.
 
 ## Дополнение (2026-07-15): способы получения, приёмка, продажа у окна
-Поправка владельца поверх ТЗ (см. DOMAIN.md → Заказ). Реализация — новые подзадачи (низ файла), пока НЕ сделано.
+Поправка владельца поверх ТЗ (см. DOMAIN.md → Заказ). РЕАЛИЗОВАНО 2026-07-16 (подзадача 5, детали —
+DECISIONS 2026-07-16): `delivery_method` + `delivery_code` — поля OrderLifecycle; код выдаёт шаг
+`issue-delivery-code` при отгрузке (6 цифр, виден только покупателю в store-lifecycle); проверка кода —
+`assertDeliveryConfirmation` в `recordTransition`; продажа у окна — workflow `place-counter-order` +
+`POST /admin/counter-orders` (+ шаг `get-order-items`); store place принимает `delivery_method`
+(`delivery|pickup`).
 
 **Способ получения** — атрибут заказа: `delivery | pickup | counter`. Влияет и на путь по стейт-машине, и на
 механизм приёмки:
@@ -175,7 +186,12 @@ payload `{ order_id, order_lifecycle_id, from, to, actor_type }`. Своих `or
    через диалог (необязательная причина). Общий hook `hooks/use-order-lifecycle.ts` инвалидирует наш
    статус и ядровый заказ (`["orders"]`). Демо-данные — `npx medusa exec ./src/scripts/seed-demo-order.ts`
    (3 заказа: new/confirmed/in_delivery; строит минимальную доставку KZ).
-5. [ ] **Способы получения + приёмка** (поправка 2026-07-15, см. «Дополнение» выше): атрибут заказа
-   `delivery|pickup|counter`; код получения для доставки (выдача кода при `in_delivery`, проверка при
-   `delivered`); подтверждение накладной/сканом для самовывоза; свёрнутый workflow `place-counter-order`
-   (продажа у окна) + разрешение `new → delivered` для `counter`. Partner-app POS — отдельный дизайн-раунд.
+5. [x] **Способы получения + приёмка** (поправка 2026-07-15, см. «Дополнение» выше): поля
+   `delivery_method`/`delivery_code` в OrderLifecycle (миграция), карта переходов на каждый метод,
+   код получения для доставки (шаг `issue-delivery-code` в ship-order, проверка
+   `assertDeliveryConfirmation` в `recordTransition`, код виден только покупателю), выдача самовывоза
+   `assembled → delivered` без кода (ядровый markDelivered работает без shipment — проверено),
+   workflow `place-counter-order` + `POST /admin/counter-orders` + шаг `get-order-items`,
+   `delivery_method` в store place/lifecycle и admin lifecycle/очереди, админ-UI (метод в виджете и
+   очереди, карта переходов по методу, диалог кода при вручении). Тесты: модуль 8/8, http 17/17
+   (`order-delivery-methods.spec.ts` новый). Partner-app POS — отдельный дизайн-раунд.

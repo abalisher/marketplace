@@ -16,6 +16,12 @@ StoreOrderLifecycleRes _$StoreOrderLifecycleResFromJson(
   status: json['status'] as String?,
   previousStatus: json['previous_status'] as String?,
   note: json['note'] as String?,
+  deliveryMethod: json['delivery_method'] == null
+      ? null
+      : StoreOrderLifecycleResDeliveryMethod.fromJson(
+          json['delivery_method'] as String,
+        ),
+  deliveryCode: json['delivery_code'] as String?,
 );
 
 Map<String, dynamic> _$StoreOrderLifecycleResToJson(
@@ -25,5 +31,15 @@ Map<String, dynamic> _$StoreOrderLifecycleResToJson(
   'status': instance.status,
   'previous_status': instance.previousStatus,
   'note': instance.note,
+  'delivery_method':
+      _$StoreOrderLifecycleResDeliveryMethodEnumMap[instance.deliveryMethod],
+  'delivery_code': instance.deliveryCode,
   'history': instance.history,
+};
+
+const _$StoreOrderLifecycleResDeliveryMethodEnumMap = {
+  StoreOrderLifecycleResDeliveryMethod.delivery: 'delivery',
+  StoreOrderLifecycleResDeliveryMethod.pickup: 'pickup',
+  StoreOrderLifecycleResDeliveryMethod.counter: 'counter',
+  StoreOrderLifecycleResDeliveryMethod.$unknown: r'$unknown',
 };

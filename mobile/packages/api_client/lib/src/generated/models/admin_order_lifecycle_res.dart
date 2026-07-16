@@ -5,6 +5,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'admin_order_lifecycle_event.dart';
+import 'admin_order_lifecycle_res_delivery_method.dart';
 
 part 'admin_order_lifecycle_res.g.dart';
 
@@ -16,6 +17,7 @@ class AdminOrderLifecycleRes {
     this.status,
     this.previousStatus,
     this.note,
+    this.deliveryMethod,
   });
 
   factory AdminOrderLifecycleRes.fromJson(Map<String, Object?> json) =>
@@ -27,6 +29,10 @@ class AdminOrderLifecycleRes {
   @JsonKey(name: 'previous_status')
   final String? previousStatus;
   final String? note;
+
+  /// Способ получения заказа. Кода получения в admin-ответах нет — он секрет покупателя.
+  @JsonKey(name: 'delivery_method')
+  final AdminOrderLifecycleResDeliveryMethod? deliveryMethod;
   final List<AdminOrderLifecycleEvent> history;
 
   Map<String, Object?> toJson() => _$AdminOrderLifecycleResToJson(this);

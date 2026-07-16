@@ -17,6 +17,10 @@ import { resolveOrderCompanyStep } from "./steps/resolve-order-company"
 
 export type PlaceOrderWorkflowInput = {
   cart_id: string
+  // Способ получения выбирает покупатель при оформлении: доставка или
+  // самовывоз. counter сюда не входит — продажа у окна оформляется отдельным
+  // workflow place-counter-order (сторона продавца).
+  delivery_method?: "delivery" | "pickup"
 }
 
 // Сквозное оформление заказа. Обёртка над ядровым completeCartWorkflow (он
@@ -37,7 +41,9 @@ export const placeOrderWorkflow = createWorkflow(
       input: { id: payment.cart_id },
     })
 
-    const lifecycle = createOrderLifecycleStep()
+    const lifecycle = createOrderLifecycleStep({
+      delivery_method: input.delivery_method,
+    })
 
     const { company_id } = resolveOrderCompanyStep({ order_id: order.id })
 

@@ -15,7 +15,10 @@ export async function POST(
   res: MedusaResponse
 ) {
   const { result } = await placeOrderWorkflow(req.scope).run({
-    input: { cart_id: req.validatedBody.cart_id },
+    input: {
+      cart_id: req.validatedBody.cart_id,
+      delivery_method: req.validatedBody.delivery_method,
+    },
     throwOnError: true,
   })
 

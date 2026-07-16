@@ -18,6 +18,20 @@ export type OrderLifecycleStatus =
 
 export type OrderLifecycleActorType = "buyer" | "seller" | "admin" | "system"
 
+// Способ получения заказа: определяет путь по стейт-машине и механизм приёмки
+// (delivery — код получения, pickup — выдача у окна по накладной, counter —
+// продажа у окна, создаётся сразу выданным).
+export type OrderDeliveryMethod = "delivery" | "pickup" | "counter"
+
+export const ORDER_DELIVERY_METHOD_META: Record<
+  OrderDeliveryMethod,
+  { label: string }
+> = {
+  delivery: { label: "Delivery" },
+  pickup: { label: "Pickup" },
+  counter: { label: "Counter" },
+}
+
 // Запись лога переходов (бессрочно).
 export type OrderLifecycleEvent = {
   id: string
@@ -35,6 +49,7 @@ export type AdminOrderLifecycleListItem = {
   status: OrderLifecycleStatus
   previous_status: OrderLifecycleStatus | null
   note: string | null
+  delivery_method: OrderDeliveryMethod
   created_at: string
   updated_at: string
   order: {
@@ -54,11 +69,13 @@ export type AdminOrderLifecyclesResponse = {
 
 // Статус + история конкретного заказа (виджет на ядровой странице заказа).
 // status = null, если у заказа ещё нет lifecycle (заказ создан не нашим placeOrder).
+// Кода получения здесь нет намеренно — он секрет покупателя.
 export type AdminOrderLifecycleResponse = {
   order_id: string
   status: OrderLifecycleStatus | null
   previous_status: OrderLifecycleStatus | null
   note: string | null
+  delivery_method: OrderDeliveryMethod | null
   history: OrderLifecycleEvent[]
 }
 
@@ -118,7 +135,8 @@ export const ORDER_LIFECYCLE_STATUSES = Object.keys(
 // Дескриптор перехода, доступного из текущего статуса. path — сегмент
 // POST /admin/orders/:id/lifecycle/<path>; needsItems/needsFulfillment —
 // признак, что телу нужны позиции/fulfillment заказа (берём со страницы ядра);
-// prompt — переход через диалог (отмена с необязательной причиной).
+// prompt — переход через диалог (отмена с необязательной причиной);
+// needsCode — вручение по коду получения (диалог с обязательным кодом).
 export type OrderTransition = {
   path:
     | "confirm"
@@ -134,97 +152,113 @@ export type OrderTransition = {
   needsItems?: boolean
   needsFulfillment?: boolean
   prompt?: boolean
+  needsCode?: boolean
 }
 
-// Разрешённые из текущего статуса действия (подмножество стейт-машины сервиса,
-// пригодное для ручного управления из админки). Возврат (returned) — отдельный
-// сценарий returnFlow, здесь не выставляется. Из partially_assembled предлагаем
-// отгрузку готовой части, а не досборку (остаток позиций UI не отслеживает).
-export const ORDER_TRANSITIONS: Record<OrderLifecycleStatus, OrderTransition[]> =
-  {
-    new: [
-      { path: "confirm", label: "Confirm", success: "Order confirmed" },
-      {
-        path: "cancel",
-        label: "Cancel order",
-        success: "Order canceled",
-        danger: true,
-        prompt: true,
-      },
-    ],
-    confirmed: [
-      {
-        path: "start-assembly",
-        label: "Start assembly",
-        success: "Assembly started",
-      },
-      {
-        path: "cancel",
-        label: "Cancel order",
-        success: "Order canceled",
-        danger: true,
-        prompt: true,
-      },
-    ],
-    assembling: [
-      {
-        path: "complete-assembly",
-        label: "Complete assembly",
-        success: "Assembly completed",
-        needsItems: true,
-      },
-      {
-        path: "cancel",
-        label: "Cancel order",
-        success: "Order canceled",
-        danger: true,
-        prompt: true,
-      },
-    ],
-    partially_assembled: [
-      {
-        path: "ship",
-        label: "Ship",
-        success: "Order shipped",
-        needsItems: true,
-        needsFulfillment: true,
-      },
-      {
-        path: "cancel",
-        label: "Cancel order",
-        success: "Order canceled",
-        danger: true,
-        prompt: true,
-      },
-    ],
-    assembled: [
-      {
-        path: "ship",
-        label: "Ship",
-        success: "Order shipped",
-        needsItems: true,
-        needsFulfillment: true,
-      },
-      {
-        path: "cancel",
-        label: "Cancel order",
-        success: "Order canceled",
-        danger: true,
-        prompt: true,
-      },
-    ],
+const CANCEL_TRANSITION: OrderTransition = {
+  path: "cancel",
+  label: "Cancel order",
+  success: "Order canceled",
+  danger: true,
+  prompt: true,
+}
+
+const CONFIRM_TRANSITION: OrderTransition = {
+  path: "confirm",
+  label: "Confirm",
+  success: "Order confirmed",
+}
+
+const START_ASSEMBLY_TRANSITION: OrderTransition = {
+  path: "start-assembly",
+  label: "Start assembly",
+  success: "Assembly started",
+}
+
+const COMPLETE_ASSEMBLY_TRANSITION: OrderTransition = {
+  path: "complete-assembly",
+  label: "Complete assembly",
+  success: "Assembly completed",
+  needsItems: true,
+}
+
+const SHIP_TRANSITION: OrderTransition = {
+  path: "ship",
+  label: "Ship",
+  success: "Order shipped",
+  needsItems: true,
+  needsFulfillment: true,
+}
+
+const CLOSE_TRANSITION: OrderTransition = {
+  path: "close",
+  label: "Close order",
+  success: "Order closed",
+}
+
+// Разрешённые из текущего статуса действия — на каждый способ получения
+// (подмножество стейт-машины сервиса, пригодное для ручного управления из
+// админки). Возврат (returned) — отдельный сценарий returnFlow, здесь не
+// выставляется. Из partially_assembled при доставке предлагаем отгрузку готовой
+// части; при самовывозе — только досборку (частичной выдачи нет).
+export const ORDER_TRANSITIONS: Record<
+  OrderDeliveryMethod,
+  Record<OrderLifecycleStatus, OrderTransition[]>
+> = {
+  delivery: {
+    new: [CONFIRM_TRANSITION, CANCEL_TRANSITION],
+    confirmed: [START_ASSEMBLY_TRANSITION, CANCEL_TRANSITION],
+    assembling: [COMPLETE_ASSEMBLY_TRANSITION, CANCEL_TRANSITION],
+    partially_assembled: [SHIP_TRANSITION, CANCEL_TRANSITION],
+    assembled: [SHIP_TRANSITION, CANCEL_TRANSITION],
     in_delivery: [
       {
         path: "deliver",
         label: "Mark delivered",
         success: "Order delivered",
         needsFulfillment: true,
+        // Приёмка по коду получения: код называет покупатель при вручении.
+        needsCode: true,
       },
     ],
-    delivered: [
-      { path: "close", label: "Close order", success: "Order closed" },
-    ],
+    delivered: [CLOSE_TRANSITION],
     closed: [],
     canceled: [],
     returned: [],
-  }
+  },
+  pickup: {
+    new: [CONFIRM_TRANSITION, CANCEL_TRANSITION],
+    confirmed: [START_ASSEMBLY_TRANSITION, CANCEL_TRANSITION],
+    assembling: [COMPLETE_ASSEMBLY_TRANSITION, CANCEL_TRANSITION],
+    partially_assembled: [CANCEL_TRANSITION],
+    // Выдача у окна: приёмка по накладной, код не нужен.
+    assembled: [
+      {
+        path: "deliver",
+        label: "Hand over",
+        success: "Order handed over",
+        needsFulfillment: true,
+      },
+      CANCEL_TRANSITION,
+    ],
+    in_delivery: [],
+    delivered: [CLOSE_TRANSITION],
+    closed: [],
+    canceled: [],
+    returned: [],
+  },
+  counter: {
+    // Продажа у окна создаётся сразу выданной — new здесь практически
+    // недостижим (только откат сбоя), доступна лишь отмена.
+    new: [CANCEL_TRANSITION],
+    confirmed: [],
+    assembling: [],
+    partially_assembled: [],
+    assembled: [],
+    in_delivery: [],
+    delivered: [CLOSE_TRANSITION],
+    closed: [],
+    canceled: [],
+    returned: [],
+  },
+}

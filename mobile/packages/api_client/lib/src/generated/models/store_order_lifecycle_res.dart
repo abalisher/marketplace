@@ -5,6 +5,7 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'store_order_lifecycle_event.dart';
+import 'store_order_lifecycle_res_delivery_method.dart';
 
 part 'store_order_lifecycle_res.g.dart';
 
@@ -16,6 +17,8 @@ class StoreOrderLifecycleRes {
     this.status,
     this.previousStatus,
     this.note,
+    this.deliveryMethod,
+    this.deliveryCode,
   });
 
   factory StoreOrderLifecycleRes.fromJson(Map<String, Object?> json) =>
@@ -27,6 +30,14 @@ class StoreOrderLifecycleRes {
   @JsonKey(name: 'previous_status')
   final String? previousStatus;
   final String? note;
+
+  /// Способ получения заказа.
+  @JsonKey(name: 'delivery_method')
+  final StoreOrderLifecycleResDeliveryMethod? deliveryMethod;
+
+  /// Код получения (только delivery, после отгрузки): покупатель называет его водителю при вручении. Виден только владельцу заказа.
+  @JsonKey(name: 'delivery_code')
+  final String? deliveryCode;
   final List<StoreOrderLifecycleEvent> history;
 
   Map<String, Object?> toJson() => _$StoreOrderLifecycleResToJson(this);

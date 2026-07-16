@@ -11835,7 +11835,7 @@
       "post": {
         "operationId": "PostOrdersIdLifecycleDeliver",
         "summary": "Deliver Order",
-        "description": "Доставка: ядровый markOrderFulfillmentAsDelivered, статус → delivered.",
+        "description": "Вручение: статус → delivered (для способа delivery обязателен верный код получения от покупателя; для pickup — выдача у окна по накладной, без кода), затем ядровый markOrderFulfillmentAsDelivered.",
         "tags": [
           "Orders"
         ],
@@ -11914,6 +11914,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminOrderStatusRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/counter-orders": {
+      "post": {
+        "operationId": "PostCounterOrders",
+        "summary": "Place Counter Order (POS)",
+        "description": "Продажа у окна склада: продавец собрал корзину покупателя на месте, оплата авторизована — заказ создаётся сразу выданным (свёрнутый путь new → delivered, способ получения counter). Отдельный ресурс: статический сегмент под /admin/orders конфликтует с ядровым /admin/orders/{id}.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPlaceCounterOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный заказ и его жизненный цикл (delivered).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPlaceCounterOrderRes"
                 }
               }
             }
@@ -46210,6 +46250,26 @@
         "properties": {
           "fulfillment_id": {
             "type": "string"
+          },
+          "delivery_code": {
+            "type": "string",
+            "description": "Код получения от покупателя — обязателен для заказов со способом delivery."
+          }
+        }
+      },
+      "AdminPlaceCounterOrder": {
+        "type": "object",
+        "required": [
+          "cart_id"
+        ],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "description": "Корзина, собранная продавцом у окна (оплата уже авторизована)."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Склад выдачи (по умолчанию — из shipping option корзины)."
           }
         }
       },
@@ -46278,6 +46338,15 @@
           "note": {
             "type": "string",
             "nullable": true
+          },
+          "delivery_method": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "pickup",
+              "counter"
+            ],
+            "description": "Способ получения заказа."
           },
           "created_at": {
             "type": "string",
@@ -46384,11 +46453,42 @@
             "type": "string",
             "nullable": true
           },
+          "delivery_method": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "pickup",
+              "counter"
+            ],
+            "nullable": true,
+            "description": "Способ получения заказа. Кода получения в admin-ответах нет — он секрет покупателя."
+          },
           "history": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AdminOrderLifecycleEvent"
             }
+          }
+        }
+      },
+      "AdminPlaceCounterOrderRes": {
+        "type": "object",
+        "required": [
+          "order",
+          "lifecycle"
+        ],
+        "properties": {
+          "order": {
+            "type": "object",
+            "description": "Заказ ядра (schema AdminOrder базовой спеки).",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
+          },
+          "lifecycle": {
+            "$ref": "#/components/schemas/AdminOrderLifecycle"
           }
         }
       },
@@ -46876,6 +46976,15 @@
           "cart_id": {
             "type": "string",
             "description": "Id корзины покупателя, которую нужно завершить."
+          },
+          "delivery_method": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "pickup"
+            ],
+            "default": "delivery",
+            "description": "Способ получения: доставка (приёмка по коду получения) или самовывоз у окна склада (по накладной). Продажа у окна (counter) покупателю недоступна — оформляется продавцом."
           }
         }
       },
@@ -46920,6 +47029,15 @@
           "note": {
             "type": "string",
             "nullable": true
+          },
+          "delivery_method": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "pickup",
+              "counter"
+            ],
+            "description": "Способ получения заказа."
           }
         }
       },
@@ -47007,6 +47125,21 @@
           "note": {
             "type": "string",
             "nullable": true
+          },
+          "delivery_method": {
+            "type": "string",
+            "enum": [
+              "delivery",
+              "pickup",
+              "counter"
+            ],
+            "nullable": true,
+            "description": "Способ получения заказа."
+          },
+          "delivery_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Код получения (только delivery, после отгрузки): покупатель называет его водителю при вручении. Виден только владельцу заказа."
           },
           "history": {
             "type": "array",

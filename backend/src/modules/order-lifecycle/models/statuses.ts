@@ -24,3 +24,11 @@ export type OrderStatusValue = (typeof ORDER_STATUSES)[number]
 // админ платформы или система (джобы — например авто-закрытие после окна возврата).
 export const STATUS_ACTOR_TYPES = ["buyer", "seller", "admin", "system"] as const
 export type StatusActorType = (typeof STATUS_ACTOR_TYPES)[number]
+
+// Способ получения заказа (поправка владельца 2026-07-15, docs/modules/order.md
+// «Дополнение»). Определяет и путь по стейт-машине, и механизм приёмки:
+// delivery — полный путь, приёмка кодом получения; pickup — самовывоз у окна,
+// без in_delivery, приёмка накладной; counter — продажа у окна (POS),
+// свёрнутый путь new → delivered → closed.
+export const DELIVERY_METHODS = ["delivery", "pickup", "counter"] as const
+export type DeliveryMethod = (typeof DELIVERY_METHODS)[number]

@@ -21,9 +21,11 @@ import {
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import CancelOrderPrompt from "../components/cancel-order-prompt"
+import DeliverOrderPrompt from "../components/deliver-order-prompt"
 import { useOrderLifecycle } from "../hooks/use-order-lifecycle"
 import {
   AdminOrderLifecycleResponse,
+  ORDER_DELIVERY_METHOD_META,
   ORDER_LIFECYCLE_STATUS_META,
   ORDER_TRANSITIONS,
   OrderLifecycleStatus,
@@ -59,6 +61,10 @@ const formatDateTime = (value: string) =>
 const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
   const { transitionMutation } = useOrderLifecycle()
   const [cancelOpen, setCancelOpen] = useState(false)
+  // Вручение по коду: диалог хранит fulfillment, выбранный при открытии.
+  const [deliverFulfillmentId, setDeliverFulfillmentId] = useState<
+    string | null
+  >(null)
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["order-lifecycle", "detail", data.id],
@@ -70,7 +76,9 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
 
   const status = detail?.status ?? null
   const history = detail?.history ?? []
-  const transitions = status ? ORDER_TRANSITIONS[status] : []
+  // Карта переходов зависит от способа получения (delivery/pickup/counter).
+  const method = detail?.delivery_method ?? "delivery"
+  const transitions = status ? ORDER_TRANSITIONS[method][status] : []
   const statusMeta = status ? ORDER_LIFECYCLE_STATUS_META[status] : null
 
   const meta = (value: OrderLifecycleStatus) =>
@@ -128,10 +136,17 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
       body.fulfillment_id = fulfillment.id
     }
 
+    // Вручение по коду получения — через диалог (код называет покупатель).
+    if (transition.needsCode) {
+      setDeliverFulfillmentId(body.fulfillment_id ?? null)
+      return
+    }
+
     transitionMutation.mutate({ orderId: data.id, transition, body })
   }
 
   const cancelTransition = transitions.find((t) => t.path === "cancel")
+  const deliverTransition = transitions.find((t) => t.path === "deliver")
 
   return (
     <Container className="divide-y p-0">
@@ -141,6 +156,11 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
           {statusMeta && (
             <StatusBadge color={statusMeta.color}>
               {statusMeta.label}
+            </StatusBadge>
+          )}
+          {detail?.delivery_method && (
+            <StatusBadge color="grey">
+              {ORDER_DELIVERY_METHOD_META[detail.delivery_method].label}
             </StatusBadge>
           )}
         </div>
@@ -243,6 +263,32 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
               body: { reason },
             },
             { onSuccess: () => setCancelOpen(false) }
+          )
+        }}
+        isPending={transitionMutation.isPending}
+      />
+
+      <DeliverOrderPrompt
+        order={
+          deliverFulfillmentId
+            ? { id: data.id, display_id: data.display_id }
+            : null
+        }
+        onClose={() => setDeliverFulfillmentId(null)}
+        onSubmit={(id, code) => {
+          if (!deliverTransition || !deliverFulfillmentId) {
+            return
+          }
+          transitionMutation.mutate(
+            {
+              orderId: id,
+              transition: deliverTransition,
+              body: {
+                fulfillment_id: deliverFulfillmentId,
+                delivery_code: code,
+              },
+            },
+            { onSuccess: () => setDeliverFulfillmentId(null) }
           )
         }}
         isPending={transitionMutation.isPending}

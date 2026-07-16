@@ -8,13 +8,17 @@ part 'admin_deliver_order.g.dart';
 
 @JsonSerializable()
 class AdminDeliverOrder {
-  const AdminDeliverOrder({required this.fulfillmentId});
+  const AdminDeliverOrder({required this.fulfillmentId, this.deliveryCode});
 
   factory AdminDeliverOrder.fromJson(Map<String, Object?> json) =>
       _$AdminDeliverOrderFromJson(json);
 
   @JsonKey(name: 'fulfillment_id')
   final String fulfillmentId;
+
+  /// Код получения от покупателя — обязателен для заказов со способом delivery.
+  @JsonKey(name: 'delivery_code')
+  final String? deliveryCode;
 
   Map<String, Object?> toJson() => _$AdminDeliverOrderToJson(this);
 }

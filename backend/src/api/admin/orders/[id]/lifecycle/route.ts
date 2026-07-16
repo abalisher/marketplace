@@ -25,6 +25,7 @@ export async function GET(
       "order_lifecycle.status",
       "order_lifecycle.previous_status",
       "order_lifecycle.note",
+      "order_lifecycle.delivery_method",
     ],
     filters: { id: req.params.id },
   })
@@ -43,6 +44,7 @@ export async function GET(
         status: string
         previous_status: string | null
         note: string | null
+        delivery_method: string
       }
     }
   ).order_lifecycle
@@ -53,6 +55,7 @@ export async function GET(
       status: null,
       previous_status: null,
       note: null,
+      delivery_method: null,
       history: [],
     })
     return
@@ -65,11 +68,14 @@ export async function GET(
     { order: { created_at: "ASC" } }
   )
 
+  // delivery_code админу НЕ отдаём: код — секрет покупателя, водитель узнаёт
+  // его при вручении (в этом смысл приёмки по коду).
   res.json({
     order_id: req.params.id,
     status: lifecycle.status,
     previous_status: lifecycle.previous_status,
     note: lifecycle.note,
+    delivery_method: lifecycle.delivery_method,
     history,
   })
 }

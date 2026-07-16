@@ -29,6 +29,7 @@ export async function GET(
       "status",
       "previous_status",
       "note",
+      "delivery_method",
       "created_at",
       "updated_at",
       "order.id",

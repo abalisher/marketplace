@@ -482,10 +482,50 @@ medusaIntegrationTestRunner({
         )
         expect(shipped.data.status).toEqual("in_delivery")
 
-        const delivered = await call(
+        // При отгрузке выдан код получения: покупатель видит его в своём
+        // lifecycle, админский ответ кода не содержит (секрет покупателя).
+        const buyerLifecycle = await call(
+          api.get(`/store/orders/${orderId}/lifecycle`, {
+            headers: buyer.headers,
+          })
+        )
+        const deliveryCode = buyerLifecycle.data.delivery_code as string
+        expect(deliveryCode).toMatch(/^\d{6}$/)
+        expect(buyerLifecycle.data.delivery_method).toEqual("delivery")
+
+        const adminLifecycle = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(adminLifecycle.data.delivery_code).toBeUndefined()
+
+        // Вручение без кода / с неверным кодом отклоняется, статус не сдвигается.
+        const noCode = await call(
           api.post(
             `/admin/orders/${orderId}/lifecycle/deliver`,
             { fulfillment_id: fulfillmentId },
+            { headers: adminHeaders }
+          )
+        )
+        expect(noCode.status).toEqual(400)
+        const wrongCode = await call(
+          api.post(
+            `/admin/orders/${orderId}/lifecycle/deliver`,
+            {
+              fulfillment_id: fulfillmentId,
+              // Гарантированно не совпадает с выданным кодом.
+              delivery_code: deliveryCode === "000000" ? "111111" : "000000",
+            },
+            { headers: adminHeaders }
+          )
+        )
+        expect(wrongCode.status).toEqual(400)
+
+        const delivered = await call(
+          api.post(
+            `/admin/orders/${orderId}/lifecycle/deliver`,
+            { fulfillment_id: fulfillmentId, delivery_code: deliveryCode },
             { headers: adminHeaders }
           )
         )

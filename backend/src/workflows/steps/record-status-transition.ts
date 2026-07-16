@@ -16,6 +16,9 @@ export type RecordStatusTransitionStepInput = {
   actor_type: StatusActorType
   actor_id?: string | null
   reason?: string | null
+  // Код получения от покупателя — для delivered при способе delivery
+  // (инвариант приёмки проверяет сервис).
+  delivery_code?: string | null
 }
 
 type CompensationData = {
@@ -88,6 +91,7 @@ export const recordStatusTransitionStep = createStep(
       actor_type: input.actor_type,
       actor_id: input.actor_id,
       reason: input.reason,
+      delivery_code: input.delivery_code,
     })
     compensation.event_id = event.id
 

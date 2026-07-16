@@ -123,6 +123,12 @@
           "cart_id": {
             "type": "string",
             "description": "Id корзины покупателя, которую нужно завершить."
+          },
+          "delivery_method": {
+            "type": "string",
+            "enum": ["delivery", "pickup"],
+            "default": "delivery",
+            "description": "Способ получения: доставка (приёмка по коду получения) или самовывоз у окна склада (по накладной). Продажа у окна (counter) покупателю недоступна — оформляется продавцом."
           }
         }
       },
@@ -156,7 +162,12 @@
             ]
           },
           "previous_status": { "type": "string", "nullable": true },
-          "note": { "type": "string", "nullable": true }
+          "note": { "type": "string", "nullable": true },
+          "delivery_method": {
+            "type": "string",
+            "enum": ["delivery", "pickup", "counter"],
+            "description": "Способ получения заказа."
+          }
         }
       },
       "StoreOrderLifecycleEvent": {
@@ -201,6 +212,17 @@
           "status": { "type": "string", "nullable": true },
           "previous_status": { "type": "string", "nullable": true },
           "note": { "type": "string", "nullable": true },
+          "delivery_method": {
+            "type": "string",
+            "enum": ["delivery", "pickup", "counter"],
+            "nullable": true,
+            "description": "Способ получения заказа."
+          },
+          "delivery_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Код получения (только delivery, после отгрузки): покупатель называет его водителю при вручении. Виден только владельцу заказа."
+          },
           "history": {
             "type": "array",
             "items": {

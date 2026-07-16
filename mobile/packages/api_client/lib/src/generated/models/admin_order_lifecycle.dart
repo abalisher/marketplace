@@ -4,6 +4,7 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import 'admin_order_lifecycle_delivery_method.dart';
 import 'admin_order_lifecycle_order.dart';
 import 'admin_order_lifecycle_status.dart';
 
@@ -16,6 +17,7 @@ class AdminOrderLifecycle {
     required this.status,
     this.previousStatus,
     this.note,
+    this.deliveryMethod,
     this.createdAt,
     this.updatedAt,
     this.order,
@@ -29,6 +31,10 @@ class AdminOrderLifecycle {
   @JsonKey(name: 'previous_status')
   final String? previousStatus;
   final String? note;
+
+  /// Способ получения заказа.
+  @JsonKey(name: 'delivery_method')
+  final AdminOrderLifecycleDeliveryMethod? deliveryMethod;
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
   @JsonKey(name: 'updated_at')

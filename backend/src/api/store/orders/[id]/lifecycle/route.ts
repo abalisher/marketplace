@@ -27,6 +27,8 @@ export async function GET(
         status: string
         previous_status: string | null
         note: string | null
+        delivery_method: string
+        delivery_code: string | null
       }
     }
   ).order_lifecycle
@@ -39,6 +41,8 @@ export async function GET(
       status: null,
       previous_status: null,
       note: null,
+      delivery_method: null,
+      delivery_code: null,
       history: [],
     })
     return
@@ -51,11 +55,15 @@ export async function GET(
     { order: { created_at: "ASC" } }
   )
 
+  // delivery_code отдаём именно покупателю (владение проверено выше):
+  // при доставке он называет код водителю при вручении. В admin-ответах кода нет.
   res.json({
     order_id: req.params.id,
     status: lifecycle.status,
     previous_status: lifecycle.previous_status,
     note: lifecycle.note,
+    delivery_method: lifecycle.delivery_method,
+    delivery_code: lifecycle.delivery_code,
     history,
   })
 }

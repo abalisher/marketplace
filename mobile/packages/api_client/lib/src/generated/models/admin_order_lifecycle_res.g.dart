@@ -16,6 +16,11 @@ AdminOrderLifecycleRes _$AdminOrderLifecycleResFromJson(
   status: json['status'] as String?,
   previousStatus: json['previous_status'] as String?,
   note: json['note'] as String?,
+  deliveryMethod: json['delivery_method'] == null
+      ? null
+      : AdminOrderLifecycleResDeliveryMethod.fromJson(
+          json['delivery_method'] as String,
+        ),
 );
 
 Map<String, dynamic> _$AdminOrderLifecycleResToJson(
@@ -25,5 +30,14 @@ Map<String, dynamic> _$AdminOrderLifecycleResToJson(
   'status': instance.status,
   'previous_status': instance.previousStatus,
   'note': instance.note,
+  'delivery_method':
+      _$AdminOrderLifecycleResDeliveryMethodEnumMap[instance.deliveryMethod],
   'history': instance.history,
+};
+
+const _$AdminOrderLifecycleResDeliveryMethodEnumMap = {
+  AdminOrderLifecycleResDeliveryMethod.delivery: 'delivery',
+  AdminOrderLifecycleResDeliveryMethod.pickup: 'pickup',
+  AdminOrderLifecycleResDeliveryMethod.counter: 'counter',
+  AdminOrderLifecycleResDeliveryMethod.$unknown: r'$unknown',
 };

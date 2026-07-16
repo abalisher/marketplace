@@ -12,6 +12,8 @@ import '../models/admin_order_fulfillment_res.dart';
 import '../models/admin_order_lifecycle_list_res.dart';
 import '../models/admin_order_lifecycle_res.dart';
 import '../models/admin_order_status_res.dart';
+import '../models/admin_place_counter_order.dart';
+import '../models/admin_place_counter_order_res.dart';
 import '../models/admin_ship_order.dart';
 import '../models/get_store_orders_response.dart';
 import '../models/order.dart';
@@ -256,7 +258,7 @@ abstract class OrdersClient {
 
   /// Deliver Order.
   ///
-  /// Доставка: ядровый markOrderFulfillmentAsDelivered, статус → delivered.
+  /// Вручение: статус → delivered (для способа delivery обязателен верный код получения от покупателя; для pickup — выдача у окна по накладной, без кода), затем ядровый markOrderFulfillmentAsDelivered.
   @POST('/admin/orders/{id}/lifecycle/deliver')
   Future<AdminOrderStatusRes> postOrdersIdLifecycleDeliver({
     @Path('id') required String id,
@@ -269,6 +271,14 @@ abstract class OrdersClient {
   @POST('/admin/orders/{id}/lifecycle/close')
   Future<AdminOrderStatusRes> postOrdersIdLifecycleClose({
     @Path('id') required String id,
+  });
+
+  /// Place Counter Order (POS).
+  ///
+  /// Продажа у окна склада: продавец собрал корзину покупателя на месте, оплата авторизована — заказ создаётся сразу выданным (свёрнутый путь new → delivered, способ получения counter). Отдельный ресурс: статический сегмент под /admin/orders конфликтует с ядровым /admin/orders/{id}.
+  @POST('/admin/counter-orders')
+  Future<AdminPlaceCounterOrderRes> postCounterOrders({
+    @Body() required AdminPlaceCounterOrder body,
   });
 
   /// Cancel Order (Admin).

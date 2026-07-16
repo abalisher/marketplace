@@ -12,6 +12,11 @@ AdminOrderLifecycle _$AdminOrderLifecycleFromJson(Map<String, dynamic> json) =>
       status: AdminOrderLifecycleStatus.fromJson(json['status'] as String),
       previousStatus: json['previous_status'] as String?,
       note: json['note'] as String?,
+      deliveryMethod: json['delivery_method'] == null
+          ? null
+          : AdminOrderLifecycleDeliveryMethod.fromJson(
+              json['delivery_method'] as String,
+            ),
       createdAt: json['created_at'] == null
           ? null
           : DateTime.parse(json['created_at'] as String),
@@ -32,6 +37,8 @@ Map<String, dynamic> _$AdminOrderLifecycleToJson(
   'status': _$AdminOrderLifecycleStatusEnumMap[instance.status]!,
   'previous_status': instance.previousStatus,
   'note': instance.note,
+  'delivery_method':
+      _$AdminOrderLifecycleDeliveryMethodEnumMap[instance.deliveryMethod],
   'created_at': instance.createdAt?.toIso8601String(),
   'updated_at': instance.updatedAt?.toIso8601String(),
   'order': instance.order,
@@ -49,4 +56,11 @@ const _$AdminOrderLifecycleStatusEnumMap = {
   AdminOrderLifecycleStatus.canceled: 'canceled',
   AdminOrderLifecycleStatus.returned: 'returned',
   AdminOrderLifecycleStatus.$unknown: r'$unknown',
+};
+
+const _$AdminOrderLifecycleDeliveryMethodEnumMap = {
+  AdminOrderLifecycleDeliveryMethod.delivery: 'delivery',
+  AdminOrderLifecycleDeliveryMethod.pickup: 'pickup',
+  AdminOrderLifecycleDeliveryMethod.counter: 'counter',
+  AdminOrderLifecycleDeliveryMethod.$unknown: r'$unknown',
 };

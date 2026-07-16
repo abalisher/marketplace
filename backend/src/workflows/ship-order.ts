@@ -6,6 +6,7 @@ import {
 import { createOrderShipmentWorkflow } from "@medusajs/medusa/core-flows"
 import { StatusActorType } from "../modules/order-lifecycle/models/statuses"
 import { applyOrderTransition } from "./apply-order-transition"
+import { issueDeliveryCodeStep } from "./steps/issue-delivery-code"
 
 export type ShipOrderWorkflowInput = {
   order_id: string
@@ -35,6 +36,11 @@ export const shipOrderWorkflow = createWorkflow(
       actor_type: input.actor_type,
       actor_id: input.actor_id,
     })
+
+    // Код получения выдаётся при входе в доставку (приёмка по коду — ТЗ);
+    // in_delivery достижим только для способа delivery, отдельной проверки
+    // метода не нужно. Отгрузка второй частью код не перевыпускает.
+    issueDeliveryCodeStep({ order_lifecycle_id: result.order_lifecycle_id })
 
     return new WorkflowResponse(result)
   }

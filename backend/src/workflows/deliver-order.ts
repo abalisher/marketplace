@@ -12,25 +12,33 @@ export type DeliverOrderWorkflowInput = {
   fulfillment_id: string
   actor_type: StatusActorType
   actor_id?: string | null
+  // Код получения от покупателя — обязателен для способа delivery
+  // («передан по коду» — способ подтвердить delivered, не статус);
+  // pickup подтверждается накладной, код не нужен.
+  delivery_code?: string | null
 }
 
-// Доставка: ядровый markOrderFulfillmentAsDelivered (fulfillment → delivered),
-// наш статус → delivered. Дальше — окно возврата, затем закрытие (close-order).
+// Вручение заказа: наш переход → delivered идёт ПЕРВЫМ — он проверяет
+// инвариант приёмки (код получения для delivery; для pickup — переход
+// assembled → delivered без кода) и умеет компенсироваться. Затем ядровый
+// markOrderFulfillmentAsDelivered фиксирует физику (fulfillment → delivered);
+// его сбой откатывает наш переход, событие status_changed не эмитится.
 export const deliverOrderWorkflow = createWorkflow(
   "deliver-order",
   (input: WorkflowData<DeliverOrderWorkflowInput>) => {
-    markOrderFulfillmentAsDeliveredWorkflow.runAsStep({
-      input: {
-        orderId: input.order_id,
-        fulfillmentId: input.fulfillment_id,
-      },
-    })
-
     const result = applyOrderTransition({
       order_id: input.order_id,
       to: "delivered",
       actor_type: input.actor_type,
       actor_id: input.actor_id,
+      delivery_code: input.delivery_code,
+    })
+
+    markOrderFulfillmentAsDeliveredWorkflow.runAsStep({
+      input: {
+        orderId: input.order_id,
+        fulfillmentId: input.fulfillment_id,
+      },
     })
 
     return new WorkflowResponse(result)

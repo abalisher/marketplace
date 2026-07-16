@@ -4,6 +4,7 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import 'store_order_lifecycle_summary_delivery_method.dart';
 import 'store_order_lifecycle_summary_status.dart';
 
 part 'store_order_lifecycle_summary.g.dart';
@@ -15,6 +16,7 @@ class StoreOrderLifecycleSummary {
     required this.status,
     this.previousStatus,
     this.note,
+    this.deliveryMethod,
   });
 
   factory StoreOrderLifecycleSummary.fromJson(Map<String, Object?> json) =>
@@ -25,6 +27,10 @@ class StoreOrderLifecycleSummary {
   @JsonKey(name: 'previous_status')
   final String? previousStatus;
   final String? note;
+
+  /// Способ получения заказа.
+  @JsonKey(name: 'delivery_method')
+  final StoreOrderLifecycleSummaryDeliveryMethod? deliveryMethod;
 
   Map<String, Object?> toJson() => _$StoreOrderLifecycleSummaryToJson(this);
 }

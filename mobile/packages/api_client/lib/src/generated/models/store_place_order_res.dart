@@ -4,7 +4,7 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import 'order.dart';
+import 'order2.dart';
 import 'store_order_lifecycle_summary.dart';
 
 part 'store_place_order_res.g.dart';
@@ -17,7 +17,7 @@ class StorePlaceOrderRes {
       _$StorePlaceOrderResFromJson(json);
 
   /// Заказ ядра (schema StoreOrder базовой спеки).
-  final Order order;
+  final Order2 order;
   final StoreOrderLifecycleSummary lifecycle;
 
   Map<String, Object?> toJson() => _$StorePlaceOrderResToJson(this);

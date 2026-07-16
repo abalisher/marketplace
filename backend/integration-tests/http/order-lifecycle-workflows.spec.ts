@@ -304,6 +304,18 @@ medusaIntegrationTestRunner({
         .order_lifecycle?.status
     }
 
+    // Код получения (выдаётся ship-order'ом) — нужен для deliver при delivery.
+    const deliveryCode = async (orderId: string) => {
+      const { data: orders } = await query().graph({
+        entity: "order",
+        fields: ["id", "order_lifecycle.delivery_code"],
+        filters: { id: orderId },
+      })
+      return (
+        orders[0] as { order_lifecycle?: { delivery_code: string | null } }
+      ).order_lifecycle?.delivery_code
+    }
+
     describe("placeOrderWorkflow", () => {
       it("completes the cart and creates a lifecycle in status 'new'", async () => {
         const { order, lifecycle } = await placeTestOrder()
@@ -352,10 +364,28 @@ medusaIntegrationTestRunner({
         })
         expect(await lifecycleStatus(order.id)).toEqual("in_delivery")
 
+        // При отгрузке выдан 6-значный код получения; без него вручение
+        // отклоняется инвариантом приёмки.
+        const code = await deliveryCode(order.id)
+        expect(code).toMatch(/^\d{6}$/)
+        await expectWorkflowError(
+          deliverOrderWorkflow(container).run({
+            input: {
+              order_id: order.id,
+              fulfillment_id: fulfillmentId,
+              actor_type: "system",
+            },
+            throwOnError: true,
+          }),
+          "missing or invalid"
+        )
+        expect(await lifecycleStatus(order.id)).toEqual("in_delivery")
+
         await deliverOrderWorkflow(container).run({
           input: {
             order_id: order.id,
             fulfillment_id: fulfillmentId,
+            delivery_code: code,
             actor_type: "system",
           },
         })

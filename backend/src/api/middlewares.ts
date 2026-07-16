@@ -30,6 +30,7 @@ import {
   AdminCompleteAssembly,
   AdminDeliverOrder,
   AdminGetOrderLifecyclesParams,
+  AdminPlaceCounterOrder,
   AdminShipOrder,
 } from "./admin/orders/validators"
 
@@ -159,6 +160,13 @@ export default defineMiddlewares({
       matcher: "/admin/orders/:id/lifecycle/cancel",
       method: "POST",
       middlewares: [validateAndTransformBody(AdminCancelOrder)],
+    },
+    {
+      // Продажа у окна (POS) — отдельный ресурс, не под /admin/orders
+      // (статик-сегмент конфликтует с ядровым :id).
+      matcher: "/admin/counter-orders",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminPlaceCounterOrder)],
     },
   ],
 })

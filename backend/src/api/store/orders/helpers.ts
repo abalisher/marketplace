@@ -26,6 +26,8 @@ export async function requireOwnOrder(
       "order_lifecycle.status",
       "order_lifecycle.previous_status",
       "order_lifecycle.note",
+      "order_lifecycle.delivery_method",
+      "order_lifecycle.delivery_code",
     ],
     filters: { id: orderId, customer_id: customerId },
   })

@@ -4,11 +4,13 @@ import { sdk } from "../lib/sdk"
 import { OrderTransition } from "../lib/order"
 
 // Тело перехода: complete-assembly/ship требуют позиции, ship/deliver —
-// fulfillment. Строится вызывающим (виджет) из данных ядровой страницы заказа.
+// fulfillment, deliver при доставке — код получения от покупателя.
+// Строится вызывающим (виджет) из данных ядровой страницы заказа.
 type TransitionBody = {
   items?: { id: string; quantity: number }[]
   fulfillment_id?: string
   reason?: string | null
+  delivery_code?: string
 }
 
 type TransitionVars = {

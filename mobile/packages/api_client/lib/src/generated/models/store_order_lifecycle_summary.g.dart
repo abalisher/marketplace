@@ -13,6 +13,11 @@ StoreOrderLifecycleSummary _$StoreOrderLifecycleSummaryFromJson(
   status: StoreOrderLifecycleSummaryStatus.fromJson(json['status'] as String),
   previousStatus: json['previous_status'] as String?,
   note: json['note'] as String?,
+  deliveryMethod: json['delivery_method'] == null
+      ? null
+      : StoreOrderLifecycleSummaryDeliveryMethod.fromJson(
+          json['delivery_method'] as String,
+        ),
 );
 
 Map<String, dynamic> _$StoreOrderLifecycleSummaryToJson(
@@ -22,6 +27,9 @@ Map<String, dynamic> _$StoreOrderLifecycleSummaryToJson(
   'status': _$StoreOrderLifecycleSummaryStatusEnumMap[instance.status]!,
   'previous_status': instance.previousStatus,
   'note': instance.note,
+  'delivery_method':
+      _$StoreOrderLifecycleSummaryDeliveryMethodEnumMap[instance
+          .deliveryMethod],
 };
 
 const _$StoreOrderLifecycleSummaryStatusEnumMap = {
@@ -36,4 +44,11 @@ const _$StoreOrderLifecycleSummaryStatusEnumMap = {
   StoreOrderLifecycleSummaryStatus.canceled: 'canceled',
   StoreOrderLifecycleSummaryStatus.returned: 'returned',
   StoreOrderLifecycleSummaryStatus.$unknown: r'$unknown',
+};
+
+const _$StoreOrderLifecycleSummaryDeliveryMethodEnumMap = {
+  StoreOrderLifecycleSummaryDeliveryMethod.delivery: 'delivery',
+  StoreOrderLifecycleSummaryDeliveryMethod.pickup: 'pickup',
+  StoreOrderLifecycleSummaryDeliveryMethod.counter: 'counter',
+  StoreOrderLifecycleSummaryDeliveryMethod.$unknown: r'$unknown',
 };

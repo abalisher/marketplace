@@ -1,39 +1,102 @@
 import { MedusaError, MedusaService } from "@medusajs/framework/utils"
 import OrderLifecycle from "./models/order-lifecycle"
 import OrderLifecycleEvent from "./models/order-lifecycle-event"
-import { OrderStatusValue, StatusActorType } from "./models/statuses"
-
-// Разрешённые переходы жизненного цикла заказа (стейт-машина ТЗ, см.
-// docs/modules/order.md). Терминальные статусы (canceled, returned) целей не
-// имеют; closed → returned оставлен для возврата в окне 14 дней после закрытия.
-export const ORDER_STATUS_TRANSITIONS: Record<
+import {
+  DeliveryMethod,
   OrderStatusValue,
-  OrderStatusValue[]
+  StatusActorType,
+} from "./models/statuses"
+
+// Разрешённые переходы жизненного цикла заказа (стейт-машина ТЗ +
+// поправка «способы получения», см. docs/modules/order.md). Карта — на каждый
+// способ получения: delivery проходит полный путь; pickup выдаётся у окна без
+// этапа доставки (assembled → delivered); counter — свёрнутый POS-путь
+// (new → delivered). Терминальные статусы (canceled, returned) целей не имеют;
+// closed → returned оставлен для возврата в окне 14 дней после закрытия.
+export const ORDER_STATUS_TRANSITIONS: Record<
+  DeliveryMethod,
+  Record<OrderStatusValue, OrderStatusValue[]>
 > = {
-  new: ["confirmed", "canceled"],
-  confirmed: ["assembling", "canceled"],
-  assembling: ["partially_assembled", "assembled", "canceled"],
-  partially_assembled: ["assembled", "in_delivery", "canceled"],
-  assembled: ["in_delivery", "canceled"],
-  in_delivery: ["delivered"],
-  delivered: ["closed", "returned"],
-  closed: ["returned"],
-  canceled: [],
-  returned: [],
+  delivery: {
+    new: ["confirmed", "canceled"],
+    confirmed: ["assembling", "canceled"],
+    assembling: ["partially_assembled", "assembled", "canceled"],
+    partially_assembled: ["assembled", "in_delivery", "canceled"],
+    assembled: ["in_delivery", "canceled"],
+    in_delivery: ["delivered"],
+    delivered: ["closed", "returned"],
+    closed: ["returned"],
+    canceled: [],
+    returned: [],
+  },
+  pickup: {
+    new: ["confirmed", "canceled"],
+    confirmed: ["assembling", "canceled"],
+    assembling: ["partially_assembled", "assembled", "canceled"],
+    // Частичную выдачу самовывоза не поддерживаем — только досборка.
+    partially_assembled: ["assembled", "canceled"],
+    // Выдача у окна — сразу delivered, этапа in_delivery нет.
+    assembled: ["delivered", "canceled"],
+    in_delivery: [],
+    delivered: ["closed", "returned"],
+    closed: ["returned"],
+    canceled: [],
+    returned: [],
+  },
+  counter: {
+    // Продажа у окна: заказ создаётся и сразу выдаётся (place-counter-order).
+    new: ["delivered", "canceled"],
+    confirmed: [],
+    assembling: [],
+    partially_assembled: [],
+    assembled: [],
+    in_delivery: [],
+    delivered: ["closed", "returned"],
+    closed: ["returned"],
+    canceled: [],
+    returned: [],
+  },
 }
 
-// Инвариант стейт-машины: бросает, если переход из from в to не разрешён.
-// Чистая функция (не метод сервиса) — тестируется без БД и переиспользуется
-// в workflow-шагах до применения перехода.
+// Инвариант стейт-машины: бросает, если переход из from в to не разрешён для
+// данного способа получения. Чистая функция (не метод сервиса) — тестируется
+// без БД и переиспользуется в workflow-шагах до применения перехода.
 export function assertOrderStatusTransition(
   from: OrderStatusValue,
-  to: OrderStatusValue
+  to: OrderStatusValue,
+  method: DeliveryMethod = "delivery"
 ) {
-  const allowed = ORDER_STATUS_TRANSITIONS[from] ?? []
+  const allowed = ORDER_STATUS_TRANSITIONS[method]?.[from] ?? []
   if (!allowed.includes(to)) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      `Order status transition ${from} → ${to} is not allowed`
+      `Order status transition ${from} → ${to} is not allowed for ${method}`
+    )
+  }
+}
+
+// Инвариант приёмки: переход в delivered для способа delivery валиден только
+// с верным кодом получения («передан по коду» — способ подтвердить delivered,
+// не статус). pickup/counter подтверждаются накладной — код не требуется.
+// Чистая функция — тестируется без БД, вызывается в recordTransition.
+export function assertDeliveryConfirmation(input: {
+  method: DeliveryMethod
+  stored_code: string | null
+  provided_code?: string | null
+}) {
+  if (input.method !== "delivery") {
+    return
+  }
+  if (!input.stored_code) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "Order has no delivery code issued — cannot confirm delivery"
+    )
+  }
+  if (!input.provided_code || input.provided_code !== input.stored_code) {
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "Delivery code is missing or invalid"
     )
   }
 }
@@ -57,10 +120,21 @@ class OrderLifecycleModuleService extends MedusaService({
     actor_type: StatusActorType
     actor_id?: string | null
     reason?: string | null
+    // Код получения от покупателя — обязателен для delivered при способе
+    // delivery (см. assertDeliveryConfirmation).
+    delivery_code?: string | null
   }) {
     const current = await this.retrieveOrderLifecycle(input.order_lifecycle_id)
     const from = current.status as OrderStatusValue
-    assertOrderStatusTransition(from, input.to)
+    const method = current.delivery_method as DeliveryMethod
+    assertOrderStatusTransition(from, input.to, method)
+    if (input.to === "delivered") {
+      assertDeliveryConfirmation({
+        method,
+        stored_code: current.delivery_code ?? null,
+        provided_code: input.delivery_code,
+      })
+    }
 
     const event = await this.createOrderLifecycleEvents({
       order_lifecycle: input.order_lifecycle_id,

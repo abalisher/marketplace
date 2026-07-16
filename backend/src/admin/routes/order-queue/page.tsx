@@ -23,6 +23,7 @@ import { useNavigate } from "react-router-dom"
 import {
   AdminOrderLifecycleListItem,
   AdminOrderLifecyclesResponse,
+  ORDER_DELIVERY_METHOD_META,
   ORDER_LIFECYCLE_STATUS_META,
   ORDER_LIFECYCLE_STATUSES,
   OrderLifecycleStatus,
@@ -144,6 +145,10 @@ const OrderQueuePage = () => {
           </div>
         )
       },
+    }),
+    columnHelper.accessor("delivery_method", {
+      header: "Method",
+      cell: ({ getValue }) => ORDER_DELIVERY_METHOD_META[getValue()].label,
     }),
     columnHelper.accessor("created_at", {
       header: "Created",

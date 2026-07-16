@@ -1,6 +1,7 @@
 import { moduleIntegrationTestRunner } from "@medusajs/test-utils"
 import { ORDER_LIFECYCLE_MODULE } from ".."
 import OrderLifecycleModuleService, {
+  assertDeliveryConfirmation,
   assertOrderStatusTransition,
 } from "../service"
 import OrderLifecycle from "../models/order-lifecycle"
@@ -32,7 +33,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
       })
 
       it("allows a valid transition and rejects an invalid one", () => {
-        // Инвариант — чистая функция стейт-машины (без БД).
+        // Инвариант — чистая функция стейт-машины (без БД). Дефолт — delivery.
         expect(() =>
           assertOrderStatusTransition("new", "confirmed")
         ).not.toThrow()
@@ -44,6 +45,73 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
         ).toThrow("not allowed")
         // Терминальные статусы никуда не ведут.
         expect(() => assertOrderStatusTransition("canceled", "new")).toThrow()
+      })
+
+      it("varies allowed transitions by delivery method", () => {
+        // pickup: выдача у окна без этапа доставки, частичной выдачи нет.
+        expect(() =>
+          assertOrderStatusTransition("assembled", "delivered", "pickup")
+        ).not.toThrow()
+        expect(() =>
+          assertOrderStatusTransition("assembled", "in_delivery", "pickup")
+        ).toThrow("not allowed")
+        expect(() =>
+          assertOrderStatusTransition(
+            "partially_assembled",
+            "in_delivery",
+            "pickup"
+          )
+        ).toThrow("not allowed")
+        // counter: свёрнутый путь new → delivered → closed.
+        expect(() =>
+          assertOrderStatusTransition("new", "delivered", "counter")
+        ).not.toThrow()
+        expect(() =>
+          assertOrderStatusTransition("new", "confirmed", "counter")
+        ).toThrow("not allowed")
+        // delivery: сразу delivered нельзя — только через in_delivery.
+        expect(() =>
+          assertOrderStatusTransition("assembled", "delivered", "delivery")
+        ).toThrow("not allowed")
+      })
+
+      it("requires a valid delivery code only for the delivery method", () => {
+        // delivery: код обязателен и должен совпасть.
+        expect(() =>
+          assertDeliveryConfirmation({
+            method: "delivery",
+            stored_code: "123456",
+            provided_code: "123456",
+          })
+        ).not.toThrow()
+        expect(() =>
+          assertDeliveryConfirmation({
+            method: "delivery",
+            stored_code: "123456",
+            provided_code: "000000",
+          })
+        ).toThrow("missing or invalid")
+        expect(() =>
+          assertDeliveryConfirmation({
+            method: "delivery",
+            stored_code: "123456",
+          })
+        ).toThrow("missing or invalid")
+        // Код не выдан (отгрузки не было) — подтверждать нечего.
+        expect(() =>
+          assertDeliveryConfirmation({
+            method: "delivery",
+            stored_code: null,
+            provided_code: "123456",
+          })
+        ).toThrow("no delivery code")
+        // pickup/counter: приёмка по накладной, код не требуется.
+        expect(() =>
+          assertDeliveryConfirmation({ method: "pickup", stored_code: null })
+        ).not.toThrow()
+        expect(() =>
+          assertDeliveryConfirmation({ method: "counter", stored_code: null })
+        ).not.toThrow()
       })
 
       it("records a transition: updates status, sets previous, appends log", async () => {

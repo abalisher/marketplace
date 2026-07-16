@@ -45,11 +45,22 @@ export const AdminShipOrder = z.object({
 })
 export type AdminShipOrderType = z.infer<typeof AdminShipOrder>
 
-// Доставка: конкретный fulfillment помечается доставленным.
+// Вручение: конкретный fulfillment помечается доставленным. Код получения
+// обязателен для заказов со способом delivery (проверяет workflow — «передан
+// по коду»); для pickup код не нужен (приёмка по накладной).
 export const AdminDeliverOrder = z.object({
   fulfillment_id: z.string().min(1),
+  delivery_code: z.string().trim().min(1).optional(),
 })
 export type AdminDeliverOrderType = z.infer<typeof AdminDeliverOrder>
+
+// Продажа у окна склада (POS): продавец собрал корзину покупателя на месте,
+// оплата уже авторизована — заказ создаётся сразу выданным (new → delivered).
+export const AdminPlaceCounterOrder = z.object({
+  cart_id: z.string().min(1),
+  location_id: z.string().min(1).optional(),
+})
+export type AdminPlaceCounterOrderType = z.infer<typeof AdminPlaceCounterOrder>
 
 // Отмена заказа админом — причина опциональна (логируется в note/лог переходов).
 export const AdminCancelOrder = z.object({

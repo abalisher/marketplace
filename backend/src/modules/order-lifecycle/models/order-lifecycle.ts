@@ -1,6 +1,6 @@
 import { model } from "@medusajs/framework/utils"
 import OrderLifecycleEvent from "./order-lifecycle-event"
-import { ORDER_STATUSES } from "./statuses"
+import { DELIVERY_METHODS, ORDER_STATUSES } from "./statuses"
 
 // Кастомный жизненный цикл заказа из ТЗ (source of truth для клиентов и
 // уведомлений). Привязка к order ядра — через module link (см.
@@ -17,6 +17,13 @@ const OrderLifecycle = model.define("order_lifecycle", {
   previous_status: model.enum([...ORDER_STATUSES]).nullable(),
   // Последняя причина/комментарий перехода (например причина отмены).
   note: model.text().nullable(),
+  // Способ получения — задаётся при оформлении и не меняется; выбирает карту
+  // разрешённых переходов стейт-машины (см. сервис) и механизм приёмки.
+  delivery_method: model.enum([...DELIVERY_METHODS]).default("delivery"),
+  // Код получения (только delivery): выдаётся при переходе в in_delivery,
+  // переход в delivered валиден только с верным кодом. Код знает покупатель
+  // (ЛК + SMS позже); в admin-ответы не отдаём.
+  delivery_code: model.text().nullable(),
   events: model.hasMany(() => OrderLifecycleEvent, {
     mappedBy: "order_lifecycle",
   }),
