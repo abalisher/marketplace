@@ -1,6 +1,6 @@
 # Модуль `bonus` — бонусный счёт покупателя
 
-**Статус:** подзадача 1 (дизайн + модуль) ГОТОВА (2026-07-16); остальное — по подзадачам внизу.
+**Статус:** подзадачи 1 (дизайн + модуль) и 2 (начисление) ГОТОВЫ (2026-07-16); остальное — по подзадачам внизу.
 **Код (по мере реализации):** `backend/src/modules/bonus/`, `backend/src/links/customer-bonus-account.ts`,
 `backend/src/links/order-bonus-transaction.ts`, далее `backend/src/workflows/` (начисление/списание),
 `backend/src/jobs/` (начисление по расписанию, сгорание), `backend/src/api/store/bonus/`,
@@ -87,7 +87,7 @@
 `bonus.expired`. Эмитятся из workflows/джоб (подзадачи 2/4), подписчики-уведомления — заглушки до
 notification-провайдера (идиома order-lifecycle).
 
-## Как считается начисление (подзадача 2)
+## Как считается начисление (подзадача 2 — РЕАЛИЗОВАНО 2026-07-16)
 Триггер — джоба (`src/jobs/accrue-bonuses.ts`, раз в час): найти заказы `order_lifecycle.status=closed`,
 у которых дата перехода в `delivered` (из `OrderLifecycleEvent`) + `return_window_days` уже в прошлом
 и НЕТ accrual-транзакции по link'у order↔bonus_transaction (идемпотентность). Для каждого — workflow
@@ -96,6 +96,15 @@ link'у), get-or-create счёта покупателя, `credit(type=accrual, e
 link транзакции к заказу, `emitEventStep(bonus.accrued)`. Подписка на `order_lifecycle.status_changed
 (to=closed)` НЕ триггерит начисление напрямую — окно возврата ещё не истекло; джоба — единственный
 триггер (просто и идемпотентно).
+
+Нюансы реализации (решения — DECISIONS 2026-07-16, начисление):
+- Инварианты (closed / окно истекло / ещё не начислено) проверяет сам workflow (шаг
+  `prepare-order-bonus-accrual`) — джоба лишь предфильтр, ручной вызов безопасен.
+- База позиции — `unit_price × quantity` через сервис order (query.graph не отдаёт BigNumber-поля
+  позиций); доставка не бонусируется.
+- Нулевая сумма (процент 0 / floor → 0) — no-op без транзакции: заказ остаётся кандидатом следующих
+  прогонов джобы (безвредно на MVP-масштабе).
+- Скан джобы линеен по всем closed-заказам; при росте — маркер обработки на lifecycle.
 
 ## Осознанно отложено
 - **Списание в оформлении** (подзадача 3): механизм применения к заказу (кандидат — ядровые order
@@ -116,7 +125,7 @@ link транзакции к заказу, `emitEventStep(bonus.accrued)`. По�
 1. [x] Дизайн + модуль: модели `BonusAccount`/`BonusTransaction`/`BonusConfig`, сервис (лоты FIFO,
    credit/spend/revert/expire, чистые функции начисления и потолка), links к customer и order,
    миграция, тесты модуля.
-2. [ ] Начисление: джоба + workflow `accrue-order-bonus` (идемпотентность по link'у, сегментные
+2. [x] Начисление: джоба + workflow `accrue-order-bonus` (идемпотентность по link'у, сегментные
    проценты из product_card, событие `bonus.accrued`, subscriber-заглушка уведомления).
 3. [ ] Списание в оформлении: store API применения бонусов + механизм уменьшения суммы к оплате
    (кандидат — order credit lines) + согласование с предоплатой Kaspi + `GET /store/bonus` +
