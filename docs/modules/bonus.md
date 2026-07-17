@@ -1,11 +1,12 @@
 # Модуль `bonus` — бонусный счёт покупателя
 
-**Статус:** подзадачи 1 (дизайн + модуль), 2 (начисление) и 3 (списание в оформлении) ГОТОВЫ
-(2026-07-17); осталась подзадача 4 (сгорание + admin API/UI).
-**Код (по мере реализации):** `backend/src/modules/bonus/`, `backend/src/links/customer-bonus-account.ts`,
-`backend/src/links/order-bonus-transaction.ts`, далее `backend/src/workflows/` (начисление/списание),
-`backend/src/jobs/` (начисление по расписанию, сгорание), `backend/src/api/store/bonus/`,
-`backend/src/api/admin/bonus-config/`.
+**Статус:** МОДУЛЬ ГОТОВ (2026-07-17) — все 4 подзадачи: дизайн + модуль, начисление, списание
+в оформлении, сгорание + admin API/UI.
+**Код:** `backend/src/modules/bonus/`, `backend/src/links/customer-bonus-account.ts`,
+`backend/src/links/order-bonus-transaction.ts`, `backend/src/workflows/` (начисление/списание/конфиг),
+`backend/src/jobs/accrue-bonuses.ts` + `expire-bonuses.ts`, `backend/src/api/store/bonus/`,
+`backend/src/api/admin/bonus-config/`, `backend/src/api/admin/customers/[id]/bonus/`,
+админ-UI: `backend/src/admin/routes/settings/bonus-program/` + `widgets/customer-bonus-card.tsx`.
 
 ## Назначение
 Начисление бонусов за закрытые заказы и их списание как частичной оплаты будущих заказов.
@@ -41,13 +42,16 @@
   ВСЕГДА > 0 — направление определяет тип), `remaining` (bigNumber nullable — несписанный остаток
   ЛОТА, только у кредитных типов `accrual`/`manual_credit`), `expires_at` (nullable — срок сгорания
   лота), `lot_breakdown` (json nullable — у списаний: разбивка по лотам `[{transaction_id, taken}]`
-  для отката), `note` (nullable), `account` belongsTo.
+  для отката), `expiry_notified_at` (nullable — маркер «о скором сгорании лота предупредили»,
+  идемпотентность bonus.expiring_soon между прогонами джобы сгорания), `note` (nullable),
+  `account` belongsTo.
   Заказ-основание (начисления/списания) — через module link, FK в модели нет (правило изоляции).
 - **`BonusConfig`** — настройки платформы, singleton-строка (MVP — один продавец; `getOrCreateConfig`
   создаёт с дефолтами): `accrual_percent` (default 1), `segment_percents` (json nullable —
   переопределения по сегментам каталога, напр. `{"business": 2}`; ключи — строки, тип сегмента
   НЕ импортируем из `catalog` — изоляция), `max_spend_percent` (default 50 — дефолт до уточнения
   владельцем, ТЗ значения не задаёт), `expiry_days` (nullable, null = сгорание выключено),
+  `expiry_notice_days` (default 7 — за сколько дней предупреждать о сгорании, 0 = выключено),
   `return_window_days` (default 14 — окно возврата для условия начисления; при появлении модуля
   возвратов источник этой настройки станет общим).
 
@@ -87,8 +91,9 @@
 
 ## События (`events.ts`, namespace `bonus.*`)
 `bonus.accrued` · `bonus.spent` · `bonus.expiring_soon` (уведомление о скором сгорании) ·
-`bonus.expired`. Эмитятся из workflows/джоб (подзадачи 2/4), подписчики-уведомления — заглушки до
-notification-провайдера (идиома order-lifecycle).
+`bonus.expired`. Эмитятся из workflows (accrued/spent) и джобы сгорания (expiring_soon/expired —
+напрямую через event bus); подписчики-уведомления — заглушки до notification-провайдера
+(идиома order-lifecycle).
 
 ## Как считается начисление (подзадача 2 — РЕАЛИЗОВАНО 2026-07-16)
 Триггер — джоба (`src/jobs/accrue-bonuses.ts`, раз в час): найти заказы `order_lifecycle.status=closed`,
@@ -126,6 +131,19 @@ link транзакции к заказу, `emitEventStep(bonus.accrued)`. По�
 - **Нюанс query.graph**: `cart.total` учитывает кредитные линии только если запрошен
   `credit_lines.amount` (эмпирика 2.17.2) — шаги, читающие total, обязаны запрашивать amount.
 
+## Как работает сгорание (подзадача 4 — РЕАЛИЗОВАНО 2026-07-17)
+Джоба `src/jobs/expire-bonuses.ts` (ежечасно `30 * * * *`, в противофазе с accrue-bonuses), без
+workflow — обе фазы внутри одного модуля, события эмитятся через event bus (решения — DECISIONS
+2026-07-17, сгорание):
+- **Сгорание**: сервисный `expireLots` (идемпотентен — сжигает только несписанный остаток
+  просроченных лотов, на счёт — одна expiry-транзакция) + `bonus.expired` на каждый затронутый счёт.
+  Лоты несут собственный `expires_at`, поэтому джоба досжигает старые лоты и после выключения
+  сгорания в конфиге.
+- **Предупреждение**: лоты с остатком, сгорающие в пределах `expiry_notice_days` (0 — выключено), —
+  `bonus.expiring_soon` с агрегацией по счёту (сумма + ближайший срок). Идемпотентность — маркер
+  `expiry_notified_at` на лоте; ставится после эмита (упавший прогон предупредит дважды — лучше,
+  чем никогда).
+
 ## Осознанно отложено
 - **Пересчёт при частичном исполнении/возврате** — вместе с returnFlow: возврат в окне уже закрытого
   заказа при начисленном бонусе → сторно (manual_debit) при реализации возвратов.
@@ -137,8 +155,12 @@ link транзакции к заказу, `emitEventStep(bonus.accrued)`. По�
   `lot_breakdown` наружу не отдаётся; счёт лениво НЕ создаётся — без счёта нулевой ответ),
   `POST/DELETE /store/carts/:id/bonus` (применение/снятие; ответ — `{amount, cart_total,
   currency_code}`). Все — авторизованный customer, чужая корзина → 404.
-- admin (подзадача 4): `GET/POST /admin/bonus-config` (проценты/потолок/сгорание), баланс
-  покупателя — widget на ядровой странице customer.
+- admin (ГОТОВО, подзадача 4): `GET/POST /admin/bonus-config` (частичный апдейт процентов/потолка/
+  сгорания/окна возврата; POST — workflow `update-bonus-config`), `GET /admin/customers/:id/bonus`
+  (баланс + 20 последних операций — данные widget'а). В контракт admin-роуты не входят (правятся
+  только веб-админкой). Админ-UI: Settings → Bonus Program (`src/admin/routes/settings/bonus-program/`,
+  секция «метка — значение» + Edit-drawer) и widget `customer-bonus-card.tsx` на ядровой странице
+  customer. Демо-данные: `npx medusa exec ./src/scripts/seed-demo-bonus.ts`.
 
 ## Подзадачи (порядок реализации — бэклог в STATE.md)
 1. [x] Дизайн + модуль: модели `BonusAccount`/`BonusTransaction`/`BonusConfig`, сервис (лоты FIFO,
@@ -149,5 +171,5 @@ link транзакции к заказу, `emitEventStep(bonus.accrued)`. По�
 3. [x] Списание в оформлении: store API применения бонусов + кредитные линии корзины ядра +
    согласование с предоплатой Kaspi (refresh collection) + `GET /store/bonus` + OAS-фрагменты,
    контракт, Dart-клиент — ГОТОВО 2026-07-17.
-4. [ ] Сгорание: джоба `expire-bonuses` + `bonus.expiring_soon`/`bonus.expired` + admin API конфига +
-   админ-UI (конфиг + widget баланса на странице customer ядра).
+4. [x] Сгорание: джоба `expire-bonuses` + `bonus.expiring_soon`/`bonus.expired` + admin API конфига +
+   админ-UI (конфиг + widget баланса на странице customer ядра) — ГОТОВО 2026-07-17.

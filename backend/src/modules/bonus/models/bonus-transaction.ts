@@ -17,6 +17,9 @@ const BonusTransaction = model.define("bonus_transaction", {
   remaining: model.bigNumber().nullable(),
   // Срок сгорания лота; null — не сгорает (сгорание выключено в конфиге).
   expires_at: model.dateTime().nullable(),
+  // Маркер «о скором сгорании лота уже предупредили» — идемпотентность
+  // bonus.expiring_soon между прогонами джобы expire-bonuses.
+  expiry_notified_at: model.dateTime().nullable(),
   // У списаний: [{transaction_id, taken}] — из каких лотов сколько взято.
   lot_breakdown: model.json().nullable(),
   note: model.text().nullable(),

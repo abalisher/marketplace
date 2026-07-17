@@ -22,3 +22,4 @@ export type BonusLotBreakdown = { transaction_id: string; taken: number }[]
 export const DEFAULT_ACCRUAL_PERCENT = 1
 export const DEFAULT_MAX_SPEND_PERCENT = 50
 export const DEFAULT_RETURN_WINDOW_DAYS = 14
+export const DEFAULT_EXPIRY_NOTICE_DAYS = 7

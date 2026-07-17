@@ -29,6 +29,7 @@ import {
   StoreInitKaspiPayment,
 } from "./store/carts/validators"
 import { StoreGetBonusParams } from "./store/bonus/validators"
+import { AdminUpdateBonusConfig } from "./admin/bonus-config/validators"
 import {
   AdminCancelOrder,
   AdminCompleteAssembly,
@@ -139,6 +140,11 @@ export default defineMiddlewares({
       matcher: "/store/bonus",
       method: "GET",
       middlewares: [validateAndTransformQuery(StoreGetBonusParams, {})],
+    },
+    {
+      matcher: "/admin/bonus-config",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpdateBonusConfig)],
     },
     // --- Заказ (order-lifecycle) ---
     // Все store-роуты заказа требуют залогиненного покупателя.

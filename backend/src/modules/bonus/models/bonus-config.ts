@@ -13,6 +13,9 @@ const BonusConfig = model.define("bonus_config", {
   max_spend_percent: model.float().default(50),
   // Срок жизни начисления в днях; null — сгорание выключено.
   expiry_days: model.number().nullable(),
+  // За сколько дней до сгорания лота предупреждать покупателя
+  // (bonus.expiring_soon); 0 — предупреждение выключено.
+  expiry_notice_days: model.number().default(7),
   // Окно возврата (дни от доставки): начисляем только после его истечения.
   // При появлении модуля возвратов источник настройки станет общим.
   return_window_days: model.number().default(14),
