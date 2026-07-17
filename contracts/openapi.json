@@ -12011,6 +12011,67 @@
         }
       }
     },
+    "/store/bonus": {
+      "get": {
+        "operationId": "GetBonus",
+        "summary": "Get Bonus Account",
+        "description": "Бонусный счёт текущего покупателя: баланс и история операций (новые первыми). У покупателя без операций — нулевой баланс и пустая история. Вывод бонусов деньгами запрещён — только оплата части заказа (POST /store/carts/{id}/bonus).",
+        "tags": [
+          "Bonus"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Баланс и история операций бонусного счёта.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreBonusRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/store/carts/{id}/payment/kaspi": {
       "post": {
         "operationId": "PostCartsIdPaymentKaspi",
@@ -12108,6 +12169,110 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StoreKaspiPaymentRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/carts/{id}/bonus": {
+      "post": {
+        "operationId": "PostCartsIdBonus",
+        "summary": "Apply Bonus to Cart",
+        "description": "Применить бонусы к корзине как частичную оплату: сумма к оплате уменьшается, остаток оплачивается обычным способом (Kaspi). Повторный вызов заменяет сумму. Ограничения: не более max_spend_percent от суммы заказа и не более баланса счёта (иначе 400). Если оплата Kaspi уже была инициализирована, её сессия сбрасывается (сумма изменилась) — инициализировать оплату заново. 404 — корзина не принадлежит покупателю.",
+        "tags": [
+          "Bonus"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreApplyCartBonus"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Применённая бонусная сумма и тотал корзины к оплате.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCartBonusRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteCartsIdBonus",
+        "summary": "Remove Bonus from Cart",
+        "description": "Снять применённые бонусы с корзины (идемпотентен). Сумма к оплате восстанавливается; инициализированная оплата Kaspi сбрасывается — инициализировать заново. 404 — корзина не принадлежит покупателю.",
+        "tags": [
+          "Bonus"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Нулевая бонусная сумма и восстановленный тотал корзины.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCartBonusRes"
                 }
               }
             }
@@ -46527,6 +46692,101 @@
           }
         }
       },
+      "StoreBonusTransaction": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "amount",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "accrual",
+              "spend",
+              "expiry",
+              "manual_credit",
+              "manual_debit"
+            ],
+            "description": "Тип движения: accrual/manual_credit — начисление, spend/manual_debit — списание, expiry — сгорание."
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Сумма движения, всегда положительная — направление определяет type."
+          },
+          "remaining": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Несписанный остаток лота (только у начислений)."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Срок сгорания лота (null — сгорание выключено)."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StoreBonus": {
+        "type": "object",
+        "required": [
+          "balance",
+          "currency_code",
+          "transactions",
+          "count",
+          "limit",
+          "offset"
+        ],
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "description": "Текущий баланс в главных единицах валюты (KZT без тиынов)."
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "transactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreBonusTransaction"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Всего операций на счёте."
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          }
+        }
+      },
+      "StoreBonusRes": {
+        "type": "object",
+        "required": [
+          "bonus"
+        ],
+        "properties": {
+          "bonus": {
+            "$ref": "#/components/schemas/StoreBonus"
+          }
+        }
+      },
       "StoreInitKaspiPayment": {
         "type": "object",
         "properties": {
@@ -46595,6 +46855,52 @@
         "properties": {
           "payment": {
             "$ref": "#/components/schemas/StoreKaspiPayment"
+          }
+        }
+      },
+      "StoreApplyCartBonus": {
+        "type": "object",
+        "required": [
+          "amount"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Бонусная сумма в главных единицах валюты (KZT без тиынов)."
+          }
+        }
+      },
+      "StoreCartBonus": {
+        "type": "object",
+        "required": [
+          "amount",
+          "cart_total",
+          "currency_code"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "description": "Применённая к корзине бонусная сумма (0 — бонусы не применены)."
+          },
+          "cart_total": {
+            "type": "number",
+            "description": "Тотал корзины к оплате — уже за вычетом бонусов."
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "Валюта корзины."
+          }
+        }
+      },
+      "StoreCartBonusRes": {
+        "type": "object",
+        "required": [
+          "bonus"
+        ],
+        "properties": {
+          "bonus": {
+            "$ref": "#/components/schemas/StoreCartBonus"
           }
         }
       },

@@ -24,7 +24,11 @@ import {
   StoreCancelOrder,
   StorePlaceOrder,
 } from "./store/orders/validators"
-import { StoreInitKaspiPayment } from "./store/carts/validators"
+import {
+  StoreApplyCartBonus,
+  StoreInitKaspiPayment,
+} from "./store/carts/validators"
+import { StoreGetBonusParams } from "./store/bonus/validators"
 import {
   AdminCancelOrder,
   AdminCompleteAssembly,
@@ -114,6 +118,27 @@ export default defineMiddlewares({
       matcher: "/store/carts/:id/payment/kaspi",
       method: "POST",
       middlewares: [validateAndTransformBody(StoreInitKaspiPayment)],
+    },
+    // --- Бонусы (bonus) ---
+    // Применение бонусов к корзине и бонусный счёт — только залогиненному
+    // покупателю (владение корзиной проверяет requireOwnCart).
+    {
+      matcher: "/store/carts/:id/bonus",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
+      matcher: "/store/carts/:id/bonus",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreApplyCartBonus)],
+    },
+    {
+      matcher: "/store/bonus",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
+      matcher: "/store/bonus",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(StoreGetBonusParams, {})],
     },
     // --- Заказ (order-lifecycle) ---
     // Все store-роуты заказа требуют залогиненного покупателя.

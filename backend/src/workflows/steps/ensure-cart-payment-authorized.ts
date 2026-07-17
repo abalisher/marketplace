@@ -13,12 +13,15 @@ export type EnsureCartPaymentAuthorizedStepInput = {
 
 // Предусловие 100% предоплаты перед завершением корзины (placeOrder):
 // у корзины должна быть платёжная сессия, а Kaspi-сессия — оплачена.
-// Перед проверкой Kaspi-сессия синхронизируется с инвойсом (страховка от
-// гонки: покупатель оплатил, но не дождался polling'а/webhook'а). Прочие
-// провайдеры (pp_system_default и будущие) авторизует сам completeCart.
-// Ветка постоплаты юрлиц появится с модулем scoring (дизайн-док).
-// Возвращает cart_id, чтобы completeCart зависел от шага по данным
-// (гарантия порядка исполнения в workflow-графе).
+// Сумма к оплате — уже за вычетом бонусной кредитной линии (ядро вычитает
+// credit lines из total); корзина, полностью покрытая бонусами (total 0),
+// платёжной сессии не требует — completeCart в этом случае сам пропускает
+// платёж (validate-cart-payments ядра). Перед проверкой Kaspi-сессия
+// синхронизируется с инвойсом (страховка от гонки: покупатель оплатил, но не
+// дождался polling'а/webhook'а). Прочие провайдеры (pp_system_default и
+// будущие) авторизует сам completeCart. Ветка постоплаты юрлиц появится с
+// модулем scoring (дизайн-док). Возвращает cart_id, чтобы completeCart
+// зависел от шага по данным (гарантия порядка исполнения в workflow-графе).
 export const ensureCartPaymentAuthorizedStep = createStep(
   "ensure-cart-payment-authorized",
   async (input: EnsureCartPaymentAuthorizedStepInput, { container }) => {
@@ -28,6 +31,12 @@ export const ensureCartPaymentAuthorizedStep = createStep(
       entity: "cart",
       fields: [
         "id",
+        "total",
+        // ВАЖНО: total учитывает кредитные линии только когда запрошен их
+        // amount — с одним credit_lines.id ядро отдаёт total без вычета
+        // (проверено эмпирически на 2.17.2).
+        "credit_lines.id",
+        "credit_lines.amount",
         "payment_collection.id",
         "payment_collection.payment_sessions.id",
         "payment_collection.payment_sessions.provider_id",
@@ -35,16 +44,20 @@ export const ensureCartPaymentAuthorizedStep = createStep(
       filters: { id: input.cart_id },
     })
 
-    const sessions =
-      (
-        carts[0] as
-          | {
-              payment_collection?: {
-                payment_sessions?: { id: string; provider_id: string }[]
-              } | null
-            }
-          | undefined
-      )?.payment_collection?.payment_sessions ?? []
+    const cart = carts[0] as
+      | {
+          total?: number
+          credit_lines?: { id: string; amount: number }[] | null
+          payment_collection?: {
+            payment_sessions?: { id: string; provider_id: string }[]
+          } | null
+        }
+      | undefined
+    const sessions = cart?.payment_collection?.payment_sessions ?? []
+
+    if (Number(cart?.total ?? 0) <= 0 && (cart?.credit_lines ?? []).length) {
+      return new StepResponse({ cart_id: input.cart_id })
+    }
 
     if (!sessions.length) {
       throw new MedusaError(

@@ -1,0 +1,111 @@
+{
+  "paths": {
+    "/store/bonus": {
+      "get": {
+        "operationId": "GetBonus",
+        "summary": "Get Bonus Account",
+        "description": "Бонусный счёт текущего покупателя: баланс и история операций (новые первыми). У покупателя без операций — нулевой баланс и пустая история. Вывод бонусов деньгами запрещён — только оплата части заказа (POST /store/carts/{id}/bonus).",
+        "tags": ["Bonus"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Баланс и история операций бонусного счёта.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreBonusRes" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreBonusTransaction": {
+        "type": "object",
+        "required": ["id", "type", "amount", "created_at"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["accrual", "spend", "expiry", "manual_credit", "manual_debit"],
+            "description": "Тип движения: accrual/manual_credit — начисление, spend/manual_debit — списание, expiry — сгорание."
+          },
+          "amount": {
+            "type": "integer",
+            "description": "Сумма движения, всегда положительная — направление определяет type."
+          },
+          "remaining": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Несписанный остаток лота (только у начислений)."
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Срок сгорания лота (null — сгорание выключено)."
+          },
+          "note": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StoreBonus": {
+        "type": "object",
+        "required": [
+          "balance",
+          "currency_code",
+          "transactions",
+          "count",
+          "limit",
+          "offset"
+        ],
+        "properties": {
+          "balance": {
+            "type": "integer",
+            "description": "Текущий баланс в главных единицах валюты (KZT без тиынов)."
+          },
+          "currency_code": { "type": "string" },
+          "transactions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreBonusTransaction" }
+          },
+          "count": {
+            "type": "integer",
+            "description": "Всего операций на счёте."
+          },
+          "limit": { "type": "integer" },
+          "offset": { "type": "integer" }
+        }
+      },
+      "StoreBonusRes": {
+        "type": "object",
+        "required": ["bonus"],
+        "properties": {
+          "bonus": { "$ref": "#/components/schemas/StoreBonus" }
+        }
+      }
+    }
+  }
+}

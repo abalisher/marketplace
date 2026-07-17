@@ -71,6 +71,78 @@
           }
         }
       }
+    },
+    "/store/carts/{id}/bonus": {
+      "post": {
+        "operationId": "PostCartsIdBonus",
+        "summary": "Apply Bonus to Cart",
+        "description": "Применить бонусы к корзине как частичную оплату: сумма к оплате уменьшается, остаток оплачивается обычным способом (Kaspi). Повторный вызов заменяет сумму. Ограничения: не более max_spend_percent от суммы заказа и не более баланса счёта (иначе 400). Если оплата Kaspi уже была инициализирована, её сессия сбрасывается (сумма изменилась) — инициализировать оплату заново. 404 — корзина не принадлежит покупателю.",
+        "tags": ["Bonus"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/StoreApplyCartBonus" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Применённая бонусная сумма и тотал корзины к оплате.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreCartBonusRes" }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteCartsIdBonus",
+        "summary": "Remove Bonus from Cart",
+        "description": "Снять применённые бонусы с корзины (идемпотентен). Сумма к оплате восстанавливается; инициализированная оплата Kaspi сбрасывается — инициализировать заново. 404 — корзина не принадлежит покупателю.",
+        "tags": ["Bonus"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Нулевая бонусная сумма и восстановленный тотал корзины.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreCartBonusRes" }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -131,6 +203,42 @@
         "required": ["payment"],
         "properties": {
           "payment": { "$ref": "#/components/schemas/StoreKaspiPayment" }
+        }
+      },
+      "StoreApplyCartBonus": {
+        "type": "object",
+        "required": ["amount"],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Бонусная сумма в главных единицах валюты (KZT без тиынов)."
+          }
+        }
+      },
+      "StoreCartBonus": {
+        "type": "object",
+        "required": ["amount", "cart_total", "currency_code"],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "description": "Применённая к корзине бонусная сумма (0 — бонусы не применены)."
+          },
+          "cart_total": {
+            "type": "number",
+            "description": "Тотал корзины к оплате — уже за вычетом бонусов."
+          },
+          "currency_code": {
+            "type": "string",
+            "description": "Валюта корзины."
+          }
+        }
+      },
+      "StoreCartBonusRes": {
+        "type": "object",
+        "required": ["bonus"],
+        "properties": {
+          "bonus": { "$ref": "#/components/schemas/StoreCartBonus" }
         }
       }
     }
