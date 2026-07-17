@@ -469,3 +469,41 @@ Edit-drawer: accrual 2% + business 3% + expiry 180 → строки обнови
 widget на странице customer (баланс 6,600 KZT, история Spent/Accrued) — 0 ошибок консоли. Демо-сид
 `npx medusa exec ./src/scripts/seed-demo-bonus.ts` (счёт с обычным/скоро сгорающим/просроченным
 лотами и списанием, идемпотентен).
+
+## 2026-07-17 — Витрина: доставка региона KZ + оформление через placeOrder + способы получения
+**Решение:** долг storefront закрыт тремя частями. (1) `seed-kz.ts` дополнен блоком доставки
+(идемпотентно, по именам): default shipping profile + link всех товаров сида к нему (без него
+completeCart отклоняет корзину), провайдер `manual_manual` на обоих складах, fulfillment-наборы —
+«Kazakhstan Delivery» (type=shipping, опция «Доставка по Астане», flat 2000 KZT) и ПО НАБОРУ
+`Pickup — <склад>` НА КАЖДЫЙ склад (type=pickup, опция «Самовывоз: <склад>», 0 KZT): стартер
+нативно различает опции по `service_zone.fulfillment_set.type === "pickup"` и рисует переключатель
+«Pick up your order» со списком складов (адрес — из link'а набор↔склад). (2) `placeOrder` витрины
+переведён с ядрового `sdk.store.cart.complete` на наш `POST /store/orders` — иначе заказ оставался
+бы без OrderLifecycle; `delivery_method` витрина выводит из ВЫБРАННОЙ опции корзины (тип её
+fulfillment-набора pickup → `pickup`, иначе `delivery`) — отдельного UI-переключателя не нужно,
+источник истины — выбор на шаге Delivery. (3) Чекаут закрыт гейтом логина (redirect на
+`/{cc}/account` из `checkout/page.tsx`): `POST /store/orders` требует customer-аутентификацию,
+гостевого оформления в маркетплейсе нет (покупатель идентифицируется ради бонусов/компаний/ЛК).
+- **Kaspi спрятан из списка оплат витрины** (фильтр `pp_kaspi_kaspi` в `lib/data/payment.ts`):
+  UI оплаты по QR (инициализация + поллинг `/store/carts/:id/payment/kaspi`) — отдельная подзадача;
+  до неё провайдер в чекауте был бы тупиковым (кнопка Place order задизейблена). Демо-оплата — manual.
+- **Кириллические handle**: стартер не декодирует `params.handle` (Next отдаёт percent-encoded) —
+  страница товара падала 500 на наших товарах. Фикс в `products/[handle]/page.tsx`:
+  `decodeURIComponent` (двумя местами) + проверка `!pricedProduct → notFound()` перенесена ДО
+  `getImagesForVariant` (в стартере падал TypeError вместо 404).
+- **Пустой каталог из дискового кэша Next**: `listProducts` со `force-cache` пережил рестарт в
+  `.next` и отдавал пустой список, снятый до сида — при странностях витрины после пересида чистить
+  `storefront/.next`.
+**Отвергнуто:** передача `delivery_method` явным параметром из UI (дублирует выбор опции доставки —
+рассинхрон источников истины); pickup «фиктивной» shipping-опцией в наборе type=shipping (стартер
+не показал бы адреса складов и тумблер самовывоза); правка бэкенда под гостевое оформление
+(домен требует идентифицированного покупателя).
+**Верификация:** сид прогнан дважды (второй — все «уже есть»); e2e headless-браузером
+(playwright-core + системный Edge, скрипт в scratchpad): каталог /kz/store с ценами KZT → товар
+(кириллический handle) → корзина → гейт гостя на /kz/account → логин → адрес → «Доставка по
+Астане» → Manual Payment (Kaspi в списке нет — проверено скриптом) → Place order → страница
+подтверждения; второй заказ — тумблер «Pick up your order» → «Самовывоз: Склад Астана — Центр»;
+у обоих заказов admin API подтвердил lifecycle: `status=new`, `delivery_method=delivery|pickup`.
+Консольных ошибок наших страниц нет (2 гидрационных warning'а стартера на /kz/store и /kz/account —
+upstream, были до правок). Backend: tsc чистый, lint 0 ошибок; storefront: lint без ошибок
+(warnings react-hooks — upstream), tsc в изменённых файлах чистый (остальной шум — upstream стартера).

@@ -15,6 +15,7 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "@lib/data/locale-actions"
+import { listCartShippingMethods } from "./fulfillment"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -389,7 +390,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
 /**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
  * @param cartId - optional - The ID of the cart to place an order for.
- * @returns The cart object if the order was successful, or null if not.
+ * @returns Never returns on success — redirects to the order confirmation page.
  */
 export async function placeOrder(cartId?: string) {
   const id = cartId || (await getCartId())
@@ -402,27 +403,47 @@ export async function placeOrder(cartId?: string) {
     ...(await getAuthHeaders()),
   }
 
-  const cartRes = await sdk.store.cart
-    .complete(id, {}, headers)
-    .then(async (cartRes) => {
+  // Оформление идёт через кастомный POST /store/orders (workflow place-order:
+  // completeCart ядра + жизненный цикл заказа), а не через ядровый
+  // cart.complete — иначе заказ остался бы без OrderLifecycle. Роут требует
+  // залогиненного покупателя (чекаут закрыт гейтом на странице).
+  const cart = await retrieveCart(id)
+  if (!cart) {
+    throw new Error("Cart not found when placing an order")
+  }
+
+  // Способ получения выводим из выбранной опции: опции pickup-наборов
+  // (fulfillment_set.type === "pickup", «Самовывоз: <склад>») бэкенд фиксирует
+  // в OrderLifecycle как delivery_method=pickup, остальные — delivery.
+  const selectedOptionId = cart.shipping_methods?.at(-1)?.shipping_option_id
+  const shippingOptions = await listCartShippingMethods(id)
+  const isPickup =
+    shippingOptions?.find((option) => option.id === selectedOptionId)
+      ?.service_zone?.fulfillment_set?.type === "pickup"
+
+  const { order } = await sdk.client
+    .fetch<{ order: HttpTypes.StoreOrder }>(`/store/orders`, {
+      method: "POST",
+      body: {
+        cart_id: id,
+        delivery_method: isPickup ? "pickup" : "delivery",
+      },
+      headers,
+    })
+    .then(async (res) => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
-      return cartRes
+      return res
     })
     .catch(medusaError)
 
-  if (cartRes?.type === "order") {
-    const countryCode =
-      cartRes.order.shipping_address?.country_code?.toLowerCase()
+  const countryCode = cart.shipping_address?.country_code?.toLowerCase()
 
-    const orderCacheTag = await getCacheTag("orders")
-    revalidateTag(orderCacheTag)
+  const orderCacheTag = await getCacheTag("orders")
+  revalidateTag(orderCacheTag)
 
-    removeCartId()
-    redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
-  }
-
-  return cartRes.cart
+  removeCartId()
+  redirect(`/${countryCode}/order/${order.id}/confirmed`)
 }
 
 /**

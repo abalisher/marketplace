@@ -9,6 +9,7 @@ import {
   createProductCategoriesWorkflow,
   createProductsWorkflow,
   createRegionsWorkflow,
+  createShippingOptionsWorkflow,
   createStockLocationsWorkflow,
   linkSalesChannelsToStockLocationWorkflow,
   updateRegionsWorkflow,
@@ -22,13 +23,13 @@ import { ProductSegment } from "../modules/catalog/models/product-card"
 
 // Сид региона Казахстан для витрины: валюта KZT, регион с страной kz, склады
 // в Астане (город = stock_location.address.city), демо-каталог стройматериалов
-// с ценами в тенге и остатками по складам (все статусы модерации → published).
+// с ценами в тенге и остатками по складам (все статусы модерации → published),
+// доставка региона: fulfillment-набор «Доставка по Астане» (shipping) + наборы
+// самовывоза на каждый склад (pickup — витрина-стартер различает их по
+// fulfillment_set.type и показывает переключатель «Pick up your order»).
 // Запуск: npx medusa exec ./src/scripts/seed-kz.ts. Идемпотентен: регион,
-// валюта, склады и товары создаются только если их ещё нет (проверка по имени).
-//
-// Оговорка: fulfillment/доставку регион пока НЕ получает (оформление заказа —
-// задача placeOrder, Фаза 2); сид закрывает отображение каталога, цены и
-// остатки «город → склад → остаток».
+// валюта, склады, товары и доставка создаются только если их ещё нет
+// (проверка по имени).
 export default async function seedKz({ container }: ExecArgs) {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const regionService = container.resolve(Modules.REGION)
@@ -343,6 +344,165 @@ export default async function seedKz({ container }: ExecArgs) {
     })
 
     console.log(`+ товар создан и опубликован: ${def.title} (${def.segment})`)
+  }
+
+  // 7. Доставка региона KZ (набор из фикстуры order-lifecycle-workflows /
+  // seed-demo-order): профиль доставки, link товаров к профилю, провайдер
+  // manual на складах, fulfillment-наборы с сервисной зоной kz и shipping
+  // options. Способы получения покупателя: «Доставка по Астане» (shipping,
+  // 2000 KZT) и «Самовывоз» с каждого склада (pickup, 0 KZT) — тип набора
+  // pickup витрина показывает отдельным переключателем, а оформление мапит
+  // его в delivery_method=pickup.
+  const fulfillmentService = container.resolve(Modules.FULFILLMENT)
+  const link = container.resolve(ContainerRegistrationKeys.LINK)
+  const PROVIDER_ID = "manual_manual"
+
+  // 7a. Профиль доставки по умолчанию.
+  let [shippingProfile] = await fulfillmentService.listShippingProfiles(
+    { type: "default" },
+    { take: 1 }
+  )
+  if (!shippingProfile) {
+    shippingProfile = await fulfillmentService.createShippingProfiles({
+      name: "Default",
+      type: "default",
+    })
+    console.log("+ профиль доставки Default создан")
+  }
+
+  // 7b. Link товаров сида к профилю — без него completeCart не даст оформить
+  // заказ. Идемпотентно: линкуем только товары без профиля.
+  const { data: seededProducts } = await query.graph({
+    entity: "product",
+    fields: ["id", "title", "shipping_profile.id"],
+    filters: { title: products.map((p) => p.title) },
+  })
+  for (const product of seededProducts) {
+    if (product.shipping_profile?.id) {
+      continue
+    }
+    await link.create({
+      [Modules.PRODUCT]: { product_id: product.id },
+      [Modules.FULFILLMENT]: { shipping_profile_id: shippingProfile.id },
+    })
+    console.log(`+ товар привязан к профилю доставки: ${product.title}`)
+  }
+
+  // 7c. Провайдер manual на каждом складе (нужен и доставке, и самовывозу —
+  // fulfillment при сборке создаётся с этого склада).
+  const { data: locationsWithProviders } = await query.graph({
+    entity: "stock_location",
+    fields: ["id", "name", "fulfillment_providers.id"],
+    filters: { id: warehouseIds },
+  })
+  for (const location of locationsWithProviders) {
+    const providerIds = (
+      (location.fulfillment_providers ?? []) as { id: string }[]
+    ).map((p) => p.id)
+    if (providerIds.includes(PROVIDER_ID)) {
+      continue
+    }
+    await link.create({
+      [Modules.STOCK_LOCATION]: { stock_location_id: location.id },
+      [Modules.FULFILLMENT]: { fulfillment_provider_id: PROVIDER_ID },
+    })
+    console.log(`+ провайдер ${PROVIDER_ID} подключён к складу: ${location.name}`)
+  }
+
+  // 7d. Fulfillment-наборы + shipping options. Набор → зона kz → опция;
+  // набор линкуется к складу (у pickup-наборов витрина берёт адрес склада
+  // из этого link'а). Идемпотентность — по имени набора и имени опции.
+  const warehouses = warehouseDefs.map((def, idx) => ({
+    ...def,
+    id: warehouseIds[idx],
+  }))
+  const fulfillmentDefs: {
+    setName: string
+    setType: "shipping" | "pickup"
+    locationId: string
+    optionName: string
+    optionCode: string
+    amount: number
+  }[] = [
+    {
+      setName: "Kazakhstan Delivery",
+      setType: "shipping",
+      locationId: warehouses[0].id,
+      optionName: "Доставка по Астане",
+      optionCode: "delivery",
+      amount: 2000,
+    },
+    ...warehouses.map((w) => ({
+      setName: `Pickup — ${w.name}`,
+      setType: "pickup" as const,
+      locationId: w.id,
+      optionName: `Самовывоз: ${w.name}`,
+      optionCode: "pickup",
+      amount: 0,
+    })),
+  ]
+
+  for (const def of fulfillmentDefs) {
+    let [fulfillmentSet] = await fulfillmentService.listFulfillmentSets(
+      { name: def.setName },
+      { relations: ["service_zones"], take: 1 }
+    )
+    if (!fulfillmentSet) {
+      fulfillmentSet = await fulfillmentService.createFulfillmentSets({
+        name: def.setName,
+        type: def.setType,
+        service_zones: [
+          {
+            name: `${def.setName} Zone`,
+            geo_zones: [{ country_code: "kz", type: "country" }],
+          },
+        ],
+      })
+      await link.create({
+        [Modules.STOCK_LOCATION]: { stock_location_id: def.locationId },
+        [Modules.FULFILLMENT]: { fulfillment_set_id: fulfillmentSet.id },
+      })
+      console.log(`+ fulfillment-набор создан: ${def.setName} (${def.setType})`)
+    } else {
+      console.log(`— fulfillment-набор уже есть: ${def.setName}`)
+    }
+
+    const [existingOption] = await fulfillmentService.listShippingOptions(
+      { name: def.optionName },
+      { take: 1 }
+    )
+    if (existingOption) {
+      console.log(`— способ получения уже есть: ${def.optionName}`)
+      continue
+    }
+    await createShippingOptionsWorkflow(container).run({
+      input: [
+        {
+          name: def.optionName,
+          price_type: "flat",
+          provider_id: PROVIDER_ID,
+          service_zone_id: fulfillmentSet.service_zones[0].id,
+          shipping_profile_id: shippingProfile.id,
+          type: {
+            label: def.setType === "pickup" ? "Pickup" : "Delivery",
+            description:
+              def.setType === "pickup"
+                ? "Самовывоз со склада"
+                : "Доставка по городу",
+            code: def.optionCode,
+          },
+          prices: [
+            { currency_code: CURRENCY, amount: def.amount },
+            { region_id: region.id, amount: def.amount },
+          ],
+          rules: [
+            { attribute: "enabled_in_store", value: "true", operator: "eq" },
+            { attribute: "is_return", value: "false", operator: "eq" },
+          ],
+        },
+      ],
+    })
+    console.log(`+ способ получения создан: ${def.optionName} (${def.amount} KZT)`)
   }
 
   console.log("Сид региона Казахстан завершён.")

@@ -1,6 +1,8 @@
 # storefront/ — веб-витрина покупателя (Next.js)
 
-> Скаффолд ещё не выполнен: база — официальный Medusa Next.js Starter Storefront (см. docs/STATE.md).
+> База — официальный Medusa Next.js Starter Storefront. Кастомизации: оформление через
+> `POST /store/orders` (наш placeOrder + delivery_method), гейт логина в чекауте, фильтр Kaspi
+> в списке оплат, decodeURIComponent для кириллических handle. Текущее состояние — docs/STATE.md.
 
 ## Правила
 - Витрина — ТОНКИЙ клиент: только отображение и вызовы API (Medusa JS SDK). Бизнес-правил здесь нет —

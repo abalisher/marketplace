@@ -25,9 +25,14 @@ export const listCartPaymentMethods = async (regionId: string) => {
       }
     )
     .then(({ payment_providers }) =>
-      payment_providers.sort((a, b) => {
-        return a.id > b.id ? 1 : -1
-      })
+      payment_providers
+        // Kaspi (pp_kaspi_kaspi) подключён к региону для API/mobile, но UI
+        // оплаты по QR в витрине ещё не сделан — до него провайдера в чекауте
+        // не показываем, чтобы не давать выбрать тупиковый способ оплаты.
+        .filter((p) => p.id !== "pp_kaspi_kaspi")
+        .sort((a, b) => {
+          return a.id > b.id ? 1 : -1
+        })
     )
     .catch(() => {
       return null
