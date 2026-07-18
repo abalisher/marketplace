@@ -24,8 +24,10 @@ import { listCartShippingMethods } from "./fulfillment"
  */
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
+  // *credit_lines обязателен: без него ядро считает total БЕЗ вычета
+  // кредитных линий (бонусов) — эмпирика Medusa 2.17.2.
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *credit_lines"
 
   if (!id) {
     return null

@@ -1,8 +1,10 @@
 "use client"
 
 import { RadioGroup } from "@headlessui/react"
-import { isStripeLike, paymentInfoMap } from "@lib/constants"
+import { isKaspi, isStripeLike, paymentInfoMap } from "@lib/constants"
 import { initiatePaymentSession } from "@lib/data/cart"
+import { initKaspiPayment } from "@lib/data/payment"
+import { getBonusCreditAmount } from "@lib/util/bonus"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -51,8 +53,14 @@ const Payment = ({
   const paidByGiftcard =
     cart?.gift_cards && cart?.gift_cards?.length > 0 && cart?.total === 0
 
+  // Заказ целиком покрыт бонусами (кредитные линии ядра): платёжная сессия
+  // не нужна — бэкенд пропускает проверку оплаты при total=0.
+  const paidByBonus = getBonusCreditAmount(cart) > 0 && cart?.total === 0
+
   const paymentReady =
-    (activeSession && cart?.shipping_methods.length !== 0) || paidByGiftcard
+    (activeSession && cart?.shipping_methods.length !== 0) ||
+    paidByGiftcard ||
+    paidByBonus
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -79,10 +87,16 @@ const Payment = ({
       const checkActiveSession =
         activeSession?.provider_id === selectedPaymentMethod
 
-      if (!checkActiveSession) {
-        await initiatePaymentSession(cart, {
-          provider_id: selectedPaymentMethod,
-        })
+      if (!checkActiveSession && !paidByGiftcard && !paidByBonus) {
+        // Kaspi инициализируется своим роутом бэкенда (инвойс + QR одним
+        // вызовом), остальные провайдеры — ядровым initiatePaymentSession.
+        if (isKaspi(selectedPaymentMethod)) {
+          await initKaspiPayment(cart.id)
+        } else {
+          await initiatePaymentSession(cart, {
+            provider_id: selectedPaymentMethod,
+          })
+        }
       }
 
       if (!shouldInputCard) {
@@ -134,7 +148,7 @@ const Payment = ({
       </div>
       <div>
         <div className={isOpen ? "block" : "hidden"}>
-          {!paidByGiftcard && availablePaymentMethods?.length && (
+          {!paidByGiftcard && !paidByBonus && availablePaymentMethods?.length && (
             <>
               <RadioGroup
                 value={selectedPaymentMethod}
@@ -178,6 +192,20 @@ const Payment = ({
             </div>
           )}
 
+          {paidByBonus && (
+            <div className="flex flex-col w-1/3">
+              <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                Payment method
+              </Text>
+              <Text
+                className="txt-medium text-ui-fg-subtle"
+                data-testid="payment-method-summary"
+              >
+                Bonuses
+              </Text>
+            </div>
+          )}
+
           <ErrorMessage
             error={error}
             data-testid="payment-method-error-message"
@@ -190,7 +218,7 @@ const Payment = ({
             isLoading={isLoading}
             disabled={
               (isStripeLike(selectedPaymentMethod) && !cardComplete) ||
-              (!selectedPaymentMethod && !paidByGiftcard)
+              (!selectedPaymentMethod && !paidByGiftcard && !paidByBonus)
             }
             data-testid="submit-payment-button"
           >
@@ -246,6 +274,18 @@ const Payment = ({
                 data-testid="payment-method-summary"
               >
                 Gift card
+              </Text>
+            </div>
+          ) : paidByBonus ? (
+            <div className="flex flex-col w-1/3">
+              <Text className="txt-medium-plus text-ui-fg-base mb-1">
+                Payment method
+              </Text>
+              <Text
+                className="txt-medium text-ui-fg-subtle"
+                data-testid="payment-method-summary"
+              >
+                Bonuses
               </Text>
             </div>
           ) : null}

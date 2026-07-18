@@ -1,5 +1,6 @@
 "use client"
 
+import { getBonusCreditAmount } from "@lib/util/bonus"
 import { convertToLocale } from "@lib/util/money"
 import React from "react"
 
@@ -12,6 +13,9 @@ type CartTotalsProps = {
     item_subtotal?: number | null
     shipping_subtotal?: number | null
     discount_subtotal?: number | null
+    credit_lines?:
+      | { amount?: number | null; reference?: string | null }[]
+      | null
   }
 }
 
@@ -24,6 +28,8 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
     shipping_subtotal,
     discount_subtotal,
   } = totals
+
+  const bonusTotal = getBonusCreditAmount(totals)
 
   return (
     <div>
@@ -51,6 +57,22 @@ const CartTotals: React.FC<CartTotalsProps> = ({ totals }) => {
               -{" "}
               {convertToLocale({
                 amount: discount_subtotal ?? 0,
+                currency_code,
+              })}
+            </span>
+          </div>
+        )}
+        {!!bonusTotal && (
+          <div className="flex items-center justify-between">
+            <span>Bonuses</span>
+            <span
+              className="text-ui-fg-interactive"
+              data-testid="cart-bonus"
+              data-value={bonusTotal}
+            >
+              -{" "}
+              {convertToLocale({
+                amount: bonusTotal,
                 currency_code,
               })}
             </span>

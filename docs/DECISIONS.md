@@ -507,3 +507,53 @@ fulfillment-набора pickup → `pickup`, иначе `delivery`) — отд�
 Консольных ошибок наших страниц нет (2 гидрационных warning'а стартера на /kz/store и /kz/account —
 upstream, были до правок). Backend: tsc чистый, lint 0 ошибок; storefront: lint без ошибок
 (warnings react-hooks — upstream), tsc в изменённых файлах чистый (остальной шум — upstream стартера).
+
+## 2026-07-18 — Витрина, часть 2: Kaspi QR в чекауте + бонусы + чистка каталога
+**Решение:** покупательский чекаут доведён до паритета с store API. (1) **Kaspi QR**: фильтр
+`pp_kaspi_kaspi` в `lib/data/payment.ts` снят; на шаге Payment Kaspi инициализируется НАШИМ роутом
+`POST /store/carts/:id/payment/kaspi` (server action `initKaspiPayment`), а не ядровым
+`initiatePaymentSession` — бэкенд одним вызовом создаёт collection + сессию с инвойсом и возвращает
+QR/ссылку; на шаге Review `KaspiPaymentButton` показывает QR (`react-qr-code`, единственная новая
+зависимость) + ссылку и поллит `GET .../payment/kaspi` каждые 3с; `authorized|captured` →
+`placeOrder()` автоматически (кнопка — ручной запасной вариант). ВАЖНО: первичная загрузка на
+Review — через GET-статус, `initKaspiPayment` только fallback: init делает `revalidateTag(carts)` →
+RSC-перерендер → ремаунт кнопки → повторный init — цикл перерендеров (наступили в e2e).
+(2) **Мок-сценарий из env витрины**: `KASPI_MOCK_SCENARIO` (server-side env, не NEXT_PUBLIC) —
+server action подкладывает `scenario` в init; для проходимого dev-чекаута ставить `paid`
+(бэкенд в live сценарий игнорирует; мок без сценария вечно `pending`). Документировано в
+`.env.template`; в локальный `.env` владельцу добавить руками.
+(3) **Бонусы**: `lib/data/bonus.ts` (`retrieveBonusBalance` — null для гостя, `applyCartBonus`,
+`removeCartBonus`), форма `checkout/components/bonus-form` по идиоме discount-code (баланс в
+заголовке, применённая сумма строкой с корзинкой), строка «Bonuses» в `cart-totals` из
+`credit_lines` c `reference="bonus_account"` (чистый хелпер `lib/util/bonus.ts`).
+`applyCartBonus` ВОЗВРАЩАЕТ строку ошибки (идиома login/signup actions), не бросает: в prod Next
+редактирует сообщения исключений server actions, а ошибки потолка/баланса — пользовательские.
+(4) **`*credit_lines` в fields**: добавлен в `retrieveCart` и `retrieveOrder` — ядро 2.17.2 считает
+`total` С ВЫЧЕТОМ кредитных линий только если они запрошены (эмпирика подтверждена и на
+HTTP-роуте `GET /store/carts/:id`, не только в query.graph).
+(5) **Оплата целиком бонусами** (`total=0`, платёжной сессии нет): `paidByBonus` по образцу
+`paidByGiftcard` в payment/review/payment-button; отдельная кнопка Place order без сессии
+(проверку «total=0 при кредитных линиях» делает бэкенд в `ensure-cart-payment-authorized`).
+(6) **Чистка каталога**: скрипт `cleanup-starter-catalog.ts` — apparel-товары сида стартера
+удаляются `deleteProductsWorkflow`; «Demo Order Product» НЕ удаляется (на нём демо-заказы с
+резервами) — переводится в `draft` через сервис модуля product (событие не эмитится). Плюс
+dev-утилита `grant-demo-bonus.ts <email> [amount]` — начислить бонусы покупателю для ручной
+проверки (клиент из seed-demo-bonus без пароля в витрину не логинится).
+**Отвергнуто:** инициализация Kaspi ядровым `initiatePaymentSession` (создаёт сессию без нашего
+идемпотентного ответа с QR и дублирует путь mobile); ручной пересчёт тотала с бонусами на клиенте
+(источник истины — `cart.total` ядра с запрошенными credit_lines); удаление «Demo Order Product»
+(резервы/заказы демо-данных).
+**Верификация:** e2e headless-Edge (playwright-core, скрипт в scratchpad), три сценария:
+(A) цемент + «Доставка по Астане» → бонус 500 применён (тотал 5200→4700, строка Bonuses) →
+Kaspi QR → мок paid → авто-оформление → подтверждение с Bonuses/Kaspi QR; admin API: lifecycle
+new/delivery; леджер: баланс 6000→5500, spend-транзакция 500. (B) песок + самовывоз →
+пред-инициализация сценарием pending → QR-панель на Review: svg + ссылка + «Waiting for payment»,
+стабильна 6.5с (два цикла поллинга); затем потолок 100 через `POST /admin/bonus-config`, бонус на
+весь тотал 8000 → тотал 0 → Place order без платёжной сессии → lifecycle new/pickup, баланс
+−8000; конфиг возвращён (50). (C) превышение потолка (5000 при лимите 4000) → ошибка бэкенда
+в форме «Bonus spend 5000 exceeds 50% of order amount 8000». Каталог: apparel и Demo Order
+Product отсутствуют, KZ-товары на месте; cleanup-скрипт прогнан дважды (идемпотентен).
+Консольных ошибок наших страниц 0 (2 hydration-warning'а стартера — upstream). Backend: tsc обоих
+tsconfig чистый, lint 0 ошибок; storefront: lint без ошибок, tsc изменённых файлов чистый;
+`bash scripts/ci.sh` — CI OK. Попутный нюанс среды: долгоживущий backend dev-процесс (сутки+)
+деградирует — store-роуты виснут при живом `/health`; лечится перезапуском `npm run dev`.

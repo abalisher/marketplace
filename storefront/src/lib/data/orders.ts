@@ -18,8 +18,10 @@ export const retrieveOrder = async (id: string) => {
     .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
       method: "GET",
       query: {
+        // *credit_lines — чтобы на подтверждении заказа показать строку
+        // «оплачено бонусами» и тотал с её учётом.
         fields:
-          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product,*credit_lines",
       },
       headers,
       next,

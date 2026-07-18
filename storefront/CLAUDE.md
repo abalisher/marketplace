@@ -1,8 +1,11 @@
 # storefront/ — веб-витрина покупателя (Next.js)
 
 > База — официальный Medusa Next.js Starter Storefront. Кастомизации: оформление через
-> `POST /store/orders` (наш placeOrder + delivery_method), гейт логина в чекауте, фильтр Kaspi
-> в списке оплат, decodeURIComponent для кириллических handle. Текущее состояние — docs/STATE.md.
+> `POST /store/orders` (наш placeOrder + delivery_method), гейт логина в чекауте, Kaspi QR в
+> чекауте (init/поллинг через наш роут, `KaspiPaymentButton`, env `KASPI_MOCK_SCENARIO` для мока),
+> бонусы в чекауте (`lib/data/bonus.ts`, `bonus-form`, строка в cart-totals из `credit_lines` —
+> `*credit_lines` обязателен в fields, иначе total без вычета), decodeURIComponent для
+> кириллических handle. Текущее состояние — docs/STATE.md.
 
 ## Правила
 - Витрина — ТОНКИЙ клиент: только отображение и вызовы API (Medusa JS SDK). Бизнес-правил здесь нет —

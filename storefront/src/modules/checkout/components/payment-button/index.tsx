@@ -1,11 +1,18 @@
 "use client"
 
-import { isManual, isStripeLike } from "@lib/constants"
+import { isKaspi, isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
+import {
+  getKaspiPaymentStatus,
+  initKaspiPayment,
+  KaspiPayment,
+} from "@lib/data/payment"
+import { getBonusCreditAmount } from "@lib/util/bonus"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@medusajs/ui"
+import { Button, Text } from "@medusajs/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
+import QRCode from "react-qr-code"
 import ErrorMessage from "../error-message"
 
 type PaymentButtonProps = {
@@ -26,7 +33,12 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
 
+  // Заказ целиком покрыт бонусами — платёжной сессии нет, оформляем сразу.
+  const paidByBonus = getBonusCreditAmount(cart) > 0 && cart.total === 0
+
   switch (true) {
+    case paidByBonus:
+      return <BonusPaymentButton notReady={notReady} />
     case isStripeLike(paymentSession?.provider_id):
       return (
         <StripePaymentButton
@@ -35,6 +47,8 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
           data-testid={dataTestId}
         />
       )
+    case isKaspi(paymentSession?.provider_id):
+      return <KaspiPaymentButton notReady={notReady} cart={cart} />
     case isManual(paymentSession?.provider_id):
       return (
         <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
@@ -146,6 +160,184 @@ const StripePaymentButton = ({
       <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"
+      />
+    </>
+  )
+}
+
+// Оплата Kaspi QR: инициализация (идемпотентна — сессия с инвойсом уже
+// создана на шаге Payment), показ QR/ссылки, поллинг статуса; оплачено →
+// заказ оформляется автоматически. Вся механика денег — на бэкенде.
+const KaspiPaymentButton = ({
+  cart,
+  notReady,
+}: {
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+}) => {
+  const [payment, setPayment] = useState<KaspiPayment | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [placingOrder, setPlacingOrder] = useState(false)
+  const placedRef = useRef(false)
+
+  const isPaid =
+    payment?.status === "authorized" || payment?.status === "captured"
+  const isFailed =
+    payment?.status === "canceled" || payment?.status === "error"
+
+  // Первичная загрузка — ЧЕРЕЗ СТАТУС (GET без ревалидации кэша): сессия уже
+  // создана на шаге Payment. initKaspiPayment здесь только fallback (если
+  // сессии нет) — он ревалидирует кэш корзины и ремаунтит компонент, вызов
+  // на каждый маунт зациклил бы перерендер.
+  useEffect(() => {
+    if (notReady) {
+      return
+    }
+    let cancelled = false
+    getKaspiPaymentStatus(cart.id)
+      .then((p) => {
+        if (!cancelled) {
+          setPayment(p)
+        }
+      })
+      .catch(() =>
+        initKaspiPayment(cart.id)
+          .then((p) => {
+            if (!cancelled) {
+              setPayment(p)
+            }
+          })
+          .catch((err) => setErrorMessage(err.message))
+      )
+    return () => {
+      cancelled = true
+    }
+  }, [cart.id, notReady])
+
+  // Поллинг статуса, пока ждём оплату.
+  useEffect(() => {
+    if (!payment || isPaid || isFailed) {
+      return
+    }
+    const timer = setInterval(async () => {
+      try {
+        setPayment(await getKaspiPaymentStatus(cart.id))
+      } catch {
+        // сетевые сбои поллинга молча пробуем снова
+      }
+    }, 3000)
+    return () => clearInterval(timer)
+  }, [payment, isPaid, isFailed, cart.id])
+
+  // Оформление после оплаты (ровно один раз); кнопка — ручной запасной
+  // вариант на случай, если авто-оформление упало.
+  const submitOrder = () => {
+    if (placedRef.current) {
+      return
+    }
+    placedRef.current = true
+    setPlacingOrder(true)
+    placeOrder().catch((err) => {
+      setErrorMessage(err.message)
+      setPlacingOrder(false)
+      placedRef.current = false
+    })
+  }
+
+  // Оплачено → оформляем заказ автоматически.
+  useEffect(() => {
+    if (isPaid) {
+      submitOrder()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPaid])
+
+  return (
+    <div className="flex flex-col items-start gap-y-4">
+      {payment?.qr_payload && !isPaid && !isFailed && (
+        <div
+          className="flex flex-col gap-y-3"
+          data-testid="kaspi-payment-panel"
+        >
+          <Text className="txt-medium text-ui-fg-subtle">
+            Scan the QR code in the Kaspi.kz app to pay
+          </Text>
+          <div className="bg-white p-3 border rounded-lg w-fit">
+            <QRCode value={payment.qr_payload} size={160} />
+          </div>
+          {payment.payment_url && (
+            <a
+              href={payment.payment_url}
+              target="_blank"
+              rel="noreferrer"
+              className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+              data-testid="kaspi-payment-link"
+            >
+              Or open the payment link
+            </a>
+          )}
+        </div>
+      )}
+
+      {isFailed && (
+        <Text className="txt-medium text-ui-fg-error">
+          Payment was {payment?.status === "canceled" ? "canceled" : "declined"}
+          . Go back to the Payment step to try again.
+        </Text>
+      )}
+
+      <Button
+        disabled={notReady || !isPaid}
+        isLoading={!payment || placingOrder}
+        onClick={submitOrder}
+        size="large"
+        data-testid="submit-order-button"
+      >
+        {placingOrder
+          ? "Placing order"
+          : isPaid
+          ? "Payment received"
+          : "Waiting for payment"}
+      </Button>
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="kaspi-payment-error-message"
+      />
+    </div>
+  )
+}
+
+// Заказ целиком оплачен бонусами: платёжная сессия не нужна — сразу placeOrder
+// (проверку «total=0 при кредитных линиях» делает бэкенд).
+const BonusPaymentButton = ({ notReady }: { notReady: boolean }) => {
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const handlePayment = () => {
+    setSubmitting(true)
+    placeOrder()
+      .catch((err) => {
+        setErrorMessage(err.message)
+      })
+      .finally(() => {
+        setSubmitting(false)
+      })
+  }
+
+  return (
+    <>
+      <Button
+        disabled={notReady}
+        isLoading={submitting}
+        onClick={handlePayment}
+        size="large"
+        data-testid="submit-order-button"
+      >
+        Place order
+      </Button>
+      <ErrorMessage
+        error={errorMessage}
+        data-testid="bonus-payment-error-message"
       />
     </>
   )

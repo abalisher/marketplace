@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.template
 # креды временной тест-БД (локальный docker) — намеренно в репо
 !.env.test
 
