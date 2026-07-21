@@ -1,0 +1,221 @@
+{
+  "paths": {
+    "/admin/orders/{id}/reviews": {
+      "get": {
+        "operationId": "AdminGetOrdersIdReviews",
+        "summary": "List Order Reviews (Admin)",
+        "description": "Все отзывы заказа (включая скрытые) для админа/продавца. Namespace /reviews не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отзывы заказа.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminReviewsRes" } } }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/disputes": {
+      "get": {
+        "operationId": "AdminGetOrdersIdDisputes",
+        "summary": "List Order Disputes (Admin)",
+        "description": "Диспуты заказа для админа/продавца (страница заказа).",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Диспуты заказа.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDisputesRes" } } }
+          }
+        }
+      }
+    },
+    "/admin/reviews/summary": {
+      "get": {
+        "operationId": "AdminGetReviewsSummary",
+        "summary": "Rating Summary (Admin)",
+        "description": "Сводка рейтинга по объектам (поставщик/доставка): среднее и количество опубликованных отзывов.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "responses": {
+          "200": {
+            "description": "Сводка рейтинга.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminReviewSummariesRes" } } }
+          }
+        }
+      }
+    },
+    "/admin/reviews/{id}/moderate": {
+      "post": {
+        "operationId": "AdminPostReviewsIdModerate",
+        "summary": "Moderate Review",
+        "description": "Скрыть/опубликовать отзыв (модерация видимости).",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminModerateReview" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённый отзыв.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminReviewRes" } } }
+          }
+        }
+      }
+    },
+    "/admin/disputes": {
+      "get": {
+        "operationId": "AdminGetDisputes",
+        "summary": "List Dispute Queue",
+        "description": "Очередь диспутов: фильтр по статусу (дефолт — активные open+in_review, FIFO), пагинация.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "enum": ["open", "in_review", "resolved", "rejected"] }
+          },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
+          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0, "default": 0 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Страница очереди диспутов.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDisputesListRes" } } }
+          }
+        }
+      }
+    },
+    "/admin/disputes/{id}/transition": {
+      "post": {
+        "operationId": "AdminPostDisputesIdTransition",
+        "summary": "Transition Dispute",
+        "description": "Ведение диспута по стейт-машине (in_review/resolved/rejected). Недопустимый из текущего статуса переход → 400.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminTransitionDispute" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённый диспут.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDisputeRes" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminReview": {
+        "type": "object",
+        "required": ["id", "order_id", "target", "rating", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "order_id": { "type": "string" },
+          "customer_id": { "type": "string" },
+          "target": { "type": "string", "enum": ["supplier", "delivery"] },
+          "rating": { "type": "integer" },
+          "comment": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["published", "hidden"] },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "AdminReviewRes": {
+        "type": "object",
+        "required": ["review"],
+        "properties": { "review": { "$ref": "#/components/schemas/AdminReview" } }
+      },
+      "AdminReviewsRes": {
+        "type": "object",
+        "required": ["reviews"],
+        "properties": {
+          "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/AdminReview" } }
+        }
+      },
+      "AdminModerateReview": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "type": "string", "enum": ["published", "hidden"] }
+        }
+      },
+      "AdminReviewSummary": {
+        "type": "object",
+        "required": ["target", "count", "average"],
+        "properties": {
+          "target": { "type": "string", "enum": ["supplier", "delivery"] },
+          "count": { "type": "integer" },
+          "average": { "type": "number" }
+        }
+      },
+      "AdminReviewSummariesRes": {
+        "type": "object",
+        "required": ["summaries"],
+        "properties": {
+          "summaries": { "type": "array", "items": { "$ref": "#/components/schemas/AdminReviewSummary" } }
+        }
+      },
+      "AdminDispute": {
+        "type": "object",
+        "required": ["id", "order_id", "category", "description", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "order_id": { "type": "string" },
+          "customer_id": { "type": "string" },
+          "category": { "type": "string", "enum": ["not_delivered", "damaged", "wrong_item", "quality", "other"] },
+          "description": { "type": "string" },
+          "status": { "type": "string", "enum": ["open", "in_review", "resolved", "rejected"] },
+          "resolution": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "AdminDisputeRes": {
+        "type": "object",
+        "required": ["dispute"],
+        "properties": { "dispute": { "$ref": "#/components/schemas/AdminDispute" } }
+      },
+      "AdminDisputesRes": {
+        "type": "object",
+        "required": ["disputes"],
+        "properties": {
+          "disputes": { "type": "array", "items": { "$ref": "#/components/schemas/AdminDispute" } }
+        }
+      },
+      "AdminDisputesListRes": {
+        "type": "object",
+        "required": ["disputes", "count", "offset", "limit"],
+        "properties": {
+          "disputes": { "type": "array", "items": { "$ref": "#/components/schemas/AdminDispute" } },
+          "count": { "type": "integer" },
+          "offset": { "type": "integer" },
+          "limit": { "type": "integer" }
+        }
+      },
+      "AdminTransitionDispute": {
+        "type": "object",
+        "required": ["to"],
+        "properties": {
+          "to": { "type": "string", "enum": ["in_review", "resolved", "rejected"] },
+          "resolution": { "type": "string", "maxLength": 4000 }
+        }
+      }
+    }
+  }
+}
