@@ -19,3 +19,26 @@ export const StoreCancelOrder = z.object({
   reason: z.string().trim().min(1).optional(),
 })
 export type StoreCancelOrderType = z.infer<typeof StoreCancelOrder>
+
+// Отзыв покупателя по заказу (рейтинг поставщика/доставки раздельно). Право
+// оставить (доставленный/закрытый свой заказ; delivery — только delivery) —
+// гейт в createReviewWorkflow; границы оценки дублирует сервис модуля.
+export const StoreCreateReview = z.object({
+  target: z.enum(["supplier", "delivery"]),
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().trim().min(1).max(2000).optional(),
+})
+export type StoreCreateReviewType = z.infer<typeof StoreCreateReview>
+
+// Открытие диспута «проблема с заказом» покупателем.
+export const StoreOpenDispute = z.object({
+  category: z.enum([
+    "not_delivered",
+    "damaged",
+    "wrong_item",
+    "quality",
+    "other",
+  ]),
+  description: z.string().trim().min(1).max(4000),
+})
+export type StoreOpenDisputeType = z.infer<typeof StoreOpenDispute>

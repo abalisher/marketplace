@@ -1,5 +1,8 @@
 import { z } from "@medusajs/framework/zod"
-import { ORDER_STATUSES } from "../../../modules/order-lifecycle/models/statuses"
+import {
+  DELIVERY_METHODS,
+  ORDER_STATUSES,
+} from "../../../modules/order-lifecycle/models/statuses"
 
 // Zod-схемы admin-роутов заказа: очередь жизненного цикла + переходы статуса.
 // Подключаются в src/api/middlewares.ts; роуты читают req.validatedQuery/Body.
@@ -12,10 +15,14 @@ export const ORDER_LIFECYCLE_ORDER_FIELDS = [
   "-updated_at",
 ] as const
 
-// Фильтры очереди заказов по бизнес-статусу + сортировка + пагинация.
-// Дефолт — FIFO по created_at (старые сверху, как очередь на обработку).
+// Фильтры очереди заказов по бизнес-статусу + способу получения + поиск +
+// сортировка + пагинация. Дефолт — FIFO по created_at (старые сверху, как
+// очередь на обработку). `q` ищет по номеру заказа (display_id) и email
+// покупателя (поиск по телефону появится с привязкой покупателя к POS-заказу).
 export const AdminGetOrderLifecyclesParams = z.object({
   status: z.enum(ORDER_STATUSES).optional(),
+  delivery_method: z.enum(DELIVERY_METHODS).optional(),
+  q: z.string().trim().min(1).optional(),
   order: z.enum(ORDER_LIFECYCLE_ORDER_FIELDS).default("created_at"),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),

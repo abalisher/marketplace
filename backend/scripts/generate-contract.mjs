@@ -1,9 +1,12 @@
 // Генерация contracts/openapi.json — контракта API для Dart-кодогена (mobile).
 //
-// База — официальная спека Medusa v2 Store API (docs.medusajs.com), поверх неё
-// мерджатся фрагменты кастомных роутов: backend/src/api/**/*.oas.json
-// (каждый фрагмент — объект с необязательными ключами `paths` и `components`,
-// они подмешиваются в итоговую спеку; конфликт путей — ошибка).
+// База — официальная спека Medusa v2 Store API (docs.medusajs.com) + точечная
+// выборка ядровых admin-операций из Admin-спеки (ADMIN_BASE_PATHS — то, что
+// нужно partner-клиенту: логин продавца, заказы, товары, склады; вся Admin-спека
+// не нужна и огромна). Поверх мерджатся фрагменты кастомных роутов:
+// backend/src/api/**/*.oas.json (каждый фрагмент — объект с необязательными
+// ключами `paths` и `components`, они подмешиваются в итоговую спеку; конфликт
+// путей — ошибка).
 //
 // Запуск: npm run contract:generate (из backend/). Нужен интернет (скачивание базы).
 
@@ -13,6 +16,20 @@ import { fileURLToPath } from "node:url"
 import { load as parseYaml } from "js-yaml"
 
 const BASE_SPEC_URL = "https://docs.medusajs.com/api/download/store"
+const ADMIN_SPEC_URL = "https://docs.medusajs.com/api/download/admin"
+
+// Ядровые admin-операции для partner-приложения (гэп 8 сверки partner-раунда,
+// 2026-07-18). Расширять по мере надобности клиента — замыкание схем ($ref)
+// подтянется автоматически.
+const ADMIN_BASE_PATHS = {
+  "/auth/user/{auth_provider}": ["post"],
+  "/auth/token/refresh": ["post"],
+  "/admin/orders": ["get"],
+  "/admin/orders/{id}": ["get"],
+  "/admin/products": ["get"],
+  "/admin/products/{id}": ["get"],
+  "/admin/stock-locations": ["get"],
+}
 
 const backendDir = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const apiDir = join(backendDir, "src", "api")
@@ -120,11 +137,103 @@ function normalizeOperations(paths) {
   }
 }
 
+// Собирает имена схем, на которые (транзитивно) ссылается узел через
+// $ref "#/components/schemas/<имя>".
+function collectSchemaRefs(node, into) {
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectSchemaRefs(item, into))
+    return
+  }
+  if (node === null || typeof node !== "object") {
+    return
+  }
+  if (typeof node.$ref === "string") {
+    const match = node.$ref.match(/^#\/components\/schemas\/(.+)$/)
+    if (match) {
+      into.add(match[1])
+    }
+  }
+  Object.values(node).forEach((value) => collectSchemaRefs(value, into))
+}
+
+// Точечный мердж операций Admin-спеки: whitelisted-пути + транзитивное
+// замыкание их схем. Одноимённая схема уже в целевой спеке: идентичная —
+// пропуск (общие базовые типы двух спек), различная — ошибка (молчаливая
+// подмена сломала бы контракт).
+function mergeAdminBase(spec, adminSpec) {
+  const pendingSchemas = new Set()
+
+  for (const [path, methods] of Object.entries(ADMIN_BASE_PATHS)) {
+    const source = adminSpec.paths?.[path]
+    if (!source) {
+      throw new Error(`ADMIN_BASE_PATHS: путь ${path} не найден в Admin-спеке`)
+    }
+    for (const method of methods) {
+      const op = source[method]
+      if (!op) {
+        throw new Error(`ADMIN_BASE_PATHS: операция ${method} ${path} не найдена в Admin-спеке`)
+      }
+      const existing = spec.paths[path]
+      if (existing?.[method]) {
+        // Уже есть в Store-базе (например /auth/token/refresh) — база главнее.
+        continue
+      }
+      // Admin- и Store-спеки используют ОДИНАКОВЫЕ operationId и теги для
+      // зеркальных операций (GetProductsId и в /store, и в /admin) — Dart-кодоген
+      // группирует клиентов по тегу и падает на дубле имён методов. Admin-ветке —
+      // префикс Admin в id и свой тег (отдельные Admin*-клиенты в Dart).
+      if (op.operationId && !op.operationId.includes("Admin")) {
+        op.operationId = `Admin${op.operationId}`
+      }
+      op.tags = (op.tags?.length ? op.tags : ["Admin"]).map((tag) =>
+        tag.toLowerCase().includes("admin") ? tag : `Admin ${tag}`
+      )
+      spec.paths[path] ??= {}
+      spec.paths[path][method] = op
+      collectSchemaRefs(op, pendingSchemas)
+    }
+  }
+
+  const added = []
+  const queue = [...pendingSchemas]
+  while (queue.length) {
+    const name = queue.pop()
+    const schema = adminSpec.components?.schemas?.[name]
+    if (!schema) {
+      throw new Error(`ADMIN_BASE_PATHS: схема ${name} не найдена в Admin-спеке`)
+    }
+    const existing = spec.components.schemas[name]
+    if (existing) {
+      if (JSON.stringify(existing) !== JSON.stringify(schema)) {
+        throw new Error(`ADMIN_BASE_PATHS: схема ${name} различается в Store- и Admin-спеках`)
+      }
+      continue
+    }
+    spec.components.schemas[name] = schema
+    added.push(name)
+    const refs = new Set()
+    collectSchemaRefs(schema, refs)
+    for (const ref of refs) {
+      if (!spec.components.schemas[ref]) {
+        queue.push(ref)
+      }
+    }
+  }
+  return added.length
+}
+
 const res = await fetch(BASE_SPEC_URL)
 if (!res.ok) {
   throw new Error(`Не удалось скачать базовую спеку: HTTP ${res.status} ${BASE_SPEC_URL}`)
 }
 const spec = parseYaml(await res.text())
+
+const adminRes = await fetch(ADMIN_SPEC_URL)
+if (!adminRes.ok) {
+  throw new Error(`Не удалось скачать Admin-спеку: HTTP ${adminRes.status} ${ADMIN_SPEC_URL}`)
+}
+const adminSpec = parseYaml(await adminRes.text())
+const adminSchemasAdded = mergeAdminBase(spec, adminSpec)
 
 spec.servers = [{ url: "http://localhost:9000", description: "Local dev" }]
 normalizeOperatorFilters(spec)
@@ -185,6 +294,7 @@ writeFileSync(outFile, JSON.stringify(spec, null, 2) + "\n")
 
 console.log(
   `contracts/openapi.json: ${Object.keys(spec.paths).length} путей, ` +
-    `${Object.keys(spec.components?.schemas ?? {}).length} схем, ` +
+    `${Object.keys(spec.components?.schemas ?? {}).length} схем ` +
+    `(из них ${adminSchemasAdded} из Admin-спеки), ` +
     `${fragments.length} кастомных фрагментов`
 )

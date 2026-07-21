@@ -22,6 +22,8 @@ import { filterProductsBySegment } from "./store/products/filter-by-segment"
 import { limitStockLocationsPerCity } from "./admin/stock-locations/limit-per-city"
 import {
   StoreCancelOrder,
+  StoreCreateReview,
+  StoreOpenDispute,
   StorePlaceOrder,
 } from "./store/orders/validators"
 import {
@@ -29,7 +31,14 @@ import {
   StoreInitKaspiPayment,
 } from "./store/carts/validators"
 import { StoreGetBonusParams } from "./store/bonus/validators"
+import { StoreCreateEstimate } from "./store/estimates/validators"
 import { AdminUpdateBonusConfig } from "./admin/bonus-config/validators"
+import { AdminUpdateDocumentSettings } from "./admin/document-settings/validators"
+import { AdminModerateReview } from "./admin/reviews/validators"
+import { AdminTransitionDispute } from "./admin/disputes/validators"
+import { AdminUpdateScoringConfig } from "./admin/scoring-config/validators"
+import { AdminSetCreditLimit } from "./admin/companies/[id]/scorecard/validators"
+import { AdminUpsertMaterialNorm } from "./admin/material-norms/validators"
 import {
   AdminCancelOrder,
   AdminCompleteAssembly,
@@ -38,6 +47,12 @@ import {
   AdminPlaceCounterOrder,
   AdminShipOrder,
 } from "./admin/orders/validators"
+import {
+  AdminAddCounterCartItem,
+  AdminCreateCounterCart,
+  AdminInitCounterCartKaspiPayment,
+  AdminUpdateCounterCartItem,
+} from "./admin/counter-carts/validators"
 
 // Сквозные middleware кастомных роутов: аутентификация store-роутов компании
 // (все требуют залогиненного customer) и zod-валидация тел/query.
@@ -146,6 +161,36 @@ export default defineMiddlewares({
       method: "POST",
       middlewares: [validateAndTransformBody(AdminUpdateBonusConfig)],
     },
+    {
+      matcher: "/admin/document-settings",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpdateDocumentSettings)],
+    },
+    {
+      matcher: "/admin/reviews/:id/moderate",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminModerateReview)],
+    },
+    {
+      matcher: "/admin/disputes/:id/transition",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminTransitionDispute)],
+    },
+    {
+      matcher: "/admin/scoring-config",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpdateScoringConfig)],
+    },
+    {
+      matcher: "/admin/companies/:id/scorecard/limit",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminSetCreditLimit)],
+    },
+    {
+      matcher: "/admin/material-norms",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpsertMaterialNorm)],
+    },
     // --- Заказ (order-lifecycle) ---
     // Все store-роуты заказа требуют залогиненного покупателя.
     {
@@ -161,6 +206,22 @@ export default defineMiddlewares({
       matcher: "/store/orders/:id/cancel",
       method: "POST",
       middlewares: [validateAndTransformBody(StoreCancelOrder)],
+    },
+    {
+      // Расчёт материалов (estimator) — гость допускается, только валидация тела.
+      matcher: "/store/estimates",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreCreateEstimate)],
+    },
+    {
+      matcher: "/store/orders/:id/reviews",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreCreateReview)],
+    },
+    {
+      matcher: "/store/orders/:id/disputes",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreOpenDispute)],
     },
     {
       matcher: "/admin/order-lifecycles",
@@ -198,6 +259,31 @@ export default defineMiddlewares({
       matcher: "/admin/counter-orders",
       method: "POST",
       middlewares: [validateAndTransformBody(AdminPlaceCounterOrder)],
+    },
+    // --- POS-корзина продавца (counter-carts) ---
+    // Корзина продажи у окна: создание/наполнение/оплата с admin-стороны
+    // (store-роуты корзины — покупательские). Auth admin — у ядра автоматом.
+    {
+      matcher: "/admin/counter-carts",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminCreateCounterCart)],
+    },
+    {
+      matcher: "/admin/counter-carts/:id/line-items",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminAddCounterCartItem)],
+    },
+    {
+      matcher: "/admin/counter-carts/:id/line-items/:line_id",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpdateCounterCartItem)],
+    },
+    {
+      matcher: "/admin/counter-carts/:id/payment/kaspi",
+      method: "POST",
+      middlewares: [
+        validateAndTransformBody(AdminInitCounterCartKaspiPayment),
+      ],
     },
   ],
 })

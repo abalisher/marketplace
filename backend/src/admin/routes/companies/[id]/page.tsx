@@ -1,6 +1,7 @@
 import {
   CheckCircleSolid,
   EllipsisHorizontal,
+  PencilSquare,
   XCircleSolid,
 } from "@medusajs/icons"
 import {
@@ -18,12 +19,14 @@ import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import RejectCompanyPrompt from "../../../components/reject-company-prompt"
+import CreditLimitDrawer from "../../../components/credit-limit-drawer"
 import { useCompanyModeration } from "../../../hooks/use-company-moderation"
 import {
   AdminCompanyResponse,
   AdminCompanySpendLimit,
   COMPANY_STATUS_META,
 } from "../../../lib/company"
+import { AdminScorecardResponse, formatMoney } from "../../../lib/scoring"
 import { sdk } from "../../../lib/sdk"
 
 const PERIOD_LABELS: Record<AdminCompanySpendLimit["period"], string> = {
@@ -57,6 +60,7 @@ const CompanyDetailPage = () => {
   const { approveMutation, rejectMutation, approveWithConfirm } =
     useCompanyModeration()
   const [rejectOpen, setRejectOpen] = useState(false)
+  const [limitOpen, setLimitOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-companies", id],
@@ -65,6 +69,17 @@ const CompanyDetailPage = () => {
     enabled: !!id,
   })
   const company = data?.company
+
+  // Карточка рейтинга/лимита отсрочки компании (модуль scoring).
+  const { data: scorecardData } = useQuery({
+    queryKey: ["company-scorecard", id],
+    queryFn: () =>
+      sdk.client.fetch<AdminScorecardResponse>(
+        `/admin/companies/${id}/scorecard`
+      ),
+    enabled: !!id,
+  })
+  const scorecard = scorecardData?.scorecard ?? null
 
   if (isLoading) {
     return (
@@ -236,6 +251,67 @@ const CompanyDetailPage = () => {
         )}
       </Container>
 
+      <Container className="divide-y p-0">
+        <div className="flex items-center justify-between px-6 py-4">
+          <Heading level="h2">Credit scoring</Heading>
+          <DropdownMenu>
+            <DropdownMenu.Trigger asChild>
+              <IconButton size="small" variant="transparent">
+                <EllipsisHorizontal />
+              </IconButton>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="end">
+              <DropdownMenu.Item
+                className="gap-x-2"
+                onClick={() => setLimitOpen(true)}
+              >
+                <PencilSquare className="text-ui-fg-subtle" />
+                Set manual limit
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu>
+        </div>
+        {scorecard?.exists ? (
+          <div className="grid grid-cols-2 gap-y-3 px-6 py-4">
+            <Text size="small" weight="plus" className="text-ui-fg-subtle">
+              Score
+            </Text>
+            <Text size="small">{scorecard.score} / 100</Text>
+            <Text size="small" weight="plus" className="text-ui-fg-subtle">
+              Computed limit
+            </Text>
+            <Text size="small">{formatMoney(scorecard.credit_limit)}</Text>
+            <Text size="small" weight="plus" className="text-ui-fg-subtle">
+              Manual limit
+            </Text>
+            <Text size="small">
+              {scorecard.manual_limit != null
+                ? formatMoney(scorecard.manual_limit)
+                : "—"}
+            </Text>
+            <Text size="small" weight="plus" className="text-ui-fg-subtle">
+              Available credit
+            </Text>
+            <Text size="small">{formatMoney(scorecard.available_credit)}</Text>
+            {scorecard.note && (
+              <>
+                <Text size="small" weight="plus" className="text-ui-fg-subtle">
+                  Note
+                </Text>
+                <Text size="small">{scorecard.note}</Text>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="px-6 py-4">
+            <Text size="small" className="text-ui-fg-subtle">
+              No scoring computed yet. It is recalculated as the company's
+              orders close, or you can set a manual limit.
+            </Text>
+          </div>
+        )}
+      </Container>
+
       <RejectCompanyPrompt
         company={rejectOpen ? company : null}
         onClose={() => setRejectOpen(false)}
@@ -246,6 +322,13 @@ const CompanyDetailPage = () => {
           )
         }
         isPending={rejectMutation.isPending}
+      />
+
+      <CreditLimitDrawer
+        companyId={company.id}
+        scorecard={scorecard}
+        open={limitOpen}
+        onClose={() => setLimitOpen(false)}
       />
     </div>
   )
