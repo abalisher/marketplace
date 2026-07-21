@@ -30,6 +30,23 @@
             }
           },
           {
+            "name": "delivery_method",
+            "in": "query",
+            "required": false,
+            "description": "Фильтр по способу получения заказа.",
+            "schema": {
+              "type": "string",
+              "enum": ["delivery", "pickup", "counter"]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Поиск: номер заказа (display_id, можно с «#») или email покупателя (частичное совпадение).",
+            "schema": { "type": "string" }
+          },
+          {
             "name": "order",
             "in": "query",
             "required": false,
@@ -299,6 +316,64 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminOrderStatusRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/documents": {
+      "get": {
+        "operationId": "GetOrdersIdDocuments",
+        "summary": "List Order Documents (Admin)",
+        "description": "Все документы-основания заказа (счёт/накладная/АВР), все версии, новые сверху. Namespace /documents не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Документы заказа (все версии).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDocumentsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/documents/export": {
+      "get": {
+        "operationId": "GetOrdersIdDocumentsExport",
+        "summary": "Export Order Source Data (1C)",
+        "description": "Выгрузка исходных данных заказа для 1С/бухгалтерии: снапшоты текущих версий документов (реквизиты продавца, позиции, суммы деньгами/бонусами раздельно на момент выпуска). Официальные ЭСФ/АВР бухгалтер оформляет вручную; платформа отдаёт исходные данные.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Исходные данные заказа для экспорта.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDocumentsExportRes"
                 }
               }
             }
@@ -590,6 +665,74 @@
             "type": "object",
             "description": "Созданный fulfillment ядра.",
             "properties": { "id": { "type": "string" } }
+          }
+        }
+      },
+      "AdminOrderDocument": {
+        "type": "object",
+        "required": ["id", "type", "number", "version", "is_latest"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["invoice", "waybill", "internal_avr"]
+          },
+          "number": { "type": "string" },
+          "version": { "type": "integer" },
+          "is_latest": { "type": "boolean" },
+          "file_id": { "type": "string", "nullable": true },
+          "file_url": { "type": "string", "nullable": true },
+          "total_money": { "type": "number" },
+          "total_bonus": { "type": "number" },
+          "currency_code": { "type": "string" },
+          "note": { "type": "string", "nullable": true },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderDocumentsRes": {
+        "type": "object",
+        "required": ["documents"],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminOrderDocument" }
+          }
+        }
+      },
+      "AdminOrderDocumentExport": {
+        "type": "object",
+        "required": ["type", "number", "version"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["invoice", "waybill", "internal_avr"]
+          },
+          "number": { "type": "string" },
+          "version": { "type": "integer" },
+          "total_money": { "type": "number" },
+          "total_bonus": { "type": "number" },
+          "currency_code": { "type": "string" },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Замороженные исходные данные документа (реквизиты, позиции, суммы) на момент выпуска."
+          }
+        }
+      },
+      "AdminOrderDocumentsExportRes": {
+        "type": "object",
+        "required": ["order_id", "documents"],
+        "properties": {
+          "order_id": { "type": "string" },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderDocumentExport"
+            }
           }
         }
       }

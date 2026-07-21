@@ -11521,6 +11521,1553 @@
         ]
       }
     },
+    "/auth/user/{auth_provider}": {
+      "post": {
+        "operationId": "AdminPostActor_typeAuth_provider",
+        "summary": "Authenticate User",
+        "description": "Authenticate a user and receive the JWT token to be used in the header of subsequent requests.\n\nWhen used with a third-party provider, such as Google, the request returns a `location` property. You redirect to the specified URL in your frontend to continue authentication with the third-party service.\n",
+        "externalDocs": {
+          "url": "https://docs.medusajs.com/resources/commerce-modules/auth/authentication-route#types-of-authentication-flows",
+          "description": "Learn about different authentication flows."
+        },
+        "x-authenticated": false,
+        "parameters": [
+          {
+            "name": "auth_provider",
+            "in": "path",
+            "description": "The provider used for authentication.",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "emailpass"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "title": "input",
+                "description": "The input data necessary for authentication. \nFor example, for email-pass authentication, pass `email` and `password` properties. \nFor the Google and GitHub authentication providers, you can pass `callback_url` to indicate the URL in the frontend that the user should be redirected to after completing their authentication. This will override the provider's `callbackUrl` configurations in `medusa-config.ts`.\n"
+              }
+            }
+          },
+          "required": true
+        },
+        "x-codeSamples": [
+          {
+            "lang": "JavaScript",
+            "label": "JS SDK",
+            "source": "import Medusa from \"@medusajs/js-sdk\"\n\nexport const sdk = new Medusa({\n  baseUrl: import.meta.env.VITE_BACKEND_URL || \"/\",\n  debug: import.meta.env.DEV,\n  auth: {\n    type: \"session\",\n  },\n})\n\nconst result = await sdk.auth.login(\n  \"user\",\n  \"emailpass\",\n  {\n    email: \"user@gmail.com\",\n    password: \"supersecret\"\n  }\n)\n\nif (typeof result !== \"string\") {\n  alert(\"Authentication requires additional steps\")\n  // replace with the redirect logic of your application\n  window.location.href = result.location\n  return\n}\n\n// user is now authenticated\n// all subsequent requests will use the token in the header\nconst { user } = await sdk.admin.user.me()"
+          },
+          {
+            "lang": "Bash",
+            "label": "Google Provider",
+            "source": "curl -X POST '{backend_url}/auth/user/google'"
+          }
+        ],
+        "tags": [
+          "Admin Auth"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AuthCallbackResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400_error"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found_error"
+          },
+          "409": {
+            "$ref": "#/components/responses/invalid_state_error"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_request_error"
+          },
+          "500": {
+            "$ref": "#/components/responses/500_error"
+          }
+        }
+      }
+    },
+    "/admin/orders": {
+      "get": {
+        "operationId": "AdminGetOrders",
+        "summary": "List Orders",
+        "description": "Retrieve a list of orders. The orders can be filtered by fields such as `id`. The orders can also be sorted or paginated.",
+        "x-authenticated": true,
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "fields",
+              "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+              "externalDocs": {
+                "url": "#select-fields-and-relations"
+              }
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "The number of items to skip when retrieving a list.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "offset",
+              "description": "The number of items to skip when retrieving a list.",
+              "externalDocs": {
+                "url": "#pagination"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the number of items returned in the list.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "limit",
+              "description": "Limit the number of items returned in the list.",
+              "externalDocs": {
+                "url": "#pagination"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "The field to sort the data by. By default, the sort order is ascending. To change the order to descending, prefix the field name with `-`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "order",
+              "description": "The field to sort the data by. By default, the sort order is ascending. To change the order to descending, prefix the field name with `-`."
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "$and",
+            "in": "query",
+            "description": "Join query parameters with an AND condition. Each object's content is the same type as the expected query parameters.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Join query parameters with an AND condition. Each object's content is the same type as the expected query parameters.",
+              "items": {
+                "type": "object"
+              },
+              "title": "$and"
+            }
+          },
+          {
+            "name": "$or",
+            "in": "query",
+            "description": "Join query parameters with an OR condition. Each object's content is the same type as the expected query parameters.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Join query parameters with an OR condition. Each object's content is the same type as the expected query parameters.",
+              "items": {
+                "type": "object"
+              },
+              "title": "$or"
+            }
+          },
+          {
+            "name": "sales_channel_id",
+            "in": "query",
+            "description": "Filter by sales channel IDs to retrieve the orders associated with them.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Filter by sales channel IDs to retrieve the orders associated with them.",
+              "items": {
+                "type": "string",
+                "title": "sales_channel_id",
+                "description": "A sales channel's ID."
+              }
+            }
+          },
+          {
+            "name": "region_id",
+            "in": "query",
+            "description": "Filter by region IDs to retrieve their associated orders.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by region IDs to retrieve their associated orders.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search term to filter the order's searchable properties.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "q",
+              "description": "Search term to filter the order's searchable properties."
+            }
+          },
+          {
+            "name": "created_at",
+            "in": "query",
+            "description": "Filter by the order's creation date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by the order's creation date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "updated_at",
+            "in": "query",
+            "description": "Filter by the order's update date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by the order's update date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "with_deleted",
+            "in": "query",
+            "description": "Whether to include deleted records in the result.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "with_deleted",
+              "description": "Whether to include deleted records in the result."
+            }
+          }
+        ],
+        "security": [
+          {
+            "api_token": []
+          },
+          {
+            "cookie_auth": []
+          },
+          {
+            "jwt_token": []
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "JavaScript",
+            "label": "JS SDK",
+            "source": "import Medusa from \"@medusajs/js-sdk\"\n\nexport const sdk = new Medusa({\n  baseUrl: import.meta.env.VITE_BACKEND_URL || \"/\",\n  debug: import.meta.env.DEV,\n  auth: {\n    type: \"session\",\n  },\n})\n\nsdk.admin.order.list()\n.then(({ orders, count, limit, offset }) => {\n  console.log(orders)\n})"
+          },
+          {
+            "lang": "Shell",
+            "label": "cURL",
+            "source": "curl '{backend_url}/admin/orders' \\\n-H 'Authorization: Bearer {jwt_token}'"
+          }
+        ],
+        "tags": [
+          "Admin Orders"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "description": "The paginated list of orders",
+                      "required": [
+                        "limit",
+                        "offset",
+                        "count"
+                      ],
+                      "properties": {
+                        "limit": {
+                          "type": "number",
+                          "title": "limit",
+                          "description": "The maximum number of items returned."
+                        },
+                        "offset": {
+                          "type": "number",
+                          "title": "offset",
+                          "description": "The number of items skipped before the returned items."
+                        },
+                        "count": {
+                          "type": "number",
+                          "title": "count",
+                          "description": "The total count of items."
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "description": "The paginated list of orders.",
+                      "required": [
+                        "orders"
+                      ],
+                      "properties": {
+                        "orders": {
+                          "type": "array",
+                          "description": "The list of orders.",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminOrder"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400_error"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found_error"
+          },
+          "409": {
+            "$ref": "#/components/responses/invalid_state_error"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_request_error"
+          },
+          "500": {
+            "$ref": "#/components/responses/500_error"
+          }
+        },
+        "x-workflow": "getOrdersListWorkflow",
+        "x-events": []
+      }
+    },
+    "/admin/orders/{id}": {
+      "get": {
+        "operationId": "AdminGetOrdersId",
+        "summary": "Get an Order",
+        "description": "Retrieve an order by its ID. You can expand the order's relations or select the fields that should be returned.",
+        "x-authenticated": true,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The order's ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "fields",
+              "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+              "externalDocs": {
+                "url": "#select-fields-and-relations"
+              }
+            }
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "description": "The order's version.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "version",
+              "description": "The order's version."
+            }
+          }
+        ],
+        "security": [
+          {
+            "api_token": []
+          },
+          {
+            "cookie_auth": []
+          },
+          {
+            "jwt_token": []
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "JavaScript",
+            "label": "JS SDK",
+            "source": "import Medusa from \"@medusajs/js-sdk\"\n\nexport const sdk = new Medusa({\n  baseUrl: import.meta.env.VITE_BACKEND_URL || \"/\",\n  debug: import.meta.env.DEV,\n  auth: {\n    type: \"session\",\n  },\n})\n\nsdk.admin.order.retrieve(\"order_123\")\n.then(({ order }) => {\n  console.log(order)\n})"
+          },
+          {
+            "lang": "Shell",
+            "label": "cURL",
+            "source": "curl '{backend_url}/admin/orders/{id}' \\\n-H 'Authorization: Bearer {jwt_token}'"
+          }
+        ],
+        "tags": [
+          "Admin Orders"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400_error"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found_error"
+          },
+          "409": {
+            "$ref": "#/components/responses/invalid_state_error"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_request_error"
+          },
+          "500": {
+            "$ref": "#/components/responses/500_error"
+          }
+        },
+        "x-workflow": "getOrderDetailWorkflow",
+        "x-events": []
+      }
+    },
+    "/admin/products": {
+      "get": {
+        "operationId": "AdminGetProducts",
+        "summary": "List Products",
+        "description": "Retrieve a list of products. The products can be filtered by fields such as `id`. The products can also be sorted or paginated.",
+        "x-authenticated": true,
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "fields",
+              "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+              "externalDocs": {
+                "url": "#select-fields-and-relations"
+              }
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "The number of items to skip when retrieving a list.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "offset",
+              "description": "The number of items to skip when retrieving a list."
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the number of items returned in the list.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "limit",
+              "description": "Limit the number of items returned in the list.",
+              "externalDocs": {
+                "url": "#pagination"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "The field to sort the data by. By default, the sort order is ascending. To change the order to descending, prefix the field name with `-`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "order",
+              "description": "The field to sort the data by. By default, the sort order is ascending. To change the order to descending, prefix the field name with `-`."
+            }
+          },
+          {
+            "name": "price_list_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search term to filter a product's searchable properties.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "q",
+              "description": "Search term to filter a product's searchable properties."
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "sales_channel_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "handle",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "is_giftcard",
+            "in": "query",
+            "description": "Filter by whether a product is a gift card.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "is_giftcard",
+              "description": "Filter by whether a product is a gift card."
+            }
+          },
+          {
+            "name": "type_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "created_at",
+            "in": "query",
+            "description": "Filter by a product's creation date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by a product's creation date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "updated_at",
+            "in": "query",
+            "description": "Filter by a product's update date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by a product's update date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "deleted_at",
+            "in": "query",
+            "description": "Filter by a product's deletion date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by a product's deletion date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "$and",
+            "in": "query",
+            "description": "Join query parameters with an AND condition. Each object's content is the same type as the expected query parameters.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Join query parameters with an AND condition. Each object's content is the same type as the expected query parameters.",
+              "items": {
+                "type": "object"
+              },
+              "title": "$and"
+            }
+          },
+          {
+            "name": "$or",
+            "in": "query",
+            "description": "Join query parameters with an OR condition. Each object's content is the same type as the expected query parameters.",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Join query parameters with an OR condition. Each object's content is the same type as the expected query parameters.",
+              "items": {
+                "type": "object"
+              },
+              "title": "$or"
+            }
+          },
+          {
+            "name": "collection_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "variants",
+            "in": "query",
+            "description": "Filter the retrieved products' variants.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter the retrieved products' variants.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "with_deleted",
+            "in": "query",
+            "description": "Whether to include deleted products.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "with_deleted",
+              "description": "Whether to include deleted products."
+            }
+          },
+          {
+            "name": "external_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "tag_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "option_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "option_value_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        ],
+        "security": [
+          {
+            "api_token": []
+          },
+          {
+            "cookie_auth": []
+          },
+          {
+            "jwt_token": []
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "JavaScript",
+            "label": "JS SDK",
+            "source": "import Medusa from \"@medusajs/js-sdk\"\n\nexport const sdk = new Medusa({\n  baseUrl: import.meta.env.VITE_BACKEND_URL || \"/\",\n  debug: import.meta.env.DEV,\n  auth: {\n    type: \"session\",\n  },\n})\n\nsdk.admin.product.list()\n.then(({ products, count, limit, offset }) => {\n  console.log(products)\n})"
+          },
+          {
+            "lang": "Shell",
+            "label": "cURL",
+            "source": "curl '{backend_url}/admin/products' \\\n-H 'Authorization: Bearer {jwt_token}'"
+          }
+        ],
+        "tags": [
+          "Admin Products"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "description": "The paginated list of products.",
+                      "required": [
+                        "limit",
+                        "offset",
+                        "count"
+                      ],
+                      "properties": {
+                        "limit": {
+                          "type": "number",
+                          "title": "limit",
+                          "description": "The maximum number of items returned."
+                        },
+                        "offset": {
+                          "type": "number",
+                          "title": "offset",
+                          "description": "The number of items skipped before retrieving the returned items."
+                        },
+                        "count": {
+                          "type": "number",
+                          "title": "count",
+                          "description": "The total number of items."
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "description": "The paginated list of products.",
+                      "required": [
+                        "products"
+                      ],
+                      "properties": {
+                        "products": {
+                          "type": "array",
+                          "description": "The list of products.",
+                          "items": {
+                            "type": "object"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400_error"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found_error"
+          },
+          "409": {
+            "$ref": "#/components/responses/invalid_state_error"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_request_error"
+          },
+          "500": {
+            "$ref": "#/components/responses/500_error"
+          }
+        }
+      }
+    },
+    "/admin/products/{id}": {
+      "get": {
+        "operationId": "AdminGetProductsId",
+        "summary": "Get a Product",
+        "description": "Retrieve a product by its ID. You can expand the product's relations or select the fields that should be returned.",
+        "x-authenticated": true,
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "The product's ID.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "fields",
+              "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+              "externalDocs": {
+                "url": "#select-fields-and-relations"
+              }
+            }
+          }
+        ],
+        "security": [
+          {
+            "api_token": []
+          },
+          {
+            "cookie_auth": []
+          },
+          {
+            "jwt_token": []
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "JavaScript",
+            "label": "JS SDK",
+            "source": "import Medusa from \"@medusajs/js-sdk\"\n\nexport const sdk = new Medusa({\n  baseUrl: import.meta.env.VITE_BACKEND_URL || \"/\",\n  debug: import.meta.env.DEV,\n  auth: {\n    type: \"session\",\n  },\n})\n\nsdk.admin.product.retrieve(\"prod_123\")\n.then(({ product }) => {\n  console.log(product)\n})"
+          },
+          {
+            "lang": "Shell",
+            "label": "cURL",
+            "source": "curl '{backend_url}/admin/products/{id}' \\\n-H 'Authorization: Bearer {jwt_token}'"
+          }
+        ],
+        "tags": [
+          "Admin Products"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProductResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400_error"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found_error"
+          },
+          "409": {
+            "$ref": "#/components/responses/invalid_state_error"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_request_error"
+          },
+          "500": {
+            "$ref": "#/components/responses/500_error"
+          }
+        }
+      }
+    },
+    "/admin/stock-locations": {
+      "get": {
+        "operationId": "AdminGetStockLocations",
+        "summary": "List Stock Locations",
+        "description": "Retrieve a list of stock locations. The stock locations can be filtered by fields such as `id`. The stock locations can also be sorted or paginated.",
+        "x-authenticated": true,
+        "parameters": [
+          {
+            "name": "fields",
+            "in": "query",
+            "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "fields",
+              "description": "Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.",
+              "externalDocs": {
+                "url": "#select-fields-and-relations"
+              }
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "The number of items to skip when retrieving a list.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "offset",
+              "description": "The number of items to skip when retrieving a list.",
+              "externalDocs": {
+                "url": "#pagination"
+              }
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Limit the number of items returned in the list.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "title": "limit",
+              "description": "Limit the number of items returned in the list.",
+              "externalDocs": {
+                "url": "#pagination"
+              }
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "description": "The field to sort the data by. By default, the sort order is ascending. To change the order to descending, prefix the field name with `-`.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "order",
+              "description": "The field to sort the data by. By default, the sort order is ascending. To change the order to descending, prefix the field name with `-`."
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search term to filter the stock location's searchable properties.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "title": "q",
+              "description": "Search term to filter the stock location's searchable properties."
+            }
+          },
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "address_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "sales_channel_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "created_at",
+            "in": "query",
+            "description": "Filter by a stock location's creation date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by a stock location's creation date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "updated_at",
+            "in": "query",
+            "description": "Filter by a stock location's update date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by a stock location's update date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "deleted_at",
+            "in": "query",
+            "description": "Filter by a stock location's deletion date.",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "description": "Filter by a stock location's deletion date.",
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "$and",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Join query parameters with an AND condition. Each object's content is the same type as the expected query parameters.",
+              "items": {
+                "type": "object"
+              },
+              "title": "$and"
+            }
+          },
+          {
+            "name": "$or",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "description": "Join query parameters with an OR condition. Each object's content is the same type as the expected query parameters.",
+              "items": {
+                "type": "object"
+              },
+              "title": "$or"
+            }
+          },
+          {
+            "name": "with_deleted",
+            "in": "query",
+            "description": "Whether to include deleted records in the result.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "title": "with_deleted",
+              "description": "Whether to include deleted records in the result."
+            }
+          }
+        ],
+        "security": [
+          {
+            "api_token": []
+          },
+          {
+            "cookie_auth": []
+          },
+          {
+            "jwt_token": []
+          }
+        ],
+        "x-codeSamples": [
+          {
+            "lang": "JavaScript",
+            "label": "JS SDK",
+            "source": "import Medusa from \"@medusajs/js-sdk\"\n\nexport const sdk = new Medusa({\n  baseUrl: import.meta.env.VITE_BACKEND_URL || \"/\",\n  debug: import.meta.env.DEV,\n  auth: {\n    type: \"session\",\n  },\n})\n\nsdk.admin.stockLocation.list()\n.then(({ stock_locations, count, limit, offset }) => {\n  console.log(stock_locations)\n})"
+          },
+          {
+            "lang": "Shell",
+            "label": "cURL",
+            "source": "curl '{backend_url}/admin/stock-locations' \\\n-H 'Authorization: Bearer {jwt_token}'"
+          }
+        ],
+        "tags": [
+          "Admin Stock Locations"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminStockLocationListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/400_error"
+          },
+          "401": {
+            "$ref": "#/components/responses/unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/not_found_error"
+          },
+          "409": {
+            "$ref": "#/components/responses/invalid_state_error"
+          },
+          "422": {
+            "$ref": "#/components/responses/invalid_request_error"
+          },
+          "500": {
+            "$ref": "#/components/responses/500_error"
+          }
+        }
+      }
+    },
+    "/admin/counter-carts": {
+      "post": {
+        "operationId": "PostCounterCarts",
+        "summary": "Create POS Cart",
+        "description": "POS-корзина продавца (продажа у окна склада): создаётся с контекстом склада (регион, канал продаж, адрес) и pickup-опцией 0 ₸ этого склада. Дальше — line-items, оплата (payment/kaspi | payment/cash) и POST /admin/counter-orders.",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCreateCounterCart"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданная POS-корзина.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCounterCartRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/counter-carts/{id}": {
+      "get": {
+        "operationId": "GetCounterCartsId",
+        "summary": "Get POS Cart",
+        "description": "Текущее состояние POS-корзины (позиции, тоталы, платёжные сессии). Обычная покупательская корзина по этому роуту недоступна (404).",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "POS-корзина.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCounterCartRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/counter-carts/{id}/line-items": {
+      "post": {
+        "operationId": "PostCounterCartsIdLineItems",
+        "summary": "Add POS Cart Line Item",
+        "description": "Добавить позицию в POS-корзину. Повторное добавление того же варианта суммируется ядром.",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminAddCounterCartItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Корзина после добавления позиции.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCounterCartRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/counter-carts/{id}/line-items/{line_id}": {
+      "post": {
+        "operationId": "PostCounterCartsIdLineItemsLineId",
+        "summary": "Update POS Cart Line Item",
+        "description": "Сменить количество позиции POS-корзины.",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpdateCounterCartItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Корзина после изменения позиции.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCounterCartRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "DeleteCounterCartsIdLineItemsLineId",
+        "summary": "Remove POS Cart Line Item",
+        "description": "Убрать позицию из POS-корзины.",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Корзина после удаления позиции.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCounterCartRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/counter-carts/{id}/payment/kaspi": {
+      "post": {
+        "operationId": "PostCounterCartsIdPaymentKaspi",
+        "summary": "Init POS Cart Kaspi Payment",
+        "description": "Инициализация Kaspi-оплаты POS-корзины с partner-стороны: payment collection + сессия Kaspi (инвойс + QR для показа покупателю). Идемпотентен. Ответ — как у store-варианта.",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreInitKaspiPayment"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Kaspi-оплата: QR/ссылка + статус сессии.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreKaspiPaymentRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "GetCounterCartsIdPaymentKaspi",
+        "summary": "Get POS Cart Kaspi Payment Status",
+        "description": "Статус Kaspi-оплаты POS-корзины (polling): синхронизирует сессию с инвойсом; оплачено → authorized (можно пробивать POST /admin/counter-orders).",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Kaspi-оплата: QR/ссылка + статус сессии.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreKaspiPaymentRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/counter-carts/{id}/payment/cash": {
+      "post": {
+        "operationId": "PostCounterCartsIdPaymentCash",
+        "summary": "Init POS Cart Cash Payment",
+        "description": "Оплата наличными/переводом у окна: сессия pp_system_default (авторизуется при завершении корзины, деньги продавец принимает физически). Идемпотентен; вызов после Kaspi-инициализации переключает способ оплаты.",
+        "tags": [
+          "Counter Carts"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Платёжная сессия наличной оплаты.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCashPaymentRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/order-lifecycles": {
       "get": {
         "operationId": "GetOrderLifecycles",
@@ -11557,6 +13104,29 @@
                 "canceled",
                 "returned"
               ]
+            }
+          },
+          {
+            "name": "delivery_method",
+            "in": "query",
+            "required": false,
+            "description": "Фильтр по способу получения заказа.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "delivery",
+                "pickup",
+                "counter"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Поиск: номер заказа (display_id, можно с «#») или email покупателя (частичное совпадение).",
+            "schema": {
+              "type": "string"
             }
           },
           {
@@ -11921,6 +13491,86 @@
         }
       }
     },
+    "/admin/orders/{id}/documents": {
+      "get": {
+        "operationId": "GetOrdersIdDocuments",
+        "summary": "List Order Documents (Admin)",
+        "description": "Все документы-основания заказа (счёт/накладная/АВР), все версии, новые сверху. Namespace /documents не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Документы заказа (все версии).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDocumentsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/documents/export": {
+      "get": {
+        "operationId": "GetOrdersIdDocumentsExport",
+        "summary": "Export Order Source Data (1C)",
+        "description": "Выгрузка исходных данных заказа для 1С/бухгалтерии: снапшоты текущих версий документов (реквизиты продавца, позиции, суммы деньгами/бонусами раздельно на момент выпуска). Официальные ЭСФ/АВР бухгалтер оформляет вручную; платформа отдаёт исходные данные.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Исходные данные заказа для экспорта.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderDocumentsExportRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/counter-orders": {
       "post": {
         "operationId": "PostCounterOrders",
@@ -12004,6 +13654,283 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AdminOrderStatusRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/reviews": {
+      "get": {
+        "operationId": "AdminGetOrdersIdReviews",
+        "summary": "List Order Reviews (Admin)",
+        "description": "Все отзывы заказа (включая скрытые) для админа/продавца. Namespace /reviews не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отзывы заказа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/disputes": {
+      "get": {
+        "operationId": "AdminGetOrdersIdDisputes",
+        "summary": "List Order Disputes (Admin)",
+        "description": "Диспуты заказа для админа/продавца (страница заказа).",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Диспуты заказа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputesRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reviews/summary": {
+      "get": {
+        "operationId": "AdminGetReviewsSummary",
+        "summary": "Rating Summary (Admin)",
+        "description": "Сводка рейтинга по объектам (поставщик/доставка): среднее и количество опубликованных отзывов.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Сводка рейтинга.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewSummariesRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reviews/{id}/moderate": {
+      "post": {
+        "operationId": "AdminPostReviewsIdModerate",
+        "summary": "Moderate Review",
+        "description": "Скрыть/опубликовать отзыв (модерация видимости).",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminModerateReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённый отзыв.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes": {
+      "get": {
+        "operationId": "AdminGetDisputes",
+        "summary": "List Dispute Queue",
+        "description": "Очередь диспутов: фильтр по статусу (дефолт — активные open+in_review, FIFO), пагинация.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in_review",
+                "resolved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Страница очереди диспутов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputesListRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes/{id}/transition": {
+      "post": {
+        "operationId": "AdminPostDisputesIdTransition",
+        "summary": "Transition Dispute",
+        "description": "Ведение диспута по стейт-машине (in_review/resolved/rejected). Недопустимый из текущего статуса переход → 400.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminTransitionDispute"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённый диспут.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputeRes"
                 }
               }
             }
@@ -12620,6 +14547,137 @@
         }
       }
     },
+    "/store/estimates": {
+      "post": {
+        "operationId": "PostEstimates",
+        "summary": "Create Material Estimate",
+        "description": "Расчёт материалов по ручным параметрам и нормативной базе (MVP; ИИ-распознавание файлов/голоса — отдельный этап). Результат рекомендательный. Гость допускается.",
+        "tags": [
+          "Estimator"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreCreateEstimate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный расчёт с позициями.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreEstimateRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/estimates/{id}": {
+      "get": {
+        "operationId": "GetEstimatesId",
+        "summary": "Get Material Estimate",
+        "description": "Расчёт с позициями по id.",
+        "tags": [
+          "Estimator"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Расчёт.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreEstimateRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/estimates/{id}/suggestions": {
+      "get": {
+        "operationId": "GetEstimatesIdSuggestions",
+        "summary": "Get Estimate Suggestions",
+        "description": "Подборка товаров под каждую позицию расчёта в 3 сегментах (эконом/комфорт/бизнес) с ценой, итогом и наличием. Позиции без категории норматива — без опций.",
+        "tags": [
+          "Estimator"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "currency_code",
+            "in": "query",
+            "required": false,
+            "description": "Валюта цен подборки (по умолчанию kzt).",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Подборка по позициям.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreEstimateSuggestionsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/store/orders/{id}/lifecycle": {
       "get": {
         "operationId": "GetOrdersIdLifecycle",
@@ -12661,6 +14719,262 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StoreOrderLifecycleRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/documents": {
+      "get": {
+        "operationId": "StoreGetOrderDocuments",
+        "summary": "List My Order Documents",
+        "description": "Документы-основания заказа (счёт/накладная/АВР) текущих версий, видимые покупателю. Скачивание — по file_url (PDF в File Module). 404 — заказ не принадлежит покупателю.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Документы заказа для покупателя.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreOrderDocumentsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/reviews": {
+      "get": {
+        "operationId": "GetOrdersIdReviews",
+        "summary": "List My Order Reviews",
+        "description": "Отзывы текущего покупателя по заказу (поставщик/доставка раздельно). 404 — заказ не принадлежит покупателю.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отзывы покупателя по заказу.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreReviewsRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostOrdersIdReviews",
+        "summary": "Create Order Review",
+        "description": "Оставить отзыв по заказу. Разрешено только для своего доставленного/закрытого заказа; target=delivery — только для способа delivery; один отзыв на (заказ, объект). 400 — гейт не пройден или дубль, 404 — чужой заказ.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreCreateReview"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный отзыв.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreReviewRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/disputes": {
+      "get": {
+        "operationId": "GetOrdersIdDisputes",
+        "summary": "List My Order Disputes",
+        "description": "Диспуты текущего покупателя по заказу. 404 — заказ не принадлежит покупателю.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Диспуты покупателя по заказу.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreDisputesRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostOrdersIdDisputes",
+        "summary": "Open Order Dispute",
+        "description": "Открыть диспут «проблема с заказом» по своему заказу. Второй активный диспут по заказу запрещён (400). 404 — чужой заказ.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreOpenDispute"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Открытый диспут.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreDisputeRes"
                 }
               }
             }
@@ -46353,6 +48667,282 @@
           }
         }
       },
+      "AdminCreateCounterCart": {
+        "type": "object",
+        "required": [
+          "location_id"
+        ],
+        "properties": {
+          "location_id": {
+            "type": "string",
+            "description": "Склад продавца: его pickup-опция и адрес станут контекстом корзины."
+          },
+          "region_id": {
+            "type": "string",
+            "description": "Обязателен, только если в системе несколько регионов."
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email покупателя для письма о заказе; без него — служебный pos@marketplace.local."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Телефон покупателя — привязка POS-заказа к покупателю (find-or-create по телефону, гэп 3). Без него продажа гостевая."
+          }
+        }
+      },
+      "AdminAddCounterCartItem": {
+        "type": "object",
+        "required": [
+          "variant_id",
+          "quantity"
+        ],
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "AdminUpdateCounterCartItem": {
+        "type": "object",
+        "required": [
+          "quantity"
+        ],
+        "properties": {
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "AdminCounterCartItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "quantity",
+          "unit_price"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "variant_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "product_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "product_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "variant_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "thumbnail": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "integer"
+          },
+          "unit_price": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminCounterCartCreditLine": {
+        "type": "object",
+        "required": [
+          "id",
+          "amount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminCounterCartShippingMethod": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminCounterCartPaymentSession": {
+        "type": "object",
+        "required": [
+          "id",
+          "provider_id",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "provider_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminCounterCart": {
+        "type": "object",
+        "required": [
+          "id",
+          "currency_code",
+          "items",
+          "subtotal",
+          "item_total",
+          "shipping_total",
+          "total",
+          "credit_lines",
+          "shipping_methods",
+          "payment_sessions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "sales_channel_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "counter: true + location_id склада продавца."
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCounterCartItem"
+            }
+          },
+          "subtotal": {
+            "type": "number"
+          },
+          "item_total": {
+            "type": "number"
+          },
+          "shipping_total": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "credit_lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCounterCartCreditLine"
+            }
+          },
+          "shipping_methods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCounterCartShippingMethod"
+            }
+          },
+          "payment_collection_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminCounterCartPaymentSession"
+            }
+          }
+        }
+      },
+      "AdminCounterCartRes": {
+        "type": "object",
+        "required": [
+          "cart"
+        ],
+        "properties": {
+          "cart": {
+            "$ref": "#/components/schemas/AdminCounterCart"
+          }
+        }
+      },
+      "AdminCashPayment": {
+        "type": "object",
+        "required": [
+          "payment_collection_id",
+          "payment_session_id",
+          "status"
+        ],
+        "properties": {
+          "payment_collection_id": {
+            "type": "string"
+          },
+          "payment_session_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Статус сессии ядра; pending — авторизуется при завершении корзины."
+          }
+        }
+      },
+      "AdminCashPaymentRes": {
+        "type": "object",
+        "required": [
+          "payment"
+        ],
+        "properties": {
+          "payment": {
+            "$ref": "#/components/schemas/AdminCashPayment"
+          }
+        }
+      },
       "AdminOrderLineInput": {
         "type": "object",
         "required": [
@@ -46689,6 +49279,381 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "AdminOrderDocument": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "number",
+          "version",
+          "is_latest"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "invoice",
+              "waybill",
+              "internal_avr"
+            ]
+          },
+          "number": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "is_latest": {
+            "type": "boolean"
+          },
+          "file_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_money": {
+            "type": "number"
+          },
+          "total_bonus": {
+            "type": "number"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderDocumentsRes": {
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderDocument"
+            }
+          }
+        }
+      },
+      "AdminOrderDocumentExport": {
+        "type": "object",
+        "required": [
+          "type",
+          "number",
+          "version"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "invoice",
+              "waybill",
+              "internal_avr"
+            ]
+          },
+          "number": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "total_money": {
+            "type": "number"
+          },
+          "total_bonus": {
+            "type": "number"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "snapshot": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Замороженные исходные данные документа (реквизиты, позиции, суммы) на момент выпуска."
+          }
+        }
+      },
+      "AdminOrderDocumentsExportRes": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "documents"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderDocumentExport"
+            }
+          }
+        }
+      },
+      "AdminReview": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "target",
+          "rating",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "delivery"
+            ]
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "hidden"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AdminReviewRes": {
+        "type": "object",
+        "required": [
+          "review"
+        ],
+        "properties": {
+          "review": {
+            "$ref": "#/components/schemas/AdminReview"
+          }
+        }
+      },
+      "AdminReviewsRes": {
+        "type": "object",
+        "required": [
+          "reviews"
+        ],
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReview"
+            }
+          }
+        }
+      },
+      "AdminModerateReview": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "hidden"
+            ]
+          }
+        }
+      },
+      "AdminReviewSummary": {
+        "type": "object",
+        "required": [
+          "target",
+          "count",
+          "average"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "delivery"
+            ]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "average": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminReviewSummariesRes": {
+        "type": "object",
+        "required": [
+          "summaries"
+        ],
+        "properties": {
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReviewSummary"
+            }
+          }
+        }
+      },
+      "AdminDispute": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "category",
+          "description",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "not_delivered",
+              "damaged",
+              "wrong_item",
+              "quality",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_review",
+              "resolved",
+              "rejected"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AdminDisputeRes": {
+        "type": "object",
+        "required": [
+          "dispute"
+        ],
+        "properties": {
+          "dispute": {
+            "$ref": "#/components/schemas/AdminDispute"
+          }
+        }
+      },
+      "AdminDisputesRes": {
+        "type": "object",
+        "required": [
+          "disputes"
+        ],
+        "properties": {
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDispute"
+            }
+          }
+        }
+      },
+      "AdminDisputesListRes": {
+        "type": "object",
+        "required": [
+          "disputes",
+          "count",
+          "offset",
+          "limit"
+        ],
+        "properties": {
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDispute"
+            }
+          },
+          "count": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminTransitionDispute": {
+        "type": "object",
+        "required": [
+          "to"
+        ],
+        "properties": {
+          "to": {
+            "type": "string",
+            "enum": [
+              "in_review",
+              "resolved",
+              "rejected"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "maxLength": 4000
           }
         }
       },
@@ -47273,6 +50238,237 @@
           }
         }
       },
+      "StoreCreateEstimate": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "description": "Параметры помещения/работы для расчёта.",
+            "properties": {
+              "area": {
+                "type": "number",
+                "minimum": 0
+              },
+              "volume": {
+                "type": "number",
+                "minimum": 0
+              },
+              "length": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height": {
+                "type": "number",
+                "minimum": 0
+              },
+              "count": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "norm_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Коды нормативов (иначе — все активные)."
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "StoreEstimateLine": {
+        "type": "object",
+        "required": [
+          "id",
+          "material_kind",
+          "quantity",
+          "unit"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "material_kind": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "norm_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "segment": {
+            "type": "string",
+            "nullable": true
+          },
+          "product_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "StoreEstimate": {
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "status",
+          "lines"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "file",
+              "voice"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "calculated"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreEstimateLine"
+            }
+          }
+        }
+      },
+      "StoreEstimateRes": {
+        "type": "object",
+        "required": [
+          "estimate"
+        ],
+        "properties": {
+          "estimate": {
+            "$ref": "#/components/schemas/StoreEstimate"
+          }
+        }
+      },
+      "StoreEstimateSuggestionOption": {
+        "type": "object",
+        "required": [
+          "segment",
+          "product_id",
+          "unit_price",
+          "total",
+          "in_stock"
+        ],
+        "properties": {
+          "segment": {
+            "type": "string",
+            "enum": [
+              "economy",
+              "comfort",
+              "business"
+            ]
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "product_title": {
+            "type": "string"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "in_stock": {
+            "type": "boolean"
+          }
+        }
+      },
+      "StoreEstimateSuggestion": {
+        "type": "object",
+        "required": [
+          "line_id",
+          "material_kind",
+          "quantity",
+          "unit",
+          "options"
+        ],
+        "properties": {
+          "line_id": {
+            "type": "string"
+          },
+          "material_kind": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreEstimateSuggestionOption"
+            }
+          }
+        }
+      },
+      "StoreEstimateSuggestionsRes": {
+        "type": "object",
+        "required": [
+          "estimate_id",
+          "currency_code",
+          "suggestions"
+        ],
+        "properties": {
+          "estimate_id": {
+            "type": "string"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreEstimateSuggestion"
+            }
+          }
+        }
+      },
       "StorePlaceOrder": {
         "type": "object",
         "required": [
@@ -47467,6 +50663,261 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "StoreOrderDocument": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "number",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "invoice",
+              "waybill",
+              "internal_avr"
+            ],
+            "description": "Тип документа: счёт / накладная / внутренний АВР."
+          },
+          "number": {
+            "type": "string",
+            "description": "Человекочитаемый номер (напр. INV-2026-000001)."
+          },
+          "version": {
+            "type": "integer"
+          },
+          "file_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ссылка на PDF в File Module (для скачивания)."
+          },
+          "total_money": {
+            "type": "number"
+          },
+          "total_bonus": {
+            "type": "number"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreOrderDocumentsRes": {
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreOrderDocument"
+            }
+          }
+        }
+      },
+      "StoreCreateReview": {
+        "type": "object",
+        "required": [
+          "target",
+          "rating"
+        ],
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "delivery"
+            ],
+            "description": "Объект оценки: поставщик или доставка."
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 2000
+          }
+        }
+      },
+      "StoreReview": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "target",
+          "rating",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "delivery"
+            ]
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "hidden"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreReviewRes": {
+        "type": "object",
+        "required": [
+          "review"
+        ],
+        "properties": {
+          "review": {
+            "$ref": "#/components/schemas/StoreReview"
+          }
+        }
+      },
+      "StoreReviewsRes": {
+        "type": "object",
+        "required": [
+          "reviews"
+        ],
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreReview"
+            }
+          }
+        }
+      },
+      "StoreOpenDispute": {
+        "type": "object",
+        "required": [
+          "category",
+          "description"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "not_delivered",
+              "damaged",
+              "wrong_item",
+              "quality",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        }
+      },
+      "StoreDispute": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "category",
+          "description",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "not_delivered",
+              "damaged",
+              "wrong_item",
+              "quality",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_review",
+              "resolved",
+              "rejected"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreDisputeRes": {
+        "type": "object",
+        "required": [
+          "dispute"
+        ],
+        "properties": {
+          "dispute": {
+            "$ref": "#/components/schemas/StoreDispute"
+          }
+        }
+      },
+      "StoreDisputesRes": {
+        "type": "object",
+        "required": [
+          "disputes"
+        ],
+        "properties": {
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreDispute"
+            }
           }
         }
       },

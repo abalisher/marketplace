@@ -326,6 +326,8 @@ class _OrdersClient implements OrdersClient {
     int? limit = 20,
     int? offset = 0,
     Status? status,
+    DeliveryMethod? deliveryMethod,
+    String? q,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
@@ -333,6 +335,8 @@ class _OrdersClient implements OrdersClient {
       r'limit': limit,
       r'offset': offset,
       r'status': status,
+      r'delivery_method': deliveryMethod,
+      r'q': q,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{};
@@ -568,6 +572,64 @@ class _OrdersClient implements OrdersClient {
   }
 
   @override
+  Future<AdminOrderDocumentsRes> getOrdersIdDocuments({
+    required String id,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<AdminOrderDocumentsRes>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/admin/orders/${id}/documents',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, Object?>>(_options);
+    late AdminOrderDocumentsRes _value;
+    try {
+      _value = AdminOrderDocumentsRes.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<AdminOrderDocumentsExportRes> getOrdersIdDocumentsExport({
+    required String id,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<AdminOrderDocumentsExportRes>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/admin/orders/${id}/documents/export',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, Object?>>(_options);
+    late AdminOrderDocumentsExportRes _value;
+    try {
+      _value = AdminOrderDocumentsExportRes.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
   Future<AdminPlaceCounterOrderRes> postCounterOrders({
     required AdminPlaceCounterOrder body,
   }) async {
@@ -655,6 +717,39 @@ class _OrdersClient implements OrdersClient {
     late StoreOrderLifecycleRes _value;
     try {
       _value = StoreOrderLifecycleRes.fromJson(_result.data!);
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options, response: _result);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<StoreOrderDocumentsRes> storeGetOrderDocuments({
+    required String xPublishableApiKey,
+    required String id,
+  }) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{
+      r'x-publishable-api-key': xPublishableApiKey,
+    };
+    _headers.removeWhere((k, v) => v == null);
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<StoreOrderDocumentsRes>(
+      Options(method: 'GET', headers: _headers, extra: _extra)
+          .compose(
+            _dio.options,
+            '/store/orders/${id}/documents',
+            queryParameters: queryParameters,
+            data: _data,
+          )
+          .copyWith(baseUrl: _combineBaseUrls(_dio.options.baseUrl, baseUrl)),
+    );
+    final _result = await _dio.fetch<Map<String, Object?>>(_options);
+    late StoreOrderDocumentsRes _value;
+    try {
+      _value = StoreOrderDocumentsRes.fromJson(_result.data!);
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options, response: _result);
       rethrow;

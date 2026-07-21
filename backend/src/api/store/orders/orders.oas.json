@@ -70,6 +70,121 @@
         }
       }
     },
+    "/store/orders/{id}/documents": {
+      "get": {
+        "operationId": "StoreGetOrderDocuments",
+        "summary": "List My Order Documents",
+        "description": "Документы-основания заказа (счёт/накладная/АВР) текущих версий, видимые покупателю. Скачивание — по file_url (PDF в File Module). 404 — заказ не принадлежит покупателю.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Документы заказа для покупателя.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreOrderDocumentsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/reviews": {
+      "get": {
+        "operationId": "GetOrdersIdReviews",
+        "summary": "List My Order Reviews",
+        "description": "Отзывы текущего покупателя по заказу (поставщик/доставка раздельно). 404 — заказ не принадлежит покупателю.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Отзывы покупателя по заказу.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreReviewsRes" } } }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostOrdersIdReviews",
+        "summary": "Create Order Review",
+        "description": "Оставить отзыв по заказу. Разрешено только для своего доставленного/закрытого заказа; target=delivery — только для способа delivery; один отзыв на (заказ, объект). 400 — гейт не пройден или дубль, 404 — чужой заказ.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreCreateReview" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный отзыв.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreReviewRes" } } }
+          }
+        }
+      }
+    },
+    "/store/orders/{id}/disputes": {
+      "get": {
+        "operationId": "GetOrdersIdDisputes",
+        "summary": "List My Order Disputes",
+        "description": "Диспуты текущего покупателя по заказу. 404 — заказ не принадлежит покупателю.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Диспуты покупателя по заказу.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreDisputesRes" } } }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostOrdersIdDisputes",
+        "summary": "Open Order Dispute",
+        "description": "Открыть диспут «проблема с заказом» по своему заказу. Второй активный диспут по заказу запрещён (400). 404 — чужой заказ.",
+        "tags": ["Reviews"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreOpenDispute" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Открытый диспут.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreDisputeRes" } } }
+          }
+        }
+      }
+    },
     "/store/orders/{id}/cancel": {
       "post": {
         "operationId": "PostOrdersIdCancel",
@@ -237,6 +352,132 @@
         "properties": {
           "order_id": { "type": "string" },
           "status": { "type": "string" }
+        }
+      },
+      "StoreOrderDocument": {
+        "type": "object",
+        "required": ["id", "type", "number", "version"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["invoice", "waybill", "internal_avr"],
+            "description": "Тип документа: счёт / накладная / внутренний АВР."
+          },
+          "number": {
+            "type": "string",
+            "description": "Человекочитаемый номер (напр. INV-2026-000001)."
+          },
+          "version": { "type": "integer" },
+          "file_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ссылка на PDF в File Module (для скачивания)."
+          },
+          "total_money": { "type": "number" },
+          "total_bonus": { "type": "number" },
+          "currency_code": { "type": "string" },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "StoreOrderDocumentsRes": {
+        "type": "object",
+        "required": ["documents"],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreOrderDocument" }
+          }
+        }
+      },
+      "StoreCreateReview": {
+        "type": "object",
+        "required": ["target", "rating"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "enum": ["supplier", "delivery"],
+            "description": "Объект оценки: поставщик или доставка."
+          },
+          "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+          "comment": { "type": "string", "maxLength": 2000 }
+        }
+      },
+      "StoreReview": {
+        "type": "object",
+        "required": ["id", "order_id", "target", "rating", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "order_id": { "type": "string" },
+          "target": { "type": "string", "enum": ["supplier", "delivery"] },
+          "rating": { "type": "integer" },
+          "comment": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["published", "hidden"] },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "StoreReviewRes": {
+        "type": "object",
+        "required": ["review"],
+        "properties": { "review": { "$ref": "#/components/schemas/StoreReview" } }
+      },
+      "StoreReviewsRes": {
+        "type": "object",
+        "required": ["reviews"],
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreReview" }
+          }
+        }
+      },
+      "StoreOpenDispute": {
+        "type": "object",
+        "required": ["category", "description"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["not_delivered", "damaged", "wrong_item", "quality", "other"]
+          },
+          "description": { "type": "string", "maxLength": 4000 }
+        }
+      },
+      "StoreDispute": {
+        "type": "object",
+        "required": ["id", "order_id", "category", "description", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "order_id": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["not_delivered", "damaged", "wrong_item", "quality", "other"]
+          },
+          "description": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["open", "in_review", "resolved", "rejected"]
+          },
+          "resolution": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+        }
+      },
+      "StoreDisputeRes": {
+        "type": "object",
+        "required": ["dispute"],
+        "properties": { "dispute": { "$ref": "#/components/schemas/StoreDispute" } }
+      },
+      "StoreDisputesRes": {
+        "type": "object",
+        "required": ["disputes"],
+        "properties": {
+          "disputes": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreDispute" }
+          }
         }
       }
     }

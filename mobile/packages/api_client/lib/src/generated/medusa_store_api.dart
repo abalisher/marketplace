@@ -27,9 +27,16 @@ import 'clients/return_reasons_client.dart';
 import 'clients/returns_client.dart';
 import 'clients/shipping_options_client.dart';
 import 'clients/store_credit_accounts_client.dart';
+import 'clients/admin_auth_client.dart';
+import 'clients/admin_orders_client.dart';
+import 'clients/admin_products_client.dart';
+import 'clients/admin_stock_locations_client.dart';
+import 'clients/counter_carts_client.dart';
+import 'clients/reviews_client.dart';
 import 'clients/bonus_client.dart';
 import 'clients/payment_client.dart';
 import 'clients/companies_client.dart';
+import 'clients/estimator_client.dart';
 import 'clients/catalog_client.dart';
 
 /// Medusa Storefront API `v2.0.0`
@@ -65,9 +72,16 @@ class MedusaStoreApi {
   ReturnsClient? _returns;
   ShippingOptionsClient? _shippingOptions;
   StoreCreditAccountsClient? _storeCreditAccounts;
+  AdminAuthClient? _adminAuth;
+  AdminOrdersClient? _adminOrders;
+  AdminProductsClient? _adminProducts;
+  AdminStockLocationsClient? _adminStockLocations;
+  CounterCartsClient? _counterCarts;
+  ReviewsClient? _reviews;
   BonusClient? _bonus;
   PaymentClient? _payment;
   CompaniesClient? _companies;
+  EstimatorClient? _estimator;
   CatalogClient? _catalog;
 
   AuthClient get auth => _auth ??= AuthClient(_dio, baseUrl: _baseUrl);
@@ -138,6 +152,24 @@ class MedusaStoreApi {
   StoreCreditAccountsClient get storeCreditAccounts => _storeCreditAccounts ??=
       StoreCreditAccountsClient(_dio, baseUrl: _baseUrl);
 
+  AdminAuthClient get adminAuth =>
+      _adminAuth ??= AdminAuthClient(_dio, baseUrl: _baseUrl);
+
+  AdminOrdersClient get adminOrders =>
+      _adminOrders ??= AdminOrdersClient(_dio, baseUrl: _baseUrl);
+
+  AdminProductsClient get adminProducts =>
+      _adminProducts ??= AdminProductsClient(_dio, baseUrl: _baseUrl);
+
+  AdminStockLocationsClient get adminStockLocations => _adminStockLocations ??=
+      AdminStockLocationsClient(_dio, baseUrl: _baseUrl);
+
+  CounterCartsClient get counterCarts =>
+      _counterCarts ??= CounterCartsClient(_dio, baseUrl: _baseUrl);
+
+  ReviewsClient get reviews =>
+      _reviews ??= ReviewsClient(_dio, baseUrl: _baseUrl);
+
   BonusClient get bonus => _bonus ??= BonusClient(_dio, baseUrl: _baseUrl);
 
   PaymentClient get payment =>
@@ -145,6 +177,9 @@ class MedusaStoreApi {
 
   CompaniesClient get companies =>
       _companies ??= CompaniesClient(_dio, baseUrl: _baseUrl);
+
+  EstimatorClient get estimator =>
+      _estimator ??= EstimatorClient(_dio, baseUrl: _baseUrl);
 
   CatalogClient get catalog =>
       _catalog ??= CatalogClient(_dio, baseUrl: _baseUrl);

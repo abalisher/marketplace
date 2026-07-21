@@ -8,6 +8,8 @@ import 'package:retrofit/retrofit.dart';
 import '../models/admin_cancel_order.dart';
 import '../models/admin_complete_assembly.dart';
 import '../models/admin_deliver_order.dart';
+import '../models/admin_order_documents_export_res.dart';
+import '../models/admin_order_documents_res.dart';
 import '../models/admin_order_fulfillment_res.dart';
 import '../models/admin_order_lifecycle_list_res.dart';
 import '../models/admin_order_lifecycle_res.dart';
@@ -15,12 +17,14 @@ import '../models/admin_order_status_res.dart';
 import '../models/admin_place_counter_order.dart';
 import '../models/admin_place_counter_order_res.dart';
 import '../models/admin_ship_order.dart';
+import '../models/delivery_method.dart';
 import '../models/get_store_orders_response.dart';
 import '../models/order.dart';
 import '../models/status.dart';
 import '../models/store_accept_order_transfer.dart';
 import '../models/store_cancel_order.dart';
 import '../models/store_decline_order_transfer.dart';
+import '../models/store_order_documents_res.dart';
 import '../models/store_order_lifecycle_res.dart';
 import '../models/store_order_response.dart';
 import '../models/store_order_status_res.dart';
@@ -205,6 +209,10 @@ abstract class OrdersClient {
   ///
   /// [status] - Фильтр по бизнес-статусу заказа.
   ///
+  /// [deliveryMethod] - Фильтр по способу получения заказа.
+  ///
+  /// [q] - Поиск: номер заказа (display_id, можно с «#») или email покупателя (частичное совпадение).
+  ///
   /// [order] - Поле сортировки (префикс «-» — по убыванию).
   @GET('/admin/order-lifecycles')
   Future<AdminOrderLifecycleListRes> getOrderLifecycles({
@@ -212,6 +220,8 @@ abstract class OrdersClient {
     @Query('limit') int? limit = 20,
     @Query('offset') int? offset = 0,
     @Query('status') Status? status,
+    @Query('delivery_method') DeliveryMethod? deliveryMethod,
+    @Query('q') String? q,
   });
 
   /// Get Order Lifecycle Status (Admin).
@@ -273,6 +283,22 @@ abstract class OrdersClient {
     @Path('id') required String id,
   });
 
+  /// List Order Documents (Admin).
+  ///
+  /// Все документы-основания заказа (счёт/накладная/АВР), все версии, новые сверху. Namespace /documents не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.
+  @GET('/admin/orders/{id}/documents')
+  Future<AdminOrderDocumentsRes> getOrdersIdDocuments({
+    @Path('id') required String id,
+  });
+
+  /// Export Order Source Data (1C).
+  ///
+  /// Выгрузка исходных данных заказа для 1С/бухгалтерии: снапшоты текущих версий документов (реквизиты продавца, позиции, суммы деньгами/бонусами раздельно на момент выпуска). Официальные ЭСФ/АВР бухгалтер оформляет вручную; платформа отдаёт исходные данные.
+  @GET('/admin/orders/{id}/documents/export')
+  Future<AdminOrderDocumentsExportRes> getOrdersIdDocumentsExport({
+    @Path('id') required String id,
+  });
+
   /// Place Counter Order (POS).
   ///
   /// Продажа у окна склада: продавец собрал корзину покупателя на месте, оплата авторизована — заказ создаётся сразу выданным (свёрнутый путь new → delivered, способ получения counter). Отдельный ресурс: статический сегмент под /admin/orders конфликтует с ядровым /admin/orders/{id}.
@@ -295,6 +321,15 @@ abstract class OrdersClient {
   /// Бизнес-статус заказа (ТЗ) и лог переходов для текущего покупателя. Единое поле статуса вместо склейки трёх ядровых. 404 — заказ не принадлежит покупателю или не найден.
   @GET('/store/orders/{id}/lifecycle')
   Future<StoreOrderLifecycleRes> getOrdersIdLifecycle({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Path('id') required String id,
+  });
+
+  /// List My Order Documents.
+  ///
+  /// Документы-основания заказа (счёт/накладная/АВР) текущих версий, видимые покупателю. Скачивание — по file_url (PDF в File Module). 404 — заказ не принадлежит покупателю.
+  @GET('/store/orders/{id}/documents')
+  Future<StoreOrderDocumentsRes> storeGetOrderDocuments({
     @Header('x-publishable-api-key') required String xPublishableApiKey,
     @Path('id') required String id,
   });
