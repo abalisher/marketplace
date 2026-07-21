@@ -8,6 +8,7 @@ import {
   KaspiPayment,
 } from "@lib/data/payment"
 import { getBonusCreditAmount } from "@lib/util/bonus"
+import { useMessages } from "@lib/i18n/i18n-context"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Text } from "@medusajs/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
@@ -24,6 +25,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   cart,
   "data-testid": dataTestId,
 }) => {
+  const m = useMessages()
   const notReady =
     !cart ||
     !cart.shipping_address ||
@@ -54,7 +56,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
       )
     default:
-      return <Button disabled>Select a payment method</Button>
+      return <Button disabled>{m.checkout.payment.selectMethod}</Button>
   }
 }
 
@@ -175,6 +177,7 @@ const KaspiPaymentButton = ({
   cart: HttpTypes.StoreCart
   notReady: boolean
 }) => {
+  const m = useMessages()
   const [payment, setPayment] = useState<KaspiPayment | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [placingOrder, setPlacingOrder] = useState(false)
@@ -260,7 +263,7 @@ const KaspiPaymentButton = ({
           data-testid="kaspi-payment-panel"
         >
           <Text className="txt-medium text-ui-fg-subtle">
-            Scan the QR code in the Kaspi.kz app to pay
+            {m.checkout.payment.scanQr}
           </Text>
           <div className="bg-white p-3 border rounded-lg w-fit">
             <QRCode value={payment.qr_payload} size={160} />
@@ -273,7 +276,7 @@ const KaspiPaymentButton = ({
               className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="kaspi-payment-link"
             >
-              Or open the payment link
+              {m.checkout.payment.openLink}
             </a>
           )}
         </div>
@@ -281,8 +284,12 @@ const KaspiPaymentButton = ({
 
       {isFailed && (
         <Text className="txt-medium text-ui-fg-error">
-          Payment was {payment?.status === "canceled" ? "canceled" : "declined"}
-          . Go back to the Payment step to try again.
+          {m.checkout.payment.paymentFailed.replace(
+            "{status}",
+            payment?.status === "canceled"
+              ? m.checkout.payment.canceled
+              : m.checkout.payment.declined
+          )}
         </Text>
       )}
 
@@ -294,10 +301,10 @@ const KaspiPaymentButton = ({
         data-testid="submit-order-button"
       >
         {placingOrder
-          ? "Placing order"
+          ? m.checkout.payment.placingOrder
           : isPaid
-          ? "Payment received"
-          : "Waiting for payment"}
+          ? m.checkout.payment.paymentReceived
+          : m.checkout.payment.waitingForPayment}
       </Button>
       <ErrorMessage
         error={errorMessage}

@@ -2,6 +2,7 @@
 
 import { applyCartBonus, removeCartBonus, BonusBalance } from "@lib/data/bonus"
 import { getBonusCreditAmount } from "@lib/util/bonus"
+import { useMessages } from "@lib/i18n/i18n-context"
 import { convertToLocale } from "@lib/util/money"
 import { Heading, Input, Label, Text } from "@medusajs/ui"
 import Trash from "@modules/common/icons/trash"
@@ -23,6 +24,7 @@ type BonusFormProps = {
 // бэкенд: потолок от суммы заказа, баланс, валюту — ошибки его валидации
 // показываются под полем как есть.
 const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
+  const m = useMessages()
   const [isOpen, setIsOpen] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState("")
 
@@ -39,7 +41,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
     const raw = formData.get("amount")?.toString().trim()
     const amount = Number(raw)
     if (!raw || !Number.isInteger(amount) || amount <= 0) {
-      setErrorMessage("Enter a whole positive amount")
+      setErrorMessage(m.checkout.bonus.invalidAmount)
       return
     }
 
@@ -72,10 +74,10 @@ const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
               className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
               data-testid="add-bonus-button"
             >
-              Pay with bonuses
+              {m.checkout.bonus.payWithBonuses}
             </button>
             <Text className="txt-medium text-ui-fg-subtle">
-              (available:{" "}
+              ({m.checkout.bonus.available}:{" "}
               {convertToLocale({
                 amount: balance.balance,
                 currency_code: balance.currency_code,
@@ -101,7 +103,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
                   variant="secondary"
                   data-testid="bonus-apply-button"
                 >
-                  Apply
+                  {m.checkout.bonus.apply}
                 </SubmitButton>
               </div>
 
@@ -116,7 +118,9 @@ const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
         {appliedAmount > 0 && (
           <div className="w-full flex items-center">
             <div className="flex flex-col w-full">
-              <Heading className="txt-medium mb-2">Bonuses applied:</Heading>
+              <Heading className="txt-medium mb-2">
+                {m.checkout.bonus.applied}
+              </Heading>
               <div
                 className="flex items-center justify-between w-full max-w-full mb-2"
                 data-testid="bonus-row"
@@ -134,7 +138,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
                   data-testid="remove-bonus-button"
                 >
                   <Trash size={14} />
-                  <span className="sr-only">Remove bonuses from order</span>
+                  <span className="sr-only">{m.checkout.bonus.remove}</span>
                 </button>
               </div>
             </div>

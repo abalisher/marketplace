@@ -1,5 +1,6 @@
 import { Button, Container, Text } from "@medusajs/ui"
 import { cookies as nextCookies } from "next/headers"
+import { getServerMessages } from "@lib/i18n/server"
 
 async function ProductOnboardingCta() {
   const cookies = await nextCookies()
@@ -10,17 +11,19 @@ async function ProductOnboardingCta() {
     return null
   }
 
+  const m = await getServerMessages()
+
   return (
     <Container className="max-w-4xl h-full bg-ui-bg-subtle w-full p-8">
       <div className="flex flex-col gap-y-4 center">
         <Text className="text-ui-fg-base text-xl">
-          Your demo product was successfully created! 🎉
+          {m.product.demoProductCreated}
         </Text>
         <Text className="text-ui-fg-subtle text-small-regular">
-          You can now continue setting up your store in the admin.
+          {m.product.continueSetupPrompt}
         </Text>
         <a href="http://localhost:7001/a/orders?onboarding_step=create_order_nextjs">
-          <Button className="w-full">Continue setup in admin</Button>
+          <Button className="w-full">{m.product.continueSetupButton}</Button>
         </a>
       </div>
     </Container>

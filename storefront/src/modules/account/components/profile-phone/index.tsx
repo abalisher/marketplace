@@ -7,12 +7,14 @@ import Input from "@modules/common/components/input"
 import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
 import { updateCustomer } from "@lib/data/customer"
+import { useMessages } from "@lib/i18n/i18n-context"
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
 }
 
 const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
+  const m = useMessages()
   const [successState, setSuccessState] = React.useState(false)
 
   const updateCustomerPhone = async (
@@ -47,7 +49,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
   return (
     <form action={formAction} className="w-full">
       <AccountInfo
-        label="Phone"
+        label={m.common.address.phone}
         currentInfo={`${customer.phone}`}
         isSuccess={successState}
         isError={!!state.error}
@@ -57,7 +59,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
       >
         <div className="grid grid-cols-1 gap-y-2">
           <Input
-            label="Phone"
+            label={m.common.address.phone}
             name="phone"
             type="phone"
             autoComplete="phone"

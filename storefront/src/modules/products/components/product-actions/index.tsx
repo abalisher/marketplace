@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import ProductPrice from "../product-price"
 import MobileActions from "./mobile-actions"
 import { useRouter } from "next/navigation"
+import { useMessages } from "@lib/i18n/i18n-context"
 
 type ProductActionsProps = {
   product: HttpTypes.StoreProduct
@@ -32,6 +33,7 @@ export default function ProductActions({
   product,
   disabled,
 }: ProductActionsProps) {
+  const m = useMessages()
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -177,10 +179,10 @@ export default function ProductActions({
           data-testid="add-product-button"
         >
           {!selectedVariant && !options
-            ? "Select variant"
+            ? m.product.selectVariant
             : !inStock || !isValidVariant
-            ? "Out of stock"
-            : "Add to cart"}
+            ? m.product.outOfStock
+            : m.product.addToCart}
         </Button>
         <MobileActions
           product={product}

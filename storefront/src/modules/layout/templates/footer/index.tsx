@@ -4,12 +4,15 @@ import { Text, clx } from "@medusajs/ui"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import MedusaCTA from "@modules/layout/components/medusa-cta"
+import LanguageSwitcher from "@modules/layout/components/language-switcher"
+import { getServerMessages } from "@lib/i18n/server"
 
 export default async function Footer() {
   const { collections } = await listCollections({
     fields: "*products",
   })
   const productCategories = await listCategories()
+  const m = await getServerMessages()
 
   return (
     <footer className="border-t border-ui-border-base w-full">
@@ -27,7 +30,7 @@ export default async function Footer() {
             {productCategories && productCategories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
+                  {m.footer.categories}
                 </span>
                 <ul
                   className="grid grid-cols-1 gap-2"
@@ -85,7 +88,7 @@ export default async function Footer() {
             {collections && collections.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base">
-                  Collections
+                  {m.footer.collections}
                 </span>
                 <ul
                   className={clx(
@@ -145,11 +148,14 @@ export default async function Footer() {
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
+        <div className="flex w-full mb-16 justify-between items-center text-ui-fg-muted">
           <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
+            © {new Date().getFullYear()} Medusa Store. {m.footer.allRightsReserved}
           </Text>
-          <MedusaCTA />
+          <div className="flex items-center gap-x-6">
+            <LanguageSwitcher />
+            <MedusaCTA />
+          </div>
         </div>
       </div>
     </footer>
