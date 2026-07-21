@@ -111,6 +111,23 @@ DECISIONS 2026-07-16): `delivery_method` + `delivery_code` — поля OrderLif
 покупателю в ЛК read-only. Прилавочная продажа — это сторона продавца: buyer-раунд дизайна её не покрывает,
 partner-app POS проектируется отдельным раундом.
 
+## Дополнение (2026-07-18): POS-корзина продавца + поиск очереди (гэпы partner-раунда)
+РЕАЛИЗОВАНО (DECISIONS 2026-07-18, POS-гэпы): admin-ресурс **`/admin/counter-carts`** — корзина
+продажи у окна с admin-стороны (store-роуты корзины покупательские, Kaspi там требует
+customer-auth): `POST /admin/counter-carts` ({location_id, region_id?, email?} → workflow
+`create-counter-cart`: ядровый createCart с контекстом склада из шага `resolve-counter-cart-context`
++ pickup-опция склада 0 ₸; метка `metadata.counter=true` — не-POS корзина по этим роутам 404);
+`GET /admin/counter-carts/:id` (позиции/тоталы/сессии, хелпер `retrieveCounterCart`: тоталы —
+query.graph, позиции — сервис cart, BigNumber-эмпирика); `POST .../line-items`,
+`POST|DELETE .../line-items/:line_id` — ядровые cart-workflows; оплата: `POST|GET .../payment/kaspi`
+(те же init/sync-workflows, что store) и `POST .../payment/cash` (workflow `init-cart-cash-payment`,
+сессия `pp_system_default`; переключение Kaspi↔cash — ядро заменяет сессию коллекции). Завершение —
+существующий `POST /admin/counter-orders` (в ответе `lifecycle` на момент создания — статус
+перечитывать GET'ом). Очередь `GET /admin/order-lifecycles` расширена: фильтр `delivery_method`
+и поиск `q` (display_id, «#» допускается; email $ilike) — вторым запросом со стороны order.
+Покупатель POS гостевой (`pos@marketplace.local` или email из запроса); привязка customer по
+телефону — отложенный гэп 3 сверки.
+
 ## workflow `placeOrder` (сквозной)
 Обёртка вокруг `completeCartWorkflow`: корзина → ядро создаёт order + резервирует остатки →
 шаг создаёт `OrderStatus=new` + link к order (компенсация — удаление) → если покупатель-сотрудник

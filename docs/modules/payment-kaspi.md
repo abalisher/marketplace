@@ -104,6 +104,12 @@ interface KaspiClient { createInvoice, getInvoiceStatus, refund, cancel, parseWe
 - **store** (покупатель): инициализация оплаты корзины (создать collection+сессию Kaspi, вернуть QR/URL),
   статус оплаты (polling), запрос возврата — поверх ядровых payment-workflow.
 - **admin** (продавец/менеджер): просмотр платежей заказа, ручной capture/refund — по возможности ядровые роуты.
+  Дополнение 2026-07-18 (POS-гэпы partner-раунда): продавец у окна инициализирует/поллит Kaspi-оплату
+  POS-корзины через `POST|GET /admin/counter-carts/:id/payment/kaspi` — те же workflows
+  `init/sync-cart-kaspi-payment`, что у store-варианта (store-роут требует customer-auth и владение
+  корзиной — админский JWT туда не проходит); «наличные/перевод» — `POST .../payment/cash`
+  (workflow `init-cart-cash-payment`, сессия `pp_system_default`). Общий вид ответа —
+  `src/api/utils/kaspi-payment-response.ts`.
 - **webhook**: используем ядровый `POST /hooks/payment/kaspi` (свой роут не пишем).
 - **mobile/web**: тонкие экраны — показать QR, опросить статус (контракт → Dart-клиент как обычно).
 
