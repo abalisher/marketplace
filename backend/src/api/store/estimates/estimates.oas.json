@@ -1,0 +1,168 @@
+{
+  "paths": {
+    "/store/estimates": {
+      "post": {
+        "operationId": "PostEstimates",
+        "summary": "Create Material Estimate",
+        "description": "Расчёт материалов по ручным параметрам и нормативной базе (MVP; ИИ-распознавание файлов/голоса — отдельный этап). Результат рекомендательный. Гость допускается.",
+        "tags": ["Estimator"],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreCreateEstimate" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный расчёт с позициями.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreEstimateRes" } } }
+          }
+        }
+      }
+    },
+    "/store/estimates/{id}": {
+      "get": {
+        "operationId": "GetEstimatesId",
+        "summary": "Get Material Estimate",
+        "description": "Расчёт с позициями по id.",
+        "tags": ["Estimator"],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Расчёт.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreEstimateRes" } } }
+          }
+        }
+      }
+    },
+    "/store/estimates/{id}/suggestions": {
+      "get": {
+        "operationId": "GetEstimatesIdSuggestions",
+        "summary": "Get Estimate Suggestions",
+        "description": "Подборка товаров под каждую позицию расчёта в 3 сегментах (эконом/комфорт/бизнес) с ценой, итогом и наличием. Позиции без категории норматива — без опций.",
+        "tags": ["Estimator"],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "currency_code",
+            "in": "query",
+            "required": false,
+            "description": "Валюта цен подборки (по умолчанию kzt).",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Подборка по позициям.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreEstimateSuggestionsRes" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreCreateEstimate": {
+        "type": "object",
+        "properties": {
+          "params": {
+            "type": "object",
+            "description": "Параметры помещения/работы для расчёта.",
+            "properties": {
+              "area": { "type": "number", "minimum": 0 },
+              "volume": { "type": "number", "minimum": 0 },
+              "length": { "type": "number", "minimum": 0 },
+              "height": { "type": "number", "minimum": 0 },
+              "count": { "type": "number", "minimum": 0 }
+            }
+          },
+          "norm_codes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Коды нормативов (иначе — все активные)."
+          },
+          "note": { "type": "string", "maxLength": 2000 }
+        }
+      },
+      "StoreEstimateLine": {
+        "type": "object",
+        "required": ["id", "material_kind", "quantity", "unit"],
+        "properties": {
+          "id": { "type": "string" },
+          "material_kind": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unit": { "type": "string" },
+          "norm_code": { "type": "string", "nullable": true },
+          "segment": { "type": "string", "nullable": true },
+          "product_id": { "type": "string", "nullable": true },
+          "unit_price": { "type": "number", "nullable": true },
+          "total": { "type": "number", "nullable": true }
+        }
+      },
+      "StoreEstimate": {
+        "type": "object",
+        "required": ["id", "source", "status", "lines"],
+        "properties": {
+          "id": { "type": "string" },
+          "source": { "type": "string", "enum": ["manual", "file", "voice"] },
+          "status": { "type": "string", "enum": ["draft", "calculated"] },
+          "params": { "type": "object", "additionalProperties": true },
+          "note": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+          "lines": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreEstimateLine" }
+          }
+        }
+      },
+      "StoreEstimateRes": {
+        "type": "object",
+        "required": ["estimate"],
+        "properties": { "estimate": { "$ref": "#/components/schemas/StoreEstimate" } }
+      },
+      "StoreEstimateSuggestionOption": {
+        "type": "object",
+        "required": ["segment", "product_id", "unit_price", "total", "in_stock"],
+        "properties": {
+          "segment": { "type": "string", "enum": ["economy", "comfort", "business"] },
+          "product_id": { "type": "string" },
+          "product_title": { "type": "string" },
+          "unit_price": { "type": "number" },
+          "total": { "type": "number" },
+          "in_stock": { "type": "boolean" }
+        }
+      },
+      "StoreEstimateSuggestion": {
+        "type": "object",
+        "required": ["line_id", "material_kind", "quantity", "unit", "options"],
+        "properties": {
+          "line_id": { "type": "string" },
+          "material_kind": { "type": "string" },
+          "quantity": { "type": "number" },
+          "unit": { "type": "string" },
+          "options": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreEstimateSuggestionOption" }
+          }
+        }
+      },
+      "StoreEstimateSuggestionsRes": {
+        "type": "object",
+        "required": ["estimate_id", "currency_code", "suggestions"],
+        "properties": {
+          "estimate_id": { "type": "string" },
+          "currency_code": { "type": "string" },
+          "suggestions": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreEstimateSuggestion" }
+          }
+        }
+      }
+    }
+  }
+}
