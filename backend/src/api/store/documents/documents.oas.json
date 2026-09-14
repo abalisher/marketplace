@@ -1,0 +1,90 @@
+{
+  "paths": {
+    "/store/documents": {
+      "get": {
+        "operationId": "StoreListMyDocuments",
+        "summary": "List My Documents",
+        "description": "Все документы покупателя одним списком (кабинет клиента): счета, накладные и АВР по всем его заказам, текущих версий и видимые покупателю. Каждая строка несёт заказ (id и человекочитаемый номер) для перехода в карточку. Скачивание — по file_url.",
+        "tags": ["Documents"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Документы покупателя, новые сверху.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreMyDocumentsRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreMyDocument": {
+        "type": "object",
+        "required": ["id", "type", "number", "version", "order"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["invoice", "waybill", "internal_avr"],
+            "description": "Тип документа: счёт / накладная / внутренний АВР."
+          },
+          "number": {
+            "type": "string",
+            "description": "Человекочитаемый номер (напр. INV-2026-000001)."
+          },
+          "version": { "type": "integer" },
+          "file_url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ссылка на PDF в File Module (для скачивания)."
+          },
+          "total_money": { "type": "number" },
+          "total_bonus": { "type": "number" },
+          "currency_code": { "type": "string" },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "order": { "$ref": "#/components/schemas/StoreMyDocumentOrder" }
+        }
+      },
+      "StoreMyDocumentOrder": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "display_id": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Человекочитаемый номер заказа."
+          }
+        }
+      },
+      "StoreMyDocumentsRes": {
+        "type": "object",
+        "required": ["documents"],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreMyDocument" }
+          }
+        }
+      }
+    }
+  }
+}

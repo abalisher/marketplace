@@ -15,6 +15,7 @@ type DocumentRow = {
   total_bonus: unknown
   currency_code: string
   note: string | null
+  sent_to_buyer_at?: Date | string | null
   created_at?: Date | string | null
 }
 
@@ -45,5 +46,8 @@ export const serializeDocumentForAdmin = (doc: DocumentRow) => ({
   total_bonus: Number(doc.total_bonus),
   currency_code: doc.currency_code,
   note: doc.note,
+  // Отметка «отправлен покупателю» (T4.9) — только для продавца/админа:
+  // покупателю документ и так виден в ЛК.
+  sent_to_buyer_at: doc.sent_to_buyer_at ?? null,
   created_at: doc.created_at ?? null,
 })

@@ -35,6 +35,11 @@ const Document = model.define("document", {
   // документ от одной стороны в будущем без миграции.
   visible_to_buyer: model.boolean().default(true),
   visible_to_seller: model.boolean().default(true),
+  // Момент, когда документ отметили отправленным покупателю. Канал отправки
+  // пока не выбран (развилка №0 владельцу), поэтому отметку ставит человек с
+  // экрана заказа: управляющему нужно видеть, ушёл ли счёт клиенту (T4.9).
+  // null — не отправлен.
+  sent_to_buyer_at: model.dateTime().nullable(),
   note: model.text().nullable(),
 })
 

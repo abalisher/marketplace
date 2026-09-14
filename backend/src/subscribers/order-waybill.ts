@@ -2,8 +2,13 @@ import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ORDER_STATUS_CHANGED_EVENT } from "../modules/order-lifecycle/events"
 import { ORDER_LIFECYCLE_MODULE } from "../modules/order-lifecycle"
 import OrderLifecycleModuleService from "../modules/order-lifecycle/service"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { DOCUMENTS_MODULE } from "../modules/documents"
 import DocumentsModuleService from "../modules/documents/service"
+import {
+  missingRequisites,
+  missingRequisitesMessage,
+} from "../modules/documents/requisites"
 import { issueOrderDocumentWorkflow } from "../workflows/issue-order-document"
 
 type StatusChangedPayload = {
@@ -49,6 +54,16 @@ export default async function issueOrderWaybill({
     { take: 1 }
   )
   if (existing) {
+    return
+  }
+
+  // Как в order-invoice: с неполными реквизитами документ не выпускается (T4.9).
+  const missing = missingRequisites(await documentsService.getOrCreateSettings())
+  if (missing.length > 0) {
+    const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+    logger.warn(
+      `[order-waybill] заказ ${data.order_id}: накладная не выпущена. ${missingRequisitesMessage(missing)}`
+    )
     return
   }
 

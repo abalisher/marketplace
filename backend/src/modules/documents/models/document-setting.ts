@@ -14,6 +14,14 @@ const DocumentSetting = model.define("document_setting", {
   seller_bank_name: model.text().nullable(),
   seller_bank_bik: model.text().nullable(),
   seller_iban: model.text().nullable(),
+  // Кбе — код бенефициара платёжного поручения (17 у юрлиц-резидентов, 19 у ИП
+  // и физлиц), КНП — код назначения платежа (710 — оплата за товар). Без них
+  // банк покупателя платёж по счёту не проведёт, поэтому у полей есть типовые
+  // дефолты, а не null.
+  seller_kbe: model.text().default("17"),
+  seller_knp: model.text().default("710"),
+  // Ф.И.О. руководителя — расшифровка подписи под счётом и актом.
+  director_name: model.text().nullable(),
   // Приписка в подвале документа (например, «не является официальным ЭСФ»).
   footer_note: model.text().nullable(),
 })

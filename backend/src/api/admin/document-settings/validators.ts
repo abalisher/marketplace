@@ -12,6 +12,11 @@ export const AdminUpdateDocumentSettings = z.object({
   seller_bank_name: z.string().nullable().optional(),
   seller_bank_bik: z.string().nullable().optional(),
   seller_iban: z.string().nullable().optional(),
+  // Кбе и КНП печатаются в рамке платёжного поручения счёта: коды короткие
+  // (2 и 3 цифры), пустыми быть не должны — иначе банк вернёт платёж.
+  seller_kbe: z.string().min(1).optional(),
+  seller_knp: z.string().min(1).optional(),
+  director_name: z.string().nullable().optional(),
   footer_note: z.string().nullable().optional(),
 })
 export type AdminUpdateDocumentSettingsType = z.infer<

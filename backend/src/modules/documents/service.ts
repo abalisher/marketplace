@@ -100,6 +100,17 @@ class DocumentsModuleService extends MedusaService({
     })
   }
 
+  // Отметить документ отправленным покупателю. Канала отправки пока нет
+  // (развилка №0), отметку ставит продавец руками с экрана заказа — управляющему
+  // нужно видеть, ушёл ли счёт клиенту (T4.9). Повторная отметка обновляет
+  // момент: документ могли выслать заново после переиздания.
+  async markDocumentSent(document_id: string, now: Date = new Date()) {
+    return await this.updateDocuments({
+      id: document_id,
+      sent_to_buyer_at: now,
+    })
+  }
+
   // Прикрепить отрендеренный PDF к строке документа (после шага рендера в
   // workflow, подзадача 2).
   async attachRenderedFile(input: {

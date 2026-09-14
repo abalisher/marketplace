@@ -18,6 +18,9 @@ const serializeSettings = (settings: {
   seller_bank_name: string | null
   seller_bank_bik: string | null
   seller_iban: string | null
+  seller_kbe: string
+  seller_knp: string
+  director_name: string | null
   footer_note: string | null
 }) => ({
   id: settings.id,
@@ -29,6 +32,9 @@ const serializeSettings = (settings: {
   seller_bank_name: settings.seller_bank_name,
   seller_bank_bik: settings.seller_bank_bik,
   seller_iban: settings.seller_iban,
+  seller_kbe: settings.seller_kbe,
+  seller_knp: settings.seller_knp,
+  director_name: settings.director_name,
   footer_note: settings.footer_note,
 })
 

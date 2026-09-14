@@ -29,6 +29,9 @@ export type IssueOrderDocumentWorkflowInput = {
 export const issueOrderDocumentWorkflow = createWorkflow(
   "issue-order-document",
   (input: WorkflowData<IssueOrderDocumentWorkflowInput>) => {
+    // Полнота реквизитов продавца проверяется В ШАГЕ снапшота (он и так читает
+    // реквизиты): отдельный шаг-guard без связи по данным движок волен
+    // выполнить параллельно, и его отказ не останавливал выпуск (T4.9).
     const built = buildOrderDocumentSnapshotStep({
       order_id: input.order_id,
       type: input.type,

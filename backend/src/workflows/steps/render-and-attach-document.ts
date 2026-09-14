@@ -3,10 +3,8 @@ import { Modules } from "@medusajs/framework/utils"
 import { DOCUMENTS_MODULE } from "../../modules/documents"
 import DocumentsModuleService from "../../modules/documents/service"
 import { DocumentType } from "../../modules/documents/models/constants"
-import {
-  DocumentSnapshot,
-  renderDocumentPdf,
-} from "../utils/render-document-pdf"
+import { renderDocumentPdf } from "../utils/render-document-pdf"
+import { DocumentSnapshot } from "../utils/documents/document-snapshot"
 
 export type RenderAndAttachDocumentStepInput = {
   document_id: string

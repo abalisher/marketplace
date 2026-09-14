@@ -9,12 +9,14 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import DocumentRequisitesDrawer from "../../../components/document-requisites-drawer"
 import {
   AdminDocumentSettingsResponse,
   DOCUMENT_SETTINGS_FIELDS,
 } from "../../../lib/documents"
 import { sdk } from "../../../lib/sdk"
+import { routeLabel } from "../../../lib/route-label"
 
 const CardRow = ({
   label,
@@ -37,6 +39,7 @@ const CardRow = ({
 // settings/bonus-program: секция «метка — значение», правка через Drawer из
 // «...»-меня. Данные — GET/POST /admin/document-settings.
 const DocumentRequisitesPage = () => {
+  const { t } = useTranslation()
   const [editOpen, setEditOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -52,9 +55,9 @@ const DocumentRequisitesPage = () => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
-          <Heading>Document Requisites</Heading>
+          <Heading>{t("documents.requisites.title")}</Heading>
           <Text className="text-ui-fg-subtle" size="small">
-            Seller details printed on invoices, waybills and internal acts.
+            {t("documents.requisites.subtitle")}
           </Text>
         </div>
         <DropdownMenu>
@@ -70,7 +73,7 @@ const DocumentRequisitesPage = () => {
               disabled={isLoading || !settings}
             >
               <PencilSquare className="text-ui-fg-subtle" />
-              Edit
+              {t("common.edit")}
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu>
@@ -78,14 +81,14 @@ const DocumentRequisitesPage = () => {
 
       {settings ? (
         DOCUMENT_SETTINGS_FIELDS.map(({ key, label }) => (
-          <CardRow key={key} label={label}>
+          <CardRow key={key} label={t(label)}>
             {settings[key] ? settings[key] : "—"}
           </CardRow>
         ))
       ) : (
         <div className="px-6 py-4">
           <Text size="small" className="text-ui-fg-subtle">
-            {isLoading ? "Loading…" : "Failed to load document requisites."}
+            {isLoading ? t("common.loading") : t("documents.requisites.loadFailed")}
           </Text>
         </div>
       )}
@@ -102,7 +105,7 @@ const DocumentRequisitesPage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Document Requisites",
+  label: routeLabel({ en: "Document Requisites", ru: "Реквизиты документов" }),
 })
 
 export default DocumentRequisitesPage

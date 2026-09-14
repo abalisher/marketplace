@@ -244,6 +244,20 @@ medusaIntegrationTestRunner({
         password,
       })
       adminHeaders = { authorization: `Bearer ${login.token}` }
+
+      // Реквизиты продавца обязательны для выпуска документов (T4.9).
+      await api.post(
+        "/admin/document-settings",
+        {
+          seller_name: "ТОО «СтройМаркет»",
+          seller_bin: "180540021764",
+          seller_address: "г. Астана, ул. Кабанбай батыра, 53",
+          seller_bank_name: "АО «Kaspi Bank»",
+          seller_bank_bik: "CASPKZKA",
+          seller_iban: "KZ12 3456 7890 1234 5678",
+        },
+        { headers: adminHeaders }
+      )
     })
 
     const prepareCart = async (customerId: string, email: string) => {
@@ -345,6 +359,47 @@ medusaIntegrationTestRunner({
       })
     })
 
+    describe("GET /store/documents", () => {
+      it("collects the documents of all buyer orders in one list", async () => {
+        const buyer = await createCustomer()
+        const firstOrderId = await placeOrderWithWaybill(buyer)
+        const secondOrderId = await placeOrderWithWaybill(buyer)
+
+        const res = await call(
+          api.get("/store/documents", { headers: buyer.headers })
+        )
+
+        expect(res.status).toEqual(200)
+        const orderIds = res.data.documents.map(
+          (d: { order: { id: string } }) => d.order.id
+        )
+        expect(orderIds).toContain(firstOrderId)
+        expect(orderIds).toContain(secondOrderId)
+        const waybill = res.data.documents.find(
+          (d: { type: string; order: { id: string } }) =>
+            d.type === "waybill" && d.order.id === secondOrderId
+        )
+        expect(waybill).toBeDefined()
+        // Строка списка сама доводит до карточки заказа и до PDF.
+        expect(typeof waybill.order.display_id).toEqual("number")
+        expect(waybill.file_url).toContain(".pdf")
+        expect(waybill.file_id).toBeUndefined()
+      })
+
+      it("does not leak another buyer's documents", async () => {
+        const owner = await createCustomer()
+        await placeOrderWithWaybill(owner)
+
+        const stranger = await createCustomer()
+        const res = await call(
+          api.get("/store/documents", { headers: stranger.headers })
+        )
+
+        expect(res.status).toEqual(200)
+        expect(res.data.documents).toEqual([])
+      })
+    })
+
     describe("GET /admin/orders/:id/documents", () => {
       it("returns all documents of the order for an admin", async () => {
         const buyer = await createCustomer()
@@ -390,14 +445,163 @@ medusaIntegrationTestRunner({
       })
     })
 
+    // T4.9: ручной выпуск с экрана заказа — до него документ появлялся ТОЛЬКО
+    // по событию заказа, и по «пропущенному» заказу продавец не мог ничего
+    // сделать (блокер 19 фокус-группы T4.6).
+    describe("POST /admin/orders/:id/documents", () => {
+      it("issues a document manually and re-issues it as a new version", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+        const orderId = placed.order.id as string
+
+        const first = await call(
+          api.post(
+            `/admin/orders/${orderId}/documents`,
+            { type: "waybill" },
+            { headers: adminHeaders }
+          )
+        )
+        expect(first.status).toEqual(201)
+        expect(first.data.document.version).toEqual(1)
+        expect(first.data.document.file_url).toContain(".pdf")
+
+        const again = await call(
+          api.post(
+            `/admin/orders/${orderId}/documents`,
+            { type: "waybill" },
+            { headers: adminHeaders }
+          )
+        )
+        // Переиздание сохраняет номер и увеличивает версию.
+        expect(again.data.document.version).toEqual(2)
+        expect(again.data.document.number).toEqual(first.data.document.number)
+      })
+
+      it("refuses an internal act for a personal order (400)", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeOrderWithWaybill(buyer)
+
+        const res = await call(
+          api.post(
+            `/admin/orders/${orderId}/documents`,
+            { type: "internal_avr" },
+            { headers: adminHeaders }
+          )
+        )
+        expect(res.status).toEqual(400)
+        expect(res.data.message).toContain("юридических лиц")
+      })
+
+      it("rejects an unknown document type (400)", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeOrderWithWaybill(buyer)
+
+        const res = await call(
+          api.post(
+            `/admin/orders/${orderId}/documents`,
+            { type: "contract" },
+            { headers: adminHeaders }
+          )
+        )
+        expect(res.status).toEqual(400)
+      })
+    })
+
+    describe("GET /admin/documents", () => {
+      it("lists the registry with order, counts and requisite status", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeOrderWithWaybill(buyer)
+
+        const res = await call(
+          api.get("/admin/documents", { headers: adminHeaders })
+        )
+
+        expect(res.status).toEqual(200)
+        expect(res.data.requisites_missing).toEqual([])
+        expect(res.data.counts.all).toBeGreaterThan(0)
+        const row = res.data.documents.find(
+          (d: { order?: { id: string } }) => d.order?.id === orderId
+        )
+        expect(row).toBeDefined()
+        // Строка готова к отрисовке: номер заказа и плательщик человекочитаемо.
+        expect(row.order.display_id).toBeGreaterThan(0)
+        expect(row.order.buyer).toEqual("Test Buyer")
+        expect(row.sent_to_buyer_at).toBeNull()
+      })
+
+      it("filters by type and by the search query", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeOrderWithWaybill(buyer)
+        const { data: created } = await api.get(
+          `/admin/orders/${orderId}/documents`,
+          { headers: adminHeaders }
+        )
+        const waybill = created.documents.find(
+          (d: { type: string }) => d.type === "waybill"
+        )
+
+        const byType = await call(
+          api.get("/admin/documents?type=waybill", { headers: adminHeaders })
+        )
+        expect(
+          byType.data.documents.every(
+            (d: { type: string }) => d.type === "waybill"
+          )
+        ).toBe(true)
+
+        const byNumber = await call(
+          api.get(`/admin/documents?q=${waybill.number}`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(byNumber.data.count).toEqual(1)
+        expect(byNumber.data.documents[0].number).toEqual(waybill.number)
+      })
+    })
+
+    describe("POST /admin/documents/:id/mark-sent", () => {
+      it("marks the document as sent and moves it out of the «not sent» filter", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeOrderWithWaybill(buyer)
+        const { data: created } = await api.get(
+          `/admin/orders/${orderId}/documents`,
+          { headers: adminHeaders }
+        )
+        const documentId = created.documents[0].id
+
+        const res = await call(
+          api.post(
+            `/admin/documents/${documentId}/mark-sent`,
+            {},
+            { headers: adminHeaders }
+          )
+        )
+
+        expect(res.status).toEqual(200)
+        expect(res.data.document.sent_to_buyer_at).toBeTruthy()
+
+        const unsent = await call(
+          api.get("/admin/documents?sent=unsent", { headers: adminHeaders })
+        )
+        expect(
+          unsent.data.documents.some((d: { id: string }) => d.id === documentId)
+        ).toBe(false)
+      })
+    })
+
     describe("/admin/document-settings", () => {
-      it("returns the singleton settings with defaults", async () => {
+      it("returns the singleton settings", async () => {
         const res = await call(
           api.get("/admin/document-settings", { headers: adminHeaders })
         )
         expect(res.status).toEqual(200)
         expect(res.data.document_settings.id).toMatch(/^docset_/)
-        expect(res.data.document_settings.seller_name).toEqual("Marketplace")
+        expect(res.data.document_settings.seller_bin).toEqual("180540021764")
       })
 
       it("applies a partial update and reflects it on next read", async () => {

@@ -1,14 +1,19 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { isCompaniesEnabled } from "../lib/feature-flags"
 import { DOCUMENTS_MODULE } from "../modules/documents"
 import DocumentsModuleService from "../modules/documents/service"
 import { DocumentType } from "../modules/documents/models/constants"
+import {
+  missingRequisites,
+  missingRequisitesMessage,
+} from "../modules/documents/requisites"
 import { issueOrderDocumentWorkflow } from "../workflows/issue-order-document"
 
 // Автовыпуск счёта на оплату сразу после оформления заказа (ТЗ 4.10). Ядро
-// эмитит order.placed из completeCartWorkflow — покрывает и обычное оформление
-// (place-order), и продажу у окна (place-counter-order). Для заказов юрлиц
-// дополнительно выпускается внутренний АВР (информационный документ платформы).
+// эмитит order.placed из completeCartWorkflow при оформлении (place-order).
+// Для заказов юрлиц дополнительно выпускается внутренний АВР (информационный
+// документ платформы) — пока включён FEATURE_COMPANIES (T10.9).
 // Документы — вторичный артефакт: их выпуск в подписчике, а не в workflow заказа,
 // чтобы сбой рендера не откатывал заказ. Идемпотентность: пропускаем, если
 // текущая версия документа этого типа по заказу уже есть (повторная доставка
@@ -21,6 +26,19 @@ export default async function issueOrderInvoice({
   const documentsService =
     container.resolve<DocumentsModuleService>(DOCUMENTS_MODULE)
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+
+  // Неполные реквизиты продавца — документ не выпускаем вовсе (T4.9): счёт без
+  // БИН и банка бухгалтерия покупателя не примет. Пропускаем тихо (заказ не
+  // виноват), продавец выпустит документ кнопкой с экрана заказа, когда
+  // заполнит «Настройки → Реквизиты документов».
+  const missing = missingRequisites(await documentsService.getOrCreateSettings())
+  if (missing.length > 0) {
+    logger.warn(
+      `[order-invoice] заказ ${order_id}: документы не выпущены. ${missingRequisitesMessage(missing)}`
+    )
+    return
+  }
 
   const hasLatest = async (type: DocumentType) => {
     const [existing] = await documentsService.listDocuments(
@@ -36,7 +54,13 @@ export default async function issueOrderInvoice({
     })
   }
 
-  // Заказ юрлица (link company ↔ order) — внутренний АВР платформы.
+  // Заказ юрлица (link company ↔ order) — внутренний АВР платформы. Юрлица
+  // заморожены (T10.9): с выключенным флагом связки company↔order не возникает
+  // вовсе, и лишний запрос на каждый заказ физлица не делаем.
+  if (!isCompaniesEnabled()) {
+    return
+  }
+
   const { data: orders } = await query.graph({
     entity: "order",
     fields: ["id", "company.id"],

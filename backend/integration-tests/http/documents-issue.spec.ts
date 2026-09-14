@@ -189,6 +189,19 @@ medusaIntegrationTestRunner({
           ],
         },
       })
+
+      // Реквизиты продавца обязательны для выпуска (T4.9): с дефолтными
+      // (пустой БИН, «Marketplace») workflow и подписчики документ не выпустят.
+      const settings = await docs().getOrCreateSettings()
+      await docs().updateDocumentSettings({
+        id: settings.id,
+        seller_name: "ТОО «СтройМаркет»",
+        seller_bin: "180540021764",
+        seller_address: "г. Астана, ул. Кабанбай батыра, 53",
+        seller_bank_name: "АО «Kaspi Bank»",
+        seller_bank_bik: "CASPKZKA",
+        seller_iban: "KZ12 3456 7890 1234 5678",
+      })
     })
 
     const placeTestOrder = async () => {
@@ -319,6 +332,66 @@ medusaIntegrationTestRunner({
         expect(result.document.version).toEqual(1)
         expect(result.document.number).toMatch(/^AVR-\d{4}-\d{6}$/)
         expect(result.file.file_id).toBeTruthy()
+      })
+
+      // T4.9: счёт с пустым БИН бухгалтерия покупателя не примет, поэтому
+      // документ не выпускается вовсе — ни строки, ни PDF.
+      it("refuses to issue a document while the seller requisites are incomplete", async () => {
+        const { order } = await placeTestOrder()
+        const settings = await docs().getOrCreateSettings()
+        await docs().updateDocumentSettings({ id: settings.id, seller_bin: null })
+
+        try {
+          // Ошибку читаем из errors, а не через rejects: раннер выполняет
+          // workflow локально и собирает отказ шага в errors, не пробрасывая
+          // его наружу (в HTTP-роуте тот же отказ становится 400 not_allowed).
+          const run = await issueOrderDocumentWorkflow(container).run({
+            input: { order_id: order.id, type: "waybill" },
+            throwOnError: false,
+          })
+
+          expect(run.errors?.[0]?.error?.message).toMatch(/Реквизиты продавца/)
+
+          const [doc] = await docs().listDocuments(
+            { order_id: order.id, type: "waybill" },
+            { take: 1 }
+          )
+          expect(doc).toBeUndefined()
+        } finally {
+          await docs().updateDocumentSettings({
+            id: settings.id,
+            seller_bin: "180540021764",
+          })
+        }
+      })
+
+      // Итог документа обязан совпадать с итогом заказа: доставка — отдельная
+      // строка, иначе счёт занижен на её стоимость (найдено на стенде T4.9).
+      it("includes the delivery line so the document total matches the order", async () => {
+        const { order } = await placeTestOrder()
+
+        const { result } = await issueOrderDocumentWorkflow(container).run({
+          input: { order_id: order.id, type: "invoice" },
+        })
+
+        const [doc] = await docs().listDocuments(
+          { order_id: order.id, type: "invoice", is_latest: true },
+          { take: 1 }
+        )
+        const snapshot = doc.snapshot as unknown as {
+          items: { title: string; total: number }[]
+        }
+        const itemsSum = snapshot.items.reduce((sum, i) => sum + i.total, 0)
+        // Итог заказа берём выборкой сервиса — ядро считает total при выборке
+        // (тот же дефект, что чинили в T4.2a).
+        const [orderRow] = await container
+          .resolve(Modules.ORDER)
+          .listOrders({ id: order.id }, { select: ["id", "total"] })
+
+        expect(result.document.version).toBeGreaterThanOrEqual(1)
+        expect(Number(doc.total_money)).toEqual(Number(orderRow.total))
+        expect(itemsSum).toEqual(Number(doc.total_money))
+        expect(snapshot.items.length).toBeGreaterThan(1)
       })
     })
 
