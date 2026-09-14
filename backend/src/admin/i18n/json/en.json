@@ -1,0 +1,1550 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "create": "Create",
+    "close": "Close",
+    "delete": "Delete",
+    "back": "Back",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "status": "Status",
+    "filterIs": "is",
+    "addFilter": "Add filter",
+    "clearAll": "Clear all",
+    "search": "Search",
+    "sort": "Sort",
+    "sortAZAsc": "A-Z",
+    "sortAZDesc": "Z-A",
+    "sortOldest": "Oldest first",
+    "sortNewest": "Newest first",
+    "reason": "Reason",
+    "unknownValue": "—",
+    "featureDisabled": {
+      "title": "Section is off",
+      "companies": "Work with legal entities is off: the store places orders for individuals only. Companies, scoring and credit limits return when the owner turns the FEATURE_COMPANIES flag on."
+    },
+    "pagination": {
+      "of": "of",
+      "results": "results",
+      "pages": "pages",
+      "prev": "Prev",
+      "next": "Next"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "today": "Today, {{date}}",
+    "refresh": "Refresh",
+    "error": "Could not load today's summary.",
+    "retry": "Retry",
+    "all": "All",
+    "orders": {
+      "title": "Orders to handle",
+      "hint": "{{new}} accepted · {{assembling}} in assembly",
+      "link": "To the queue",
+      "hintOverdue": "{{new}} new · {{assembling}} in assembly · {{overdue}} past due"
+    },
+    "moderation": {
+      "title": "Products in moderation",
+      "hint": "oldest waiting {{count}} h",
+      "hintEmpty": "nothing waiting",
+      "link": "To review",
+      "hintDays": "oldest waiting {{count}} d"
+    },
+    "stock": {
+      "title": "Low stock",
+      "panel": "Low stock",
+      "hint": "{{zero}} out of stock · threshold {{threshold}}",
+      "link": "To stock",
+      "empty": "Stock levels are fine.",
+      "units_one": "{{count}} unit",
+      "units_other": "{{count}} units"
+    },
+    "receipts": {
+      "title": "Receipts",
+      "panel": "Receipts",
+      "hint": "{{drafts}} drafts · {{ai}} from AI",
+      "link": "To receipts",
+      "empty": "No open receipts.",
+      "noReference": "Draft without a number"
+    },
+    "queue": {
+      "title": "Orders to handle",
+      "all": "All orders",
+      "empty": "Nothing waiting — the queue is empty.",
+      "colNumber": "No.",
+      "colCustomer": "Customer",
+      "colItems": "Items",
+      "colTotal": "Total",
+      "noCustomer": "Guest",
+      "items_one": "{{count}} item",
+      "items_other": "{{count}} items",
+      "colWaiting": "Waiting",
+      "waitingHours": "{{count}} h",
+      "waitingDays": "{{count}} d"
+    },
+    "disputes": {
+      "title": "Claims",
+      "hint": "{{overdue}} overdue · oldest waiting {{count}} h",
+      "hintEmpty": "Nothing waiting for a reply",
+      "link": "To claims",
+      "hintDays": "{{overdue}} overdue · oldest waiting {{count}} d"
+    },
+    "money": {
+      "title": "Money",
+      "revenueToday": "Revenue today",
+      "revenueTodayHint_one": "{{count}} paid order",
+      "revenueTodayHint_other": "{{count}} paid orders",
+      "revenueTodayEmpty": "No paid orders yet today",
+      "revenueWeek": "Revenue, {{days}} days",
+      "revenueWeekHint_one": "{{count}} paid order",
+      "revenueWeekHint_other": "{{count}} paid orders",
+      "inProgress": "Money in progress",
+      "inProgressHint_one": "{{count}} order before delivery",
+      "inProgressHint_other": "{{count}} orders before delivery",
+      "inProgressAwaiting": "{{amount}} not paid yet",
+      "inProgressEmpty": "No open orders",
+      "receivables": "Company debt",
+      "receivablesHint_one": "{{count}} company · deferral {{days}} days",
+      "receivablesHint_other": "{{count}} companies · deferral {{days}} days",
+      "receivablesOverdue": "{{amount}} past the deferral",
+      "otherCurrency_one": "{{count}} order in another currency is not counted",
+      "otherCurrency_other": "{{count}} orders in another currency are not counted"
+    },
+    "stages": {
+      "title": "Order stages",
+      "window_one": "{{count}} day · {{orders}} orders",
+      "window_other": "{{count}} days · {{orders}} orders",
+      "colStage": "Stage",
+      "colAvg": "Average",
+      "colMax": "Worst",
+      "colOrders": "Orders",
+      "empty": "No completed stages in this period yet.",
+      "accepted": "Placed → accepted",
+      "assembled": "Accepted → assembled",
+      "shipped": "Assembled → shipped",
+      "delivered": "Shipped → delivered"
+    },
+    "duration": {
+      "minutes": "{{count}} min",
+      "hours": "{{count}} h",
+      "days": "{{count}} d",
+      "underMinute": "under a minute"
+    }
+  },
+  "companies": {
+    "title": "Companies",
+    "colName": "Name",
+    "colBin": "BIN",
+    "colCreated": "Created",
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "action": {
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "role": {
+      "admin": "Admin",
+      "member": "Member"
+    },
+    "period": {
+      "order": "per order",
+      "day": "per day",
+      "week": "per week",
+      "month": "per month"
+    },
+    "reject": {
+      "title": "Reject company",
+      "description": "A rejection reason is required — the buyer will see it in their profile.",
+      "placeholder": "e.g. Incorporation documents are missing"
+    },
+    "approve": {
+      "title": "Approve company?",
+      "description": "The company \"{{name}}\" will be activated: its employees will be able to place orders within their spend limits."
+    },
+    "toast": {
+      "approved": "Company approved",
+      "rejected": "Company rejected"
+    },
+    "detail": {
+      "back": "← Back to companies",
+      "notFound": "Company not found.",
+      "submitted": "BIN {{bin}} · submitted {{date}}",
+      "resubmitted": "Resubmitted {{date}} after rejection",
+      "rejectionReason": "Rejection reason",
+      "previousRejectionReason": "Previous rejection reason",
+      "documents": "Documents",
+      "noDocuments": "No documents provided.",
+      "employees": "Employees",
+      "email": "Email",
+      "name": "Name",
+      "role": "Role",
+      "spendLimits": "Spend limits",
+      "noEmployees": "No employees yet."
+    },
+    "scoring": {
+      "title": "Credit scoring",
+      "setManualLimit": "Set manual limit",
+      "score": "Score",
+      "computedLimit": "Computed limit",
+      "manualLimit": "Manual limit",
+      "availableCredit": "Available credit",
+      "note": "Note",
+      "empty": "No scoring computed yet. It is recalculated as the company's orders close, or you can set a manual limit."
+    },
+    "creditLimit": {
+      "title": "Manual credit limit",
+      "limitLabel": "Manual limit, ₸",
+      "limitPlaceholder": "Leave empty to use the computed limit",
+      "limitHint": "Overrides the score-derived limit. Empty clears the override.",
+      "noteLabel": "Note (audit)",
+      "toast": "Credit limit updated"
+    },
+    "emptyHeading": "No companies",
+    "emptyDescription": "No registration requests yet.",
+    "filteredHeading": "Nothing found",
+    "filteredDescription": "No company matches the filters.",
+    "error": "Could not load companies. Check the connection and try again."
+  },
+  "productModeration": {
+    "title": "Product Moderation",
+    "colProduct": "Product",
+    "colCategory": "Category",
+    "colSegment": "Segment",
+    "colUpdated": "Updated",
+    "segment": {
+      "economy": "Economy",
+      "comfort": "Comfort",
+      "business": "Business"
+    },
+    "status": {
+      "draft": "Draft",
+      "proposed": "Proposed",
+      "published": "Published",
+      "rejected": "Rejected"
+    },
+    "action": {
+      "submit": "Submit for moderation",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "reject": {
+      "title": "Reject product card",
+      "description": "A rejection reason is required — the seller will see it on the product card.",
+      "placeholder": "e.g. Certificates are missing or expired"
+    },
+    "approve": {
+      "title": "Approve product card?",
+      "description": "The product \"{{title}}\" will be published and become visible to buyers."
+    },
+    "toast": {
+      "submitted": "Product submitted for moderation",
+      "approved": "Product card approved",
+      "rejected": "Product card rejected",
+      "cardUpdated": "Catalog card updated",
+      "cardCreated": "Catalog card created"
+    },
+    "card": {
+      "title": "Catalog card",
+      "segment": "Segment",
+      "unit": "Unit",
+      "certificates": "Certificates",
+      "rejectionReason": "Rejection reason",
+      "empty": "No catalog card yet. Create one with a segment and unit so the product can be submitted for moderation."
+    },
+    "drawer": {
+      "editTitle": "Edit catalog card",
+      "createTitle": "Create catalog card",
+      "segment": "Segment",
+      "selectSegment": "Select segment",
+      "unit": "Unit",
+      "unitPlaceholder": "e.g. bag 25 kg",
+      "certificates": "Certificates",
+      "certName": "Name",
+      "certUrl": "URL",
+      "addCertificate": "Add certificate"
+    },
+    "emptyHeading": "No product cards",
+    "emptyDescription": "No products submitted for review yet.",
+    "filteredHeading": "Nothing found",
+    "filteredDescription": "No card matches the filters.",
+    "error": "Could not load products. Check the connection and try again."
+  },
+  "picker": {
+    "title": "The picker workplace is in the app",
+    "description": "Assembly tasks arrive in the “StroyMarket Picker” app on your phone: it shows only your category, and items are marked as you go, at the rack.",
+    "hint": "Open the app on your phone and sign in with the same account. There are no assembly tasks in the web panel."
+  },
+  "orderQueue": {
+    "title": "Orders",
+    "searchPlaceholder": "Order no. or customer…",
+    "colOrder": "No.",
+    "orderNo": "#{{id}}",
+    "colCustomer": "Customer",
+    "colItems": "Items",
+    "colTotal": "Total",
+    "colPayment": "Payment",
+    "colAction": "Action",
+    "companyBadge": "biz",
+    "items_one": "{{count}} item",
+    "items_other": "{{count}} items",
+    "chip": {
+      "all": "All",
+      "assembly": "Assembly"
+    },
+    "payment": {
+      "paid": "Paid",
+      "awaiting": "Awaiting payment",
+      "canceled": "Payment canceled"
+    },
+    "action": {
+      "assemble": "To assembly",
+      "ship": "To shipping",
+      "deliver": "Hand over"
+    },
+    "emptyHeading": "No orders yet",
+    "emptyDescription": "New orders will appear here once buyers check out.",
+    "filteredHeading": "No results",
+    "filteredDescription": "Change the filter or search query.",
+    "error": "Failed to load orders. Check the connection and try again.",
+    "retry": "Retry",
+    "colSlot": "Delivery",
+    "colWaiting": "In status",
+    "colAssignee": "Owner",
+    "assigneeNone": "not taken",
+    "assignee": {
+      "picker": "assembly",
+      "operator": "operator"
+    },
+    "overdueHint_one": "{{count}} order is past its stage deadline.",
+    "overdueHint_other": "{{count}} orders are past their stage deadlines.",
+    "onTimeHint": "All orders are within their stage deadlines.",
+    "ageHours": "{{count}} h",
+    "ageDays": "{{count}} d",
+    "overdue": "past due"
+  },
+  "orderCard": {
+    "title": "Order",
+    "timeline": "Progress",
+    "note": "Note: {{note}}",
+    "customer": "Buyer",
+    "buyer": "Buyer",
+    "bin": "BIN",
+    "email": "Email",
+    "phone": "Phone",
+    "creditLimit": "Credit line",
+    "creditValue": "{{available}} of {{limit}} available",
+    "creditNone": "No credit line set",
+    "items": "Items",
+    "noItems": "This order has no items.",
+    "itemTotal": "Items",
+    "shippingTotal": "Delivery",
+    "discountTotal": "Discount",
+    "total": "Total",
+    "delivery": "Delivery",
+    "slot": "Delivery slot",
+    "address": "Address",
+    "recipient": "Recipient",
+    "deliveryPhone": "Phone",
+    "shippingMethod": "Rate",
+    "slotHint": "This order has no delivery slot: it was placed before slots existed.",
+    "documents": "Documents",
+    "documentNotSent": "not sent",
+    "openOrder": "Open order page",
+    "error": "Failed to load the order card. Check the connection and try again."
+  },
+  "order": {
+    "status": {
+      "new": "New",
+      "confirmed": "Confirmed",
+      "assembling": "Assembling",
+      "partially_assembled": "Partially assembled",
+      "assembled": "Assembled",
+      "in_delivery": "In delivery",
+      "delivered": "Delivered",
+      "closed": "Closed",
+      "canceled": "Canceled",
+      "returned": "Returned"
+    },
+    "method": {
+      "delivery": "Delivery"
+    },
+    "actor": {
+      "buyer": "buyer",
+      "seller": "seller",
+      "driver": "driver",
+      "admin": "admin",
+      "system": "system"
+    },
+    "transition": {
+      "confirm": "Confirm",
+      "startAssembly": "Start assembly",
+      "completeAssembly": "Complete assembly",
+      "ship": "Ship",
+      "markDelivered": "Mark delivered",
+      "handOver": "Hand over",
+      "close": "Close order",
+      "cancel": "Cancel order"
+    },
+    "transitionToast": {
+      "confirmed": "Order confirmed",
+      "assemblyStarted": "Assembly started",
+      "assemblyCompleted": "Assembly completed",
+      "shipped": "Order shipped",
+      "delivered": "Order delivered",
+      "handedOver": "Order handed over",
+      "closed": "Order closed",
+      "canceled": "Order canceled"
+    },
+    "widget": {
+      "title": "Order lifecycle",
+      "history": "History",
+      "noTransitions": "No transitions yet.",
+      "empty": "This order has no lifecycle record (it was not placed through the marketplace flow).",
+      "fromStatus": "from {{status}}",
+      "by": "by {{actor}}",
+      "noItems": "This order has no items to fulfill.",
+      "noFulfillment": "No fulfillment found. Complete assembly first.",
+      "byPerson": "by {{name}} ({{actor}})"
+    },
+    "cancel": {
+      "titleNamed": "Order #{{id}} will be canceled. This cannot be undone.",
+      "titleGeneric": "This order will be canceled. This cannot be undone.",
+      "reasonLabel": "Reason (optional)",
+      "reasonPlaceholder": "e.g. Buyer requested cancellation",
+      "keep": "Keep order",
+      "confirm": "Cancel order"
+    },
+    "reschedule": {
+      "action": "Reschedule delivery",
+      "assignAction": "Set delivery window",
+      "title": "Reschedule delivery",
+      "assignTitle": "Set delivery window",
+      "descNamed": "Pick another arrival window for order #{{id}}. The buyer is waiting for the current one.",
+      "descGeneric": "Pick another arrival window for this order. The buyer is waiting for the current one.",
+      "assignDescNamed": "Order #{{id}} has no arrival window: it was placed before slots existed. Pick when to deliver it.",
+      "assignDescGeneric": "This order has no arrival window: it was placed before slots existed. Pick when to deliver it.",
+      "currentLabel": "Current window",
+      "slotLabel": "New window",
+      "slotPlaceholder": "Pick a window",
+      "reasonLabel": "Reason",
+      "reasonPlaceholder": "e.g. Buyer asked for Thursday morning",
+      "notifyHint": "The buyer is not notified automatically — tell them the new window yourself.",
+      "notAllowed": "This order can no longer be rescheduled: it has left the warehouse or is closed.",
+      "noSlots": "No windows left to offer this week.",
+      "loadError": "Failed to load available windows. Check the connection and try again.",
+      "confirm": "Reschedule",
+      "assignConfirm": "Set window",
+      "toast": "Delivery rescheduled",
+      "logTitle": "Delivery moved to {{slot}}",
+      "logFrom": "from {{slot}}"
+    },
+    "deliver": {
+      "descNamed": "Enter the delivery code the buyer provides to confirm order #{{id}} was handed over.",
+      "descGeneric": "Enter the delivery code the buyer provides to confirm this order was handed over.",
+      "codeLabel": "Delivery code",
+      "codePlaceholder": "e.g. 123456"
+    }
+  },
+  "shipping": {
+    "title": "Shipping",
+    "subtitle": "Orders on the way to the truck: what is being picked, what is ready, where something is missing.",
+    "ship": "Ship",
+    "orderNoUnknown": "Order",
+    "loading": "Loading the queue…",
+    "error": "Could not load the shipping queue.",
+    "empty": "Nothing to ship — no paid orders in assembly.",
+    "emptyFiltered": "No orders at this stage.",
+    "range": "{{from}}–{{to}} of {{count}}",
+    "capped": "the queue is shown up to {{cap}} orders",
+    "waiting_one": "Waiting for {{count}} category to be picked",
+    "waiting_other": "Waiting for {{count}} categories to be picked",
+    "shortageWarning": "Shortage: {{categories}}. Shipping decides — send what is picked or wait for the rest.",
+    "chip": {
+      "all": "All",
+      "assembling": "Being picked",
+      "ready": "Ready to ship",
+      "shortage": "Shortage"
+    },
+    "stage": {
+      "assembling": "Being picked",
+      "ready": "Order picked",
+      "shortage": "Shortage"
+    },
+    "taskStatus": {
+      "pending": "Not started",
+      "picking": "Being picked",
+      "assembled": "Picked",
+      "shortage": "Shortage"
+    },
+    "tile": {
+      "marked": "{{marked}} of {{total}} items marked",
+      "missing_one": "{{count}} not in stock",
+      "missing_other": "{{count}} not in stock",
+      "noPicker": "Nobody took it yet"
+    }
+  },
+  "drivers": {
+    "title": "Drivers",
+    "colDriver": "Driver",
+    "colPhone": "Phone",
+    "colVehicle": "Vehicle",
+    "colCapacity": "Payload",
+    "colSubmitted": "Applied",
+    "capacityValue": "{{value}} kg",
+    "status": {
+      "pending": "Pending review",
+      "active": "Approved",
+      "blocked": "Access closed"
+    },
+    "action": {
+      "activate": "Approve",
+      "block": "Close access"
+    },
+    "activate": {
+      "title": "Approve driver?",
+      "description": "{{name}} will see available orders and be able to take them: they will carry the store's goods and collect its money."
+    },
+    "block": {
+      "title": "Close access",
+      "description": "A reason is required — the driver sees it in the app. The same decision covers both rejecting an application and blocking a driver later.",
+      "placeholder": "e.g. Driving licence category does not match the vehicle"
+    },
+    "toast": {
+      "activated": "Driver approved",
+      "blocked": "Driver access closed"
+    },
+    "detail": {
+      "back": "← Back to drivers",
+      "notFound": "Driver not found.",
+      "submitted": "{{phone}} · applied {{date}}",
+      "submittedNoName": "Applied {{date}}",
+      "incompleteTitle": "Profile is incomplete",
+      "incompleteDescription": "The driver has not filled in their full name or licence plate. Such an application cannot be approved — there is nothing to check.",
+      "blockReason": "Reason access was closed",
+      "previousBlockReason": "Previous reason access was closed",
+      "vehicle": "Vehicle",
+      "vehicleModel": "Model",
+      "vehiclePlate": "Licence plate",
+      "decision": "Decision",
+      "decidedBy": "Decided by",
+      "decidedAt": "Decided at",
+      "noDecision": "The application has not been reviewed yet."
+    },
+    "emptyHeading": "No drivers",
+    "emptyDescription": "No one has registered as a driver yet.",
+    "filteredHeading": "Nothing found",
+    "filteredDescription": "No driver matches the filters.",
+    "error": "Could not load drivers. Check the connection and try again."
+  },
+  "bonus": {
+    "program": {
+      "title": "Bonus Program",
+      "subtitle": "Accrual percents, spending cap and expiry of buyer bonuses.",
+      "accrualPercent": "Accrual percent",
+      "segmentOverrides": "Segment overrides",
+      "maxSpendPercent": "Max spend percent",
+      "maxSpendValue": "{{value}}% of order total",
+      "expiry": "Expiry",
+      "expiryValue": "{{days}} days",
+      "disabled": "Disabled",
+      "expiryNotice": "Expiry notice",
+      "expiryNoticeValue": "{{days}} days before expiry",
+      "returnWindow": "Return window",
+      "returnWindowValue": "{{days}} days after delivery",
+      "loadFailed": "Failed to load bonus settings."
+    },
+    "segment": {
+      "economy": "Economy",
+      "comfort": "Comfort",
+      "business": "Business"
+    },
+    "drawer": {
+      "title": "Edit bonus program",
+      "accrualPercent": "Accrual percent",
+      "accrualHint": "Percent of item subtotals accrued after an order is closed and the return window has elapsed.",
+      "segmentOverrides": "Segment overrides",
+      "platformDefault": "Platform default",
+      "maxSpend": "Max spend percent",
+      "maxSpendHint": "Bonuses may cover at most this percent of a new order total.",
+      "expiryDays": "Expiry days",
+      "expiryHint": "Lifetime of each accrual. Leave empty to disable expiry.",
+      "expiryNoticeDays": "Expiry notice days",
+      "expiryNoticeHint": "Notify buyers this many days before their bonuses expire. 0 disables the notice.",
+      "returnWindowDays": "Return window days",
+      "returnWindowHint": "Accrual waits this many days after delivery before bonuses are credited."
+    },
+    "toast": {
+      "saved": "Bonus program settings updated"
+    },
+    "account": {
+      "title": "Bonus account",
+      "balance": "Balance",
+      "empty": "No bonus account yet — it is created with the first accrual.",
+      "recent": "Recent transactions",
+      "noTransactions": "No transactions yet.",
+      "expires": "expires {{date}}"
+    },
+    "txn": {
+      "accrual": "Accrued",
+      "spend": "Spent",
+      "expiry": "Expired",
+      "manual_credit": "Manual credit",
+      "manual_debit": "Manual debit"
+    }
+  },
+  "documents": {
+    "requisites": {
+      "title": "Document Requisites",
+      "subtitle": "Seller details printed on invoices, waybills and internal acts.",
+      "loadFailed": "Failed to load document requisites."
+    },
+    "drawer": {
+      "title": "Edit document requisites",
+      "hint": "These requisites are printed on generated invoices, waybills and internal acts. The footer note (e.g. «not an official ESF») appears at the bottom of each document."
+    },
+    "toast": {
+      "saved": "Document requisites updated",
+      "issued": "Document {{number}} issued",
+      "markedSent": "Marked as sent to the buyer"
+    },
+    "field": {
+      "seller_name": "Seller name",
+      "seller_bin": "BIN / IIN",
+      "seller_address": "Address",
+      "seller_phone": "Phone",
+      "seller_email": "Email",
+      "seller_bank_name": "Bank name",
+      "seller_bank_bik": "Bank BIK",
+      "seller_iban": "IBAN",
+      "seller_kbe": "Kbe (beneficiary code)",
+      "seller_knp": "KNP (payment purpose code)",
+      "director_name": "Director (full name)",
+      "footer_note": "Footer note"
+    },
+    "type": {
+      "invoice": "Invoice",
+      "waybill": "Waybill",
+      "internal_avr": "Internal act"
+    },
+    "widget": {
+      "title": "Documents",
+      "export": "Export for 1C",
+      "empty": "No documents issued for this order yet.",
+      "latest": "Latest",
+      "rendering": "rendering…",
+      "issue": {
+        "invoice": "Issue invoice",
+        "waybill": "Issue waybill",
+        "internal_avr": "Issue act"
+      },
+      "reissue": {
+        "invoice": "Reissue invoice",
+        "waybill": "Reissue waybill",
+        "internal_avr": "Reissue act"
+      },
+      "markSent": "Mark as sent",
+      "sent": "Sent",
+      "sentAt": "sent {{date}}",
+      "requisitesMissing": "Seller requisites are incomplete — documents cannot be issued. Fill them in Settings → Document Requisites."
+    },
+    "chip": {
+      "all": "All"
+    },
+    "registry": {
+      "title": "Documents",
+      "colNumber": "Number",
+      "colType": "Type",
+      "colOrder": "Order",
+      "colBuyer": "Payer",
+      "colTotal": "Amount",
+      "colIssued": "Issued",
+      "colSent": "Sent to buyer",
+      "notSent": "Not sent",
+      "markShort": "Mark sent",
+      "chipUnsent": "Not sent",
+      "searchPlaceholder": "Document or order number",
+      "requisitesMissing": "Seller requisites are incomplete — new documents are not issued.",
+      "fillRequisites": "Fill requisites",
+      "error": "Failed to load documents.",
+      "emptyHeading": "No documents yet",
+      "emptyDescription": "Invoices, waybills and acts appear here as orders are placed and shipped.",
+      "filteredHeading": "Nothing found",
+      "filteredDescription": "Change the filter or search query."
+    }
+  },
+  "reviews": {
+    "disputes": {
+      "title": "Claims",
+      "colOrder": "Order",
+      "colCategory": "Category",
+      "colOpened": "Opened",
+      "colComplaint": "What the buyer says",
+      "colAge": "Waiting",
+      "colOutcome": "Outcome",
+      "slaHint": "Reply window — {{hours}} h from the moment a claim is opened.",
+      "searchPlaceholder": "Order number or email",
+      "emptyHeading": "No claims",
+      "emptyDescription": "Nothing to review right now.",
+      "filteredHeading": "Nothing found",
+      "filteredDescription": "Change the filter or the search query.",
+      "error": "Failed to load claims. Check the connection and try again.",
+      "ageHours": "{{count}} h",
+      "ageDays": "{{count}} d",
+      "overdueHint_one": "{{count}} claim past the {{hours}} h reply window.",
+      "overdueHint_other": "{{count}} claims past the {{hours}} h reply window."
+    },
+    "category": {
+      "not_delivered": "Not delivered",
+      "damaged": "Damaged",
+      "wrong_item": "Wrong item",
+      "quality": "Quality",
+      "other": "Other"
+    },
+    "status": {
+      "open": "Open",
+      "in_review": "In review",
+      "resolved": "Resolved",
+      "rejected": "Rejected"
+    },
+    "action": {
+      "open": "Reopen",
+      "in_review": "Take in review",
+      "resolved": "Resolve",
+      "rejected": "Reject"
+    },
+    "target": {
+      "supplier": "Supplier",
+      "delivery": "Delivery"
+    },
+    "drawer": {
+      "title": "Claim",
+      "description": "Description",
+      "resolution": "Resolution",
+      "resolutionPlaceholder": "Required to resolve or reject",
+      "closed": "This claim is closed.",
+      "closedResolution": " Resolution: {{resolution}}"
+    },
+    "widget": {
+      "title": "Reviews and claims",
+      "reviews": "Reviews",
+      "noReviews": "No reviews yet.",
+      "noDisputes": "No claims.",
+      "hidden": "Hidden",
+      "hide": "Hide",
+      "publish": "Publish",
+      "claims": "Claims"
+    },
+    "toast": {
+      "reviewUpdated": "Review visibility updated",
+      "disputeUpdated": "Claim updated"
+    },
+    "chip": {
+      "active": "Needs a reply",
+      "all": "All"
+    },
+    "outcome": {
+      "refund": "Refund",
+      "redelivery": "Re-delivery",
+      "replacement": "Replacement",
+      "bonus": "Bonus compensation",
+      "none": "No compensation"
+    },
+    "source": {
+      "buyer": "opened by the buyer",
+      "operator": "logged by an operator"
+    },
+    "card": {
+      "title": "Claim",
+      "titleForOrder": "Claim on order #{{id}}",
+      "overdue": "overdue",
+      "complaint": "What the buyer says",
+      "order": "Order",
+      "orderDate": "Placed",
+      "orderMissing": "The order of this claim is not available.",
+      "shipment": "Shipping and handover",
+      "notShipped": "This order has not been shipped yet.",
+      "proofHint": "The driver, unloading photos and the recipient signature are not stored yet — they arrive with driver trips.",
+      "history": "This buyer",
+      "historySummary": "Claims: {{disputes}} · orders: {{orders}} · upheld: {{resolved}} · rejected: {{rejected}}",
+      "historyEmpty": "This is the first claim from this buyer.",
+      "reviewLine": "{{target}} · {{rating}} of 5",
+      "buyerChannel": "How the buyer learns the decision",
+      "buyerChannelHint": "The platform sends no notifications: the buyer sees the decision and its outcome in the chat with the assistant and under Orders. There is nothing to send from here — call if it is urgent.",
+      "decision": "Decision",
+      "decided": "Outcome: {{outcome}}",
+      "outcome": "Outcome for the buyer",
+      "outcomePlaceholder": "Pick what the buyer gets",
+      "outcomeHint": "Required when a claim is upheld: without it neither the buyer nor a colleague can tell what was promised. Rejection always means no compensation.",
+      "activeOnOrder": "Open claim: {{category}}",
+      "openClaim": "Open claim",
+      "missing": "Claim not found.",
+      "error": "Failed to load the claim. Check the connection and try again.",
+      "needBoth": "To close the claim: fill in the decision and pick the outcome.",
+      "needResolution": "Fill in the decision text.",
+      "needOutcome": "Pick the outcome for the buyer.",
+      "ageHours": "waiting {{count}} h",
+      "ageDays": "waiting {{count}} d",
+      "slaWindow": "Reply window {{hours}} h"
+    },
+    "register": {
+      "action": "Log a claim",
+      "title": "Claim from a call",
+      "hint": "Use it when the buyer complains by phone or at the counter: claims from the app reach the queue on their own.",
+      "order": "Order",
+      "searchPlaceholder": "Order number or buyer email",
+      "searchEmpty": "No orders found.",
+      "change": "Change",
+      "category": "Category",
+      "categoryPlaceholder": "Pick a category",
+      "description": "What happened",
+      "descriptionPlaceholder": "In the words of the buyer: what exactly, how much, when it was noticed",
+      "descriptionHint": "At least 10 characters — the next operator works from this text.",
+      "submit": "Log the claim"
+    },
+    "list": {
+      "title": "Reviews",
+      "colTarget": "Rated",
+      "colRating": "Rating",
+      "colComment": "Comment",
+      "rating": "{{rating}} of 5",
+      "chipPublished": "Published",
+      "chipHidden": "Hidden",
+      "chipAnyTarget": "All targets",
+      "statusPublished": "Published",
+      "statusHidden": "Hidden",
+      "summaryPart": "{{target}} {{average}} ({{count}})",
+      "noSummary": "No published reviews yet.",
+      "searchPlaceholder": "Order number or email",
+      "emptyHeading": "No reviews",
+      "emptyDescription": "Buyers have not rated anything yet.",
+      "filteredHeading": "Nothing found",
+      "filteredDescription": "Change the filter or the search query.",
+      "error": "Failed to load reviews. Check the connection and try again."
+    }
+  },
+  "scoring": {
+    "rules": {
+      "title": "Scoring Rules",
+      "subtitle": "Configurable weights and thresholds for company deferral scoring.",
+      "loadFailed": "Failed to load scoring rules."
+    },
+    "drawer": {
+      "title": "Edit scoring rules",
+      "hint": "Score is a weighted sum of order count, volume and tenure minus a per-return penalty (capped 0–100). The deferral limit is derived from the score above the threshold."
+    },
+    "toast": {
+      "saved": "Scoring rules updated"
+    },
+    "field": {
+      "points_per_order": "Points per order",
+      "max_orders_points": "Max order points",
+      "volume_per_point": "Volume per point, ₸",
+      "max_volume_points": "Max volume points",
+      "days_per_point": "Days per tenure point",
+      "max_tenure_points": "Max tenure points",
+      "penalty_per_return": "Penalty per return",
+      "min_score_for_credit": "Min score for credit",
+      "base_limit": "Base limit, ₸",
+      "limit_per_score_point": "Limit per score point, ₸",
+      "max_limit": "Max limit, ₸"
+    }
+  },
+  "estimator": {
+    "norms": {
+      "title": "Material Norms",
+      "subtitle": "Consumption norms used by the material estimator.",
+      "addNorm": "Add norm",
+      "colCode": "Code",
+      "colName": "Name",
+      "colMaterial": "Material",
+      "colConsumption": "Consumption",
+      "colActive": "Active",
+      "active": "Active",
+      "off": "Off",
+      "empty": "No norms yet. Add one to start."
+    },
+    "base": {
+      "area": "per m² (area)",
+      "volume": "per m³ (volume)",
+      "length": "per m (length)",
+      "count": "per unit (count)"
+    },
+    "drawer": {
+      "editTitle": "Edit norm",
+      "createTitle": "New norm",
+      "code": "Code",
+      "name": "Name",
+      "workType": "Work type",
+      "materialKind": "Material kind",
+      "base": "Base",
+      "consumption": "Consumption per unit",
+      "materialUnit": "Material unit",
+      "category": "Catalog category (for suggestions)",
+      "categoryNone": "None",
+      "active": "Active",
+      "note": "Note",
+      "hint": "Consumption is the material amount per base unit (e.g. 10 kg of cement per m²). Category links the norm to catalog products for per-segment suggestions."
+    },
+    "toast": {
+      "saved": "Material norm saved",
+      "deleted": "Norm deleted"
+    }
+  },
+  "procurement": {
+    "status": {
+      "draft": "Draft",
+      "posted": "Posted"
+    },
+    "source": {
+      "manual": "Manual",
+      "invoice_ai": "Invoice (AI)",
+      "photo_ai": "Photo (AI)"
+    },
+    "receipts": {
+      "title": "Procurement",
+      "newReceipt": "New receipt",
+      "colReference": "Reference",
+      "colSupplier": "Supplier",
+      "colTotal": "Total cost",
+      "colLines": "Items",
+      "colReceivedAt": "Received",
+      "colCreated": "Created",
+      "empty": "No receipts yet. Create your first goods receipt to stock up.",
+      "noSupplier": "—",
+      "draftsTotal": "Not posted: {{count}} for {{total}}",
+      "noDrafts": "No unposted receipts"
+    },
+    "receipt": {
+      "detailTitle": "Receipt",
+      "supplier": "Supplier",
+      "reference": "Reference",
+      "receivedAt": "Received at",
+      "source": "Source",
+      "total": "Total cost",
+      "note": "Note",
+      "linesTitle": "Items",
+      "batchesTitle": "Batches",
+      "colTitle": "Product",
+      "colQty": "Qty",
+      "colUnit": "Unit",
+      "colUnitCost": "Unit cost",
+      "colLineCost": "Line cost",
+      "colRemaining": "Remaining",
+      "colExpires": "Expires",
+      "unmatched": "Not matched to SKU",
+      "post": "Post receipt",
+      "postHint": "Posting adds stock to the warehouse and creates cost batches. It cannot be undone.",
+      "postFailed": "Could not post the receipt",
+      "postRetry": "Post again",
+      "deleteDraft": "Delete draft",
+      "deleteDraftTitle": "Delete the draft receipt?",
+      "deleteDraftDescription": "The draft and its lines will be gone. It never changed stock or cost.",
+      "deleteDraftConfirm": "Delete"
+    },
+    "create": {
+      "title": "New receipt",
+      "supplier": "Supplier",
+      "supplierNone": "Not specified",
+      "reference": "Supplier invoice no.",
+      "receivedAt": "Received at",
+      "note": "Note",
+      "addProduct": "Add product",
+      "uploadInvoice": "Upload invoice (AI)",
+      "matchProduct": "Match product",
+      "aiHint": "Recognized by AI. Review the items and match each to a catalog product before posting.",
+      "searchPlaceholder": "Search by name or SKU…",
+      "searchEmpty": "Nothing found",
+      "lineQty": "Qty",
+      "lineUnit": "Unit",
+      "lineUnitCost": "Unit cost, ₸",
+      "lineCost": "Line cost",
+      "expires": "Expires (optional)",
+      "noLines": "Add products from the catalog to build the receipt.",
+      "saveDraft": "Save draft",
+      "saveAndPost": "Save & post",
+      "hint": "Save a draft to edit later, or post right away to stock up and record cost.",
+      "location": "Receiving warehouse",
+      "locationPlaceholder": "Select a warehouse",
+      "locationHint": "Tell us which warehouse the goods went to — stock depends on it.",
+      "supplierEmpty": "No suppliers yet — add one below, in the supplier list.",
+      "postFailedTitle": "Draft saved, but posting failed",
+      "postFailedHint": "The receipt is in the list. Open it, fix the reason and post again — no need to create it twice.",
+      "openDraft": "Open draft",
+      "blockedNoLocation": "Pick the receiving warehouse first",
+      "blockedNoLines": "Add at least one line",
+      "blockedBadValues": "Check quantity and cost: both must be numbers above zero",
+      "blockedUnmatched": "Match {{count}} more line(s) to catalog products to post the receipt"
+    },
+    "suppliers": {
+      "title": "Suppliers",
+      "subtitle": "Vendors you buy materials from. Used to attribute goods receipts.",
+      "addSupplier": "Add supplier",
+      "colName": "Name",
+      "colBin": "BIN/IIN",
+      "colContact": "Contact",
+      "colStatus": "Status",
+      "active": "Active",
+      "inactive": "Inactive",
+      "empty": "No suppliers yet. Add the first one to start receiving goods."
+    },
+    "supplierDrawer": {
+      "createTitle": "New supplier",
+      "editTitle": "Edit supplier",
+      "name": "Name",
+      "bin": "BIN/IIN",
+      "phone": "Phone",
+      "email": "Email",
+      "note": "Note",
+      "active": "Active",
+      "deactivate": "Deactivate",
+      "hint": "A deactivated supplier stays on past receipts but is hidden when creating new ones."
+    },
+    "toast": {
+      "draftCreated": "Draft receipt created",
+      "posted": "Receipt posted — stock updated",
+      "supplierSaved": "Supplier saved",
+      "parsed": "Invoice recognized: {{count}} item(s)",
+      "supplierCreated": "Supplier \"{{name}}\" added from the invoice",
+      "draftDeleted": "Draft deleted"
+    },
+    "errors": {
+      "noLocation": "No warehouse found. Seed a stock location first.",
+      "unsupportedFile": "Unsupported file type (PDF, JPEG, PNG, WEBP)",
+      "fileTooLarge": "File is too large: up to {{limit}} MB"
+    },
+    "cost": {
+      "title": "Cost and markup",
+      "allReceipts": "All receipts",
+      "lastCost": "Last purchase",
+      "averageCost": "Average cost",
+      "basisStock": "of open batches",
+      "basisReceipts": "of all receipts (no open batches)",
+      "price": "Sale price",
+      "markup": "Markup",
+      "batches": "Purchase batches",
+      "batchesValue": "cost of batches",
+      "batchesHint": "Warehouse stock is kept on the Prices & stock screen: batches only carry cost — FIFO write-off on sale is not wired yet, so batch quantity is what receipts brought in.",
+      "noPrice": "Price not set",
+      "noCost": "No receipts yet",
+      "zeroCost": "Purchased at zero — percentage makes no sense",
+      "empty": "This item has never been received. Cost appears after the first posted receipt.",
+      "error": "Failed to load cost. Check the connection and try again.",
+      "retry": "Retry",
+      "historyTitle": "Receipts of this item",
+      "colDate": "Date",
+      "colSupplier": "Supplier",
+      "reference": "Invoice {{reference}}",
+      "noReference": "No invoice number",
+      "colQty": "Qty",
+      "colUnitCost": "Purchase price",
+      "colTotal": "Total",
+      "more": "Showing the latest {{shown}} of {{count}}",
+      "draftHint": "Draft receipts are not counted in cost"
+    }
+  },
+  "loginCodes": {
+    "title": "Login Codes",
+    "subtitle": "Stand channel: there is no SMS provider yet, so the buyer's login code shows up here. Codes live for a few minutes.",
+    "disabled": "The stand channel is off — codes are delivered by SMS only.",
+    "empty": "No active codes. The code appears here right after the buyer requests it.",
+    "requestedAt": "Requested",
+    "attempts": "{{count}} wrong attempt(s)"
+  },
+  "kaspiPayments": {
+    "title": "Kaspi Payments",
+    "subtitle": "Stand channel: the Kaspi mock never pays by itself, so the payment is confirmed here — the same thing the npm run kaspi:pay script does on the server.",
+    "disabled": "Kaspi runs live — a payment cannot be confirmed from the panel.",
+    "empty": "No unpaid invoices. An invoice shows up here as soon as the buyer reaches payment in the chat.",
+    "error": "Could not load Kaspi invoices. Check the connection and try again.",
+    "guest": "Guest",
+    "cartCompleted": "cart already ordered",
+    "action": {
+      "pay": "Confirm payment",
+      "payLatest": "Pay the latest invoice"
+    },
+    "toast": {
+      "paid": "Payment confirmed: {{state}}"
+    }
+  },
+  "priceStock": {
+    "title": "Prices & Stock",
+    "subtitleLocation": "Stock is shown for {{location}}",
+    "subtitleAllLocations": "Stock is summed across all warehouses — pick one to edit it",
+    "searchPlaceholder": "Product or SKU",
+    "allLocations": "All warehouses",
+    "allCategories": "All",
+    "otherCategory": "Outside the range",
+    "historyButton": "Change log",
+    "colProduct": "Product",
+    "colCategory": "Category",
+    "colPrice": "Price",
+    "colStock": "In stock",
+    "colAvailable": "Available",
+    "sku": "SKU {{sku}}",
+    "noSku": "No SKU",
+    "unitFallback": "pcs",
+    "reserved": "reserved {{n}}",
+    "totalStock": "{{total}} across all warehouses",
+    "selectAll": "Select all on the page",
+    "emptyHeading": "The catalogue is empty",
+    "emptyDescription": "Prices and stock appear here as soon as products are added.",
+    "filteredHeading": "Nothing found",
+    "filteredDescription": "Change the search or the filter.",
+    "error": "Could not load prices and stock. Check the connection and try again.",
+    "retry": "Retry",
+    "issuesTitle": "The batch was not written — fix these rows:",
+    "scanCap": "Showing the first {{cap}} items: narrow the list by search or category.",
+    "filter": {
+      "zero": "Out of stock",
+      "low": "Running low"
+    },
+    "lock": {
+      "priceRules": "The price is set by rules (region, sales channel, quantity) — edit it on the product page.",
+      "priceRulesShort": "by rules",
+      "notManaged": "Stock is not tracked for this item, or it is made of several inventory items.",
+      "notManagedShort": "not tracked",
+      "locationRequired": "The item is stored in several warehouses — pick one at the top to edit its stock.",
+      "locationRequiredShort": "pick a warehouse"
+    },
+    "issue": {
+      "unknownVariant": "the item is no longer in the catalogue",
+      "emptyChange": "neither price nor stock was changed",
+      "priceRules": "the price is set by rules",
+      "stockNotManaged": "stock is not tracked",
+      "locationRequired": "a warehouse must be picked",
+      "unknownLocation": "unknown warehouse",
+      "duplicateChange": "the item is in the batch twice"
+    },
+    "bar": {
+      "selected": "Selected: {{n}}",
+      "editSelected": "Edit selected",
+      "clearSelection": "Clear",
+      "changes": "Edits: {{n}}",
+      "apply": "Apply",
+      "applying": "Applying…",
+      "discard": "Discard",
+      "tooMany": "More than {{max}} edits at once",
+      "offscreen": " · off screen: {{n}}",
+      "fractional": "Not applied: cells with decimals — {{n}}"
+    },
+    "bulk": {
+      "title": "Edit selected",
+      "description": "One number goes into every selected row. Selected: {{n}}. Nothing is written until you press Apply.",
+      "keep": "leave as is",
+      "fill": "Fill in",
+      "stockHint": "Stock goes to {{location}}.",
+      "stockHintNoLocation": "Pick a warehouse at the top to edit stock.",
+      "skipped": "Rows that do not take the edit: {{n}} — the price is set by rules or stock is not tracked.",
+      "offscreenTitle": "Rows off screen: {{n}} — the number goes into them too"
+    },
+    "fractional": {
+      "title": "Cells with decimals: {{n}} — nothing was applied",
+      "hint": "Price and stock are whole numbers. Drop the decimals: 2 750.00 is 2 750."
+    },
+    "history": {
+      "title": "Change log",
+      "colChange": "Was → became",
+      "colAuthor": "Who",
+      "stockChange": "stock {{change}}",
+      "sourceImport": "import",
+      "empty": "No edits yet.",
+      "range": "{{from}}–{{to}} of {{total}}",
+      "prev": "Back",
+      "next": "Next"
+    },
+    "locationSwitch": {
+      "title": "Discard stock edits?",
+      "description": "Stock numbers you typed belong to the warehouse on screen. Switching the warehouse discards them; prices stay.",
+      "confirm": "Switch"
+    },
+    "action": {
+      "history": "Change log for this item",
+      "openProduct": "Open the product"
+    },
+    "toast": {
+      "applied": "Written, items: {{n}}",
+      "nothingChanged": "The numbers match the catalogue — nothing to write"
+    },
+    "exchange": {
+      "export": "Export",
+      "import": "Import",
+      "reading": "Reading file…",
+      "exportFailed": "Could not export the file",
+      "file": "file",
+      "previewTitle": "What the file will change",
+      "summary": "Rows in file: {{rows}}. Changes: {{changes}}. Unchanged: {{unchanged}}.",
+      "location": "Stock goes to the «{{location}}» location.",
+      "issues": "Rows that cannot be accepted: {{n}} — they will not be written.",
+      "truncated": "Showing the first rows of the file — the rest are counted in the summary.",
+      "scanCapped": "The catalog is larger than one scan: some SKUs may not have been found.",
+      "noChanges": "The numbers in the file match the catalog — nothing to change.",
+      "colLine": "Row",
+      "apply": "Apply ({{n}})",
+      "fileErrorTitle": "File «{{file}}» was not accepted:"
+    },
+    "fileError": {
+      "emptyFile": "the file has no product rows",
+      "noColumns": "no «SKU» and «Price» or «Stock» columns found — export a sample and edit it",
+      "tooManyRows": "too many rows in the file",
+      "mixedLocations": "the «Location» column names several locations — leave one",
+      "unknownLocation": "the location from the file does not exist",
+      "locationMismatch": "the file was exported for another location — select it above or drop the «Location» column",
+      "tooManyChanges": "the file has more changes than one batch accepts"
+    },
+    "importIssue": {
+      "missingSku": "no SKU",
+      "unknownSku": "SKU is not in the catalog",
+      "duplicateSku": "SKU appears twice in the file",
+      "badPrice": "price is not a number",
+      "fractionPrice": "fractional price — tenge are whole",
+      "badStock": "stock is not a number",
+      "fractionStock": "fractional stock — a whole number is required",
+      "priceRules": "price is set by rules",
+      "stockNotManaged": "stock is not tracked",
+      "locationRequired": "a location must be selected"
+    }
+  },
+  "layout": {
+    "customizeTopbar": "Customize top bar",
+    "customizeSidebar": "Customize sidebar",
+    "customizeSettingsSidebar": "Customize settings sidebar",
+    "customizePage": "Customize page",
+    "customizeLayout": "Customize layout",
+    "viewingPersonalLayout": "You're seeing a personal layout",
+    "viewingSystemLayout": "You're seeing a system layout",
+    "personalView": "Personal",
+    "defaultView": "Default",
+    "empty": "Empty",
+    "dropToSectionEnd": "Drop here to move to the end",
+    "dragToReorder": "Drag to reorder",
+    "saveForEveryone": "Save for everyone",
+    "saveForEveryoneTitle": "Save layout for everyone",
+    "saveForEveryoneDescription": "This updates the default layout for this page for all users who haven't customized it themselves. Are you sure?",
+    "saveSuccess": "Layout saved"
+  },
+  "general": {
+    "fullList": "All",
+    "original": "Original",
+    "selectAll": "Select all",
+    "unselectAll": "Unselect all",
+    "remaining": "Left",
+    "rank": "Rank",
+    "values_one": "{{count}} value",
+    "values_other": "{{count}} values",
+    "areYouSureDescription": "You are about to delete the {{entity}} {{title}}. This action cannot be undone.",
+    "noRecordsMessageFiltered": "There are no records to show matching the filters",
+    "quantityPrice": "Quantity Price",
+    "exclusive": "Product-specific",
+    "global": "Global"
+  },
+  "actions": {
+    "saveChanges": "Save changes",
+    "saveAndClose": "Save and close",
+    "editVariantImages": "Edit variant images",
+    "editImages": "Edit images",
+    "show": "Show",
+    "manage": "Manage",
+    "goToProductOption": "Go to product option"
+  },
+  "filters": {
+    "collapse": {
+      "all": "Collapse all"
+    }
+  },
+  "addresses": {
+    "title": "Addresses"
+  },
+  "products": {
+    "create": {
+      "variants": {
+        "selectValuesHint": "Select which values to use for each option"
+      }
+    },
+    "media": {
+      "manageImageVariants": "Manage associated variants",
+      "fileTooLarge": "One or more files exceed the maximum file size of {{size}}: {{name}}",
+      "variantImages": "Variant images",
+      "showAvailableImages": "Show available images",
+      "availableImages": "Select images",
+      "selectToAdd": "Add product images to the variant. To add new images, add them to the product first.",
+      "removeSelected": "Remove Selected"
+    },
+    "variantMedia": {
+      "label": "Variant Media",
+      "manageVariants": "Manage variants",
+      "addToMultipleVariants": "Add to multiple variants",
+      "manageVariantsDescription": "Manage associated variants for the image",
+      "successToast": "Image variants successfully updated.",
+      "emptyState": {
+        "header": "No media yet",
+        "description": "Add media to the variant to showcase it in your storefront.",
+        "action": "Add media"
+      }
+    },
+    "columns": {
+      "product_display": "Product",
+      "variants_count": "Variants",
+      "sales_channels_display": "Sales Channels",
+      "collection": "Collection",
+      "status": "Status",
+      "thumbnail": "Thumbnail",
+      "title": "Title",
+      "handle": "Handle",
+      "created_at": "Created",
+      "updated_at": "Updated"
+    },
+    "fields": {
+      "shipping_profile": {
+        "label": "Shipping profile",
+        "hint": "Connect the product to a shipping profile"
+      }
+    },
+    "options": {
+      "manage": {
+        "header": "Manage Product Options",
+        "description": "Associate or disassociate product options from this product.",
+        "label": "Product Options",
+        "hint": "Select which options should be associated to this product.",
+        "placeholder": "Select options",
+        "error": {
+          "noValues": "Please select at least one value for the added option(s)."
+        }
+      }
+    },
+    "shippingProfile": {
+      "header": "Shipping configuration",
+      "edit": {
+        "header": "Shipping Configuration",
+        "toasts": {
+          "success": "Successfully updated the shipping profile for {{title}}."
+        }
+      },
+      "create": {
+        "errors": {
+          "required": "Shipping profile is required"
+        }
+      }
+    },
+    "variant": {
+      "tableItem_one": "{{availableCount}} available at {{locationCount}} location",
+      "tableItem_other": "{{availableCount}} available at {{locationCount}} locations"
+    }
+  },
+  "inventory": {
+    "manageLocationQuantity": "Manage location quantity",
+    "quantityAcrossLocations": "{{quantity}} across {{locations}} locations",
+    "levelDeleted": "Inventory level deleted successfully."
+  },
+  "customers": {
+    "addresses": {
+      "title": "Addresses",
+      "fields": {
+        "addressName": "Address name",
+        "address1": "Address 1",
+        "address2": "Address 2",
+        "city": "City",
+        "province": "Province",
+        "postalCode": "Postal code",
+        "country": "Country",
+        "phone": "Phone",
+        "company": "Company",
+        "countryCode": "Country code",
+        "provinceCode": "Province code"
+      },
+      "create": {
+        "header": "Create Address",
+        "hint": "Create a new address for the customer.",
+        "successToast": "Address was successfully created."
+      }
+    }
+  },
+  "orders": {
+    "giftCardsStoreCreditLines": "Gift cards & credit lines",
+    "creditLines": {
+      "title": "Credit lines",
+      "total": "Sum of all credit lines",
+      "creditOrDebit": "Credit / Debit",
+      "createCreditLine": "Create credit line",
+      "createCreditLineSuccess": "Credit line created successfully",
+      "createCreditLineError": "Error creating credit line",
+      "createCreditLineDescription": "Create a credit line for amount {{amount}}",
+      "operation": "Operation",
+      "credit": "Credit",
+      "creditDescription": "Adds a positive sum to the order",
+      "debit": "Debit",
+      "debitDescription": "Subtracts a negative sum from the order"
+    },
+    "balanceSettlement": {
+      "title": "Balance settlement",
+      "settlementType": "Settlement type",
+      "settlementTypes": {
+        "paymentMethod": "Payment method",
+        "paymentMethodDescription": "Refund amount to the payment method",
+        "creditLine": "Store credit",
+        "creditLineDescription": "Refund amount as store credit"
+      }
+    },
+    "export": {
+      "header": "Export Order List",
+      "description": "Export the order list to a CSV file.",
+      "success": {
+        "title": "Export started",
+        "description": "You will be notified when the export is ready."
+      },
+      "filters": {
+        "title": "Filters",
+        "description": "The following filters will be applied to the export."
+      }
+    },
+    "summary": {
+      "totalAfterDiscount": "Total After Discount"
+    },
+    "payment": {
+      "totalStoreCreditRefunds": "Total store credit refunds",
+      "pendingAuthorization": "Payment is awaiting authorization from the payment provider.",
+      "checkStatus": "Check status",
+      "checkStatusSuccess": "Payment has been authorized successfully.",
+      "stillPending": "Payment is still pending authorization."
+    },
+    "returns": {
+      "estDifference": "Estimated difference"
+    },
+    "claims": {
+      "carryOverPromotion": "Carry over promotions",
+      "carryOverPromotionHint": "Apply the order's promotions to the claim items",
+      "carryOverPromotionTooltip": "Only fixed type promotions with EACH allocation and percentage type promotions with EACH or ACROSS allocation can be carried over to outbound claim items."
+    },
+    "exchanges": {
+      "carryOverPromotion": "Carry over promotions",
+      "carryOverPromotionHint": "Apply the order's promotions to the exchange items",
+      "carryOverPromotionTooltip": "Only fixed type promotions with EACH allocation and percentage type promotions with EACH or ACROSS allocation can be carried over to outbound exchange items."
+    },
+    "allocateItems": {
+      "toast": {
+        "error": "Failed to allocate following items: {{items}}"
+      }
+    },
+    "shipment": {
+      "trackingUrl": "Tracking URL",
+      "labelUrl": "Label URL",
+      "title": "Mark fulfillment shipped"
+    },
+    "fulfillment": {
+      "differentOptionSelected": "The selected shipping option is different from the one selected by the customer.",
+      "disabledItemTooltip": "The shipping option you have selected don’t allow fulfillment of this item",
+      "markAsPickedUp": "Mark as picked up",
+      "error": {
+        "wrongQuantity_one": "Only one item is available for fulfillment",
+        "noShippingOption": "Shipping option is required",
+        "noLocation": "Location is required",
+        "noItems": "No items to fulfill."
+      },
+      "status": {
+        "awaitingPickup": "Awaiting pickup",
+        "awaitingShipping": "Awaiting shipping",
+        "awaitingDelivery": "Awaiting delivery"
+      },
+      "toast": {
+        "fulfillmentPickedUp": "Fulfillment marked as picked up successfully",
+        "created": "Fulfillment created successfully",
+        "canceled": "Fulfillment successfully canceled",
+        "fulfillmentShipped": "Cannot cancel an already shipped fulfillment",
+        "fulfillmentDelivered": "Fulfillment marked as delivered successfully"
+      },
+      "statusLabel": "Fulfillment status",
+      "statusTitle": "Fulfillment Status",
+      "awaitingFulfillmentBadge": "Awaiting fulfillment",
+      "number": "Fulfillment #{{number}}",
+      "itemsToFulfill": "Items to fulfill",
+      "itemsToFulfillDesc": "Choose items and quantities to fulfill",
+      "create": "Create Fulfillment",
+      "sendNotificationHint": "Notify customers about the created fulfillment.",
+      "cancelWarning": "You are about to cancel a fulfillment. This action cannot be undone.",
+      "markAsDeliveredWarning": "You are about to mark fulfillment as delivered. This action cannot be undone."
+    },
+    "activity": {
+      "showMoreActivities_one": "Show {{count}} more activity",
+      "showMoreActivities_other": "Show {{count}} more activities"
+    }
+  },
+  "profile": {
+    "mfa": {
+      "title": "Two-factor authentication",
+      "description": "Require an authenticator app when signing in.",
+      "status": "Status",
+      "method": "Method",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "pending": "Pending setup",
+      "authenticatorApp": "Authenticator app",
+      "noMethod": "No authentication method enabled",
+      "setupTitle": "Set up authenticator app",
+      "setupAuthenticatorApp": "Set up authenticator app",
+      "setupDescription": "Scan the QR code with your authenticator app, then enter the 6-digit code to finish setup.",
+      "setupError": "The authenticator app could not be set up.",
+      "verifyError": "The verification code could not be confirmed.",
+      "qrError": "The QR code could not be generated.",
+      "recoveryCodesTitle": "Recovery codes",
+      "recoveryCodesDescription": "Copy and store these recovery codes in case you lose access to your authenticator app.",
+      "recoveryCodesError": "Recovery codes could not be generated.",
+      "disableTitle": "Disable two-factor authentication",
+      "disableDescription": "You are about to disable two-factor authentication for your account.",
+      "disableChallengeDescription": "Enter the 6-digit code from your authenticator app to disable two-factor authentication.",
+      "disableError": "Two-factor authentication could not be disabled.",
+      "disableSuccess": "Two-factor authentication disabled"
+    }
+  },
+  "labels": {
+    "beaware": "Be aware",
+    "loading": "Loading",
+    "selectValue": "Select Value",
+    "selectValues": "Select Values"
+  },
+  "fields": {
+    "reference": "Reference",
+    "reference_id": "Reference ID",
+    "enabledInStore": "Enabled in store",
+    "isReturn": "Is return",
+    "promotionCode": "Promotion code",
+    "serviceZone": "Service Zone",
+    "creditTotal": "Credit Lines Total",
+    "resource": "Resource",
+    "operation": "Operation",
+    "true": "True",
+    "false": "False",
+    "discountable": "Discountable",
+    "fulfillment": "Fulfillment"
+  },
+  "views": {
+    "save": "Save",
+    "saveAsNew": "Save as new view",
+    "updateDefaultForEveryone": "Update default for everyone",
+    "updateViewName": "Update view",
+    "prompts": {
+      "updateDefault": {
+        "title": "Update default view",
+        "description": "This will update the default view for all users. Are you sure?",
+        "confirmText": "Update for everyone",
+        "cancelText": "Cancel"
+      },
+      "updateView": {
+        "title": "Update view",
+        "description": "Are you sure you want to update \"{{name}}\"?",
+        "confirmText": "Update",
+        "cancelText": "Cancel"
+      }
+    }
+  },
+  "auth": {
+    "login": {
+      "authenticationFailed": "Authentication failed",
+      "cloud": "Log in with Medusa Cloud"
+    }
+  }
+}

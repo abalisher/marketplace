@@ -1,0 +1,233 @@
+/*
+ * Токены бренда «СтройМаркет» для веб-панели продавца (админка Medusa).
+ * Зеркало дизайн-системы ui_kit (mobile/packages/ui_kit: AppColors/AppColorsDark)
+ * и витрины (storefront/src/styles/tokens.css); значения плотных поверхностей —
+ * из макета владельца «СтройМаркет Продавец» (фон панели #F1F3F6, обводки
+ * #E1E5EA/#D3D9E0, вторичный текст #4A535E, приглушённый #697380).
+ *
+ * Как это работает. Дашборд Medusa свёрстан на семантических переменных
+ * @medusajs/ui-preset (--fg-base, --bg-subtle, --border-base, --tag-*), которые
+ * объявлены на :root (светлая тема) и .dark (тёмная). Мы объявляем те же
+ * переменные брендовыми значениями с БОЛЬШЕЙ специфичностью, поэтому порядок
+ * подключения стилей роли не играет:
+ *   html:root       (0,1,1) > :root  (0,1,0) — светлая тема;
+ *   html.dark:root  (0,2,1) > .dark  (0,1,0) и > html:root — тёмная тема.
+ * Так все экраны ядра и все кастомные экраны на классах text-ui-fg-* /
+ * bg-ui-bg-* сразу рисуют бренд в обеих темах, без правки разметки.
+ *
+ * Цвета заданы КАНАЛАМИ (r g b): наши экраны используют rgb(var(--sm-*) / a)
+ * для полупрозрачных подложек.
+ *
+ * Файл подключается один раз — импортом из routes/dashboard/page.tsx; сборка
+ * админки (vite) кладёт его в общий бандл, поэтому стиль действует на всю
+ * панель, а не только на страницу дашборда.
+ */
+
+/* --- Шрифт бренда (те же TTF, что в ui_kit и на витрине) --- */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/IBMPlexSans-Regular.ttf") format("truetype");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/IBMPlexSans-Medium.ttf") format("truetype");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../assets/fonts/IBMPlexSans-SemiBold.ttf") format("truetype");
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/IBMPlexSans-Bold.ttf") format("truetype");
+}
+
+/* Дашборд ставит утилиту .font-sans (стек Inter) прямо на элементы, поэтому
+   одного правила на :root мало — перекрываем и саму утилиту. Моноширинные
+   места (.font-mono: технические id ядра) не трогаем. */
+html:root,
+html:root body,
+html:root .font-sans {
+  font-family:
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+}
+
+html:root {
+  /* --- Палитра бренда (светлая тема) --- */
+  --sm-ink: 27 33 40; /* #1B2128 — основной текст/иконки */
+  --sm-ink-secondary: 74 83 94; /* #4A535E — вторичный текст */
+  --sm-ink-muted: 105 115 128; /* #697380 — подписи под числами */
+  --sm-border: 225 229 234; /* #E1E5EA — делители, обводки карточек */
+  --sm-border-strong: 211 217 224; /* #D3D9E0 — контур полей и кнопок */
+  --sm-accent: 37 99 196; /* #2563C4 — действия, ссылки */
+  --sm-accent-pressed: 32 88 180; /* #2058B4 */
+  --sm-accent-container: 232 239 251; /* #E8EFFB — чипы, подложки */
+  --sm-on-accent: 255 255 255;
+  --sm-success: 30 138 76; /* #1E8A4C — проведено, одобрено */
+  --sm-warning: 166 106 12; /* #A66A0C — ждёт проверки */
+  --sm-error: 192 58 58; /* #C03A3A — спор, отклонено */
+  --sm-surface: 255 255 255; /* карточки, таблицы, сайдбар */
+  --sm-surface-dim: 241 243 246; /* #F1F3F6 — фон панели */
+  --sm-scrim: 16 24 32; /* скрим drawer'а, используется с alpha */
+
+  /* --- Переопределение палитры @medusajs/ui-preset --- */
+  --fg-base: rgb(var(--sm-ink));
+  --fg-subtle: rgb(var(--sm-ink-secondary));
+  --fg-muted: rgb(var(--sm-ink-muted));
+  --fg-disabled: rgb(var(--sm-ink-secondary) / 0.45);
+  --fg-interactive: rgb(var(--sm-accent));
+  --fg-interactive-hover: rgb(var(--sm-accent-pressed));
+  --fg-error: rgb(var(--sm-error));
+  --fg-on-color: rgb(var(--sm-on-accent));
+  --fg-on-inverted: rgb(var(--sm-surface));
+
+  --bg-base: rgb(var(--sm-surface));
+  --bg-base-hover: rgb(var(--sm-surface-dim));
+  --bg-base-pressed: rgb(var(--sm-border) / 0.6);
+  --bg-subtle: rgb(var(--sm-surface-dim));
+  --bg-subtle-hover: rgb(var(--sm-border) / 0.5);
+  --bg-subtle-pressed: rgb(var(--sm-border));
+  --bg-component: rgb(var(--sm-surface-dim));
+  --bg-component-hover: rgb(var(--sm-border) / 0.6);
+  --bg-component-pressed: rgb(var(--sm-border));
+  --bg-field: rgb(var(--sm-surface));
+  --bg-field-hover: rgb(var(--sm-surface-dim));
+  --bg-field-component: rgb(var(--sm-surface-dim));
+  --bg-field-component-hover: rgb(var(--sm-border) / 0.6);
+  --bg-highlight: rgb(var(--sm-accent-container));
+  --bg-highlight-hover: rgb(var(--sm-accent) / 0.18);
+  --bg-interactive: rgb(var(--sm-accent));
+  --bg-disabled: rgb(var(--sm-surface-dim));
+  --bg-overlay: rgb(var(--sm-scrim) / 0.34);
+  --bg-switch-off: rgb(var(--sm-border-strong));
+  --bg-switch-off-hover: rgb(var(--sm-ink-secondary) / 0.5);
+
+  --border-base: rgb(var(--sm-border));
+  --border-strong: rgb(var(--sm-border-strong));
+  --border-interactive: rgb(var(--sm-accent));
+  --border-danger: rgb(var(--sm-error));
+  --border-error: rgb(var(--sm-error));
+  --border-menu-top: rgb(var(--sm-border));
+  --border-menu-bot: rgb(var(--sm-border));
+  --border-transparent: transparent;
+
+  /* Заливку primary-кнопки НЕ перекрашиваем: `--button-inverted*` остаются
+     ядровыми (#27272A / #3F3F46 / #52525B). Ядро рисует кнопку заливкой плюс
+     свои `shadow-buttons-inverted` и градиент `:after` с фиксированными
+     значениями — брендовый синий под ними читался как чужой элемент, и на
+     приёмке 2026-08-18 владелец отметил, что кнопки не похожи на кнопки
+     дашборда. Акцент бренда остаётся на ссылках, чипах, бейджах и контролах. */
+  --button-neutral: rgb(var(--sm-surface));
+  --button-neutral-hover: rgb(var(--sm-surface-dim));
+  --button-neutral-pressed: rgb(var(--sm-border));
+  --button-danger: rgb(var(--sm-error));
+  --button-danger-hover: rgb(var(--sm-error) / 0.9);
+  --button-danger-pressed: rgb(var(--sm-error) / 0.8);
+  --button-transparent: transparent;
+  --button-transparent-hover: rgb(var(--sm-surface-dim));
+  --button-transparent-pressed: rgb(var(--sm-border) / 0.6);
+
+  /* Инвертированные поверхности (тултипы, контрастные блоки). */
+  --contrast-bg-base: rgb(var(--sm-ink));
+  --contrast-bg-base-hover: rgb(var(--sm-ink) / 0.9);
+  --contrast-bg-base-pressed: rgb(var(--sm-ink) / 0.8);
+  --contrast-bg-subtle: rgb(var(--sm-ink) / 0.85);
+  --contrast-fg-primary: rgb(var(--sm-surface));
+  --contrast-fg-secondary: rgb(var(--sm-surface) / 0.7);
+  --contrast-border-base: rgb(var(--sm-surface) / 0.2);
+  --contrast-border-top: rgb(var(--sm-surface) / 0.2);
+  --contrast-border-bot: rgb(var(--sm-surface) / 0.2);
+
+  --alpha-250: rgb(var(--sm-ink) / 0.06);
+  --alpha-400: rgb(var(--sm-ink) / 0.12);
+
+  /* Бейджи статусов — один словарь на всю панель (спецификация 1t макета):
+     серый «принят», синий «подтверждён», янтарный «сборка», зелёный
+     «доставлен/проведён», красный «спор/отклонён», фиолетовый «в доставке». */
+  --tag-neutral-bg: rgb(var(--sm-surface-dim));
+  --tag-neutral-bg-hover: rgb(var(--sm-border) / 0.6);
+  --tag-neutral-border: rgb(var(--sm-border));
+  --tag-neutral-icon: rgb(var(--sm-ink-secondary));
+  --tag-neutral-text: rgb(var(--sm-ink-secondary));
+  --tag-blue-bg: rgb(var(--sm-accent-container));
+  --tag-blue-bg-hover: rgb(var(--sm-accent) / 0.18);
+  --tag-blue-border: rgb(var(--sm-accent) / 0.3);
+  --tag-blue-icon: rgb(var(--sm-accent));
+  --tag-blue-text: rgb(var(--sm-accent));
+  --tag-green-bg: rgb(var(--sm-success) / 0.12);
+  --tag-green-bg-hover: rgb(var(--sm-success) / 0.2);
+  --tag-green-border: rgb(var(--sm-success) / 0.3);
+  --tag-green-icon: rgb(var(--sm-success));
+  --tag-green-text: rgb(var(--sm-success));
+  --tag-orange-bg: rgb(var(--sm-warning) / 0.12);
+  --tag-orange-bg-hover: rgb(var(--sm-warning) / 0.2);
+  --tag-orange-border: rgb(var(--sm-warning) / 0.3);
+  --tag-orange-icon: rgb(var(--sm-warning));
+  --tag-orange-text: rgb(var(--sm-warning));
+  --tag-red-bg: rgb(var(--sm-error) / 0.12);
+  --tag-red-bg-hover: rgb(var(--sm-error) / 0.2);
+  --tag-red-border: rgb(var(--sm-error) / 0.3);
+  --tag-red-icon: rgb(var(--sm-error));
+  --tag-red-text: rgb(var(--sm-error));
+  --tag-purple-bg: rgb(122 92 214 / 0.12);
+  --tag-purple-bg-hover: rgb(122 92 214 / 0.2);
+  --tag-purple-border: rgb(122 92 214 / 0.3);
+  --tag-purple-icon: rgb(122 92 214); /* #7A5CD6 — «в доставке» */
+  --tag-purple-text: rgb(122 92 214);
+}
+
+html.dark:root {
+  /* --- Палитра бренда (тёмная тема, значения AppColorsDark ui_kit) --- */
+  --sm-ink: 233 237 241; /* #E9EDF1 */
+  --sm-ink-secondary: 151 161 173; /* #97A1AD */
+  --sm-ink-muted: 130 141 154; /* #828D9A */
+  --sm-border: 50 58 68; /* #323A44 */
+  --sm-border-strong: 66 76 88; /* #424C58 */
+  --sm-accent: 130 177 247; /* #82B1F7 */
+  --sm-accent-pressed: 111 163 240; /* #6FA3F0 */
+  --sm-accent-container: 34 51 73; /* #223349 */
+  --sm-on-accent: 21 24 28; /* #15181C — на светлой акцентной заливке */
+  --sm-success: 87 194 137; /* #57C289 */
+  --sm-warning: 224 166 78; /* #E0A64E */
+  --sm-error: 239 122 112; /* #EF7A70 */
+  --sm-surface: 30 35 42; /* #1E232A */
+  --sm-surface-dim: 21 24 28; /* #15181C */
+  --sm-scrim: 9 12 16;
+
+  /* Контрастные поверхности (тултипы и заливка primary-кнопки ядра) остаются
+     ТЁМНЫМИ и в тёмной теме — как у ядра, где `--contrast-bg-base` в обеих темах
+     zinc-800, а текст на нём белый. Объявления на `html:root` считаются от
+     `--sm-ink`, а он в тёмной теме светлый, поэтому пересчитываем от плотных
+     поверхностей: блок чуть светлее карточек, текст — цветом ink. */
+  --fg-on-inverted: rgb(var(--sm-surface-dim));
+  --contrast-bg-base: rgb(var(--sm-border));
+  --contrast-bg-base-hover: rgb(var(--sm-border-strong));
+  --contrast-bg-base-pressed: rgb(var(--sm-ink-muted));
+  --contrast-bg-subtle: rgb(var(--sm-surface));
+  --contrast-fg-primary: rgb(var(--sm-ink));
+  --contrast-fg-secondary: rgb(var(--sm-ink) / 0.7);
+  --contrast-border-base: rgb(var(--sm-ink) / 0.2);
+  --contrast-border-top: rgb(var(--sm-ink) / 0.2);
+  --contrast-border-bot: rgb(var(--sm-ink) / 0.2);
+
+  /* Скрим над тёмным фоном плотнее, иначе drawer не отделяется. */
+  --bg-overlay: rgb(var(--sm-scrim) / 0.7);
+
+  --tag-purple-icon: rgb(178 156 250); /* #B29CFA */
+  --tag-purple-text: rgb(178 156 250);
+  --tag-purple-bg: rgb(178 156 250 / 0.16);
+  --tag-purple-bg-hover: rgb(178 156 250 / 0.24);
+  --tag-purple-border: rgb(178 156 250 / 0.3);
+}
