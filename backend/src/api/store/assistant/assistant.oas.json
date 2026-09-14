@@ -1,0 +1,790 @@
+{
+  "paths": {
+    "/store/assistant/chat": {
+      "post": {
+        "operationId": "PostAssistantChat",
+        "summary": "Chat with the buyer assistant",
+        "description": "Один ход разговорного ассистента покупателя (Gemini function-calling). Stateless: клиент присылает всю историю диалога и cart_id (если корзина уже создана), получает ответ ассистента, дополненную историю и актуальный cart_id. Гость допускается. Инструменты: поиск товаров, расчёт материалов, добавление в корзину, просмотр корзины. К последней реплике можно приложить files — фото или PDF (T10.4): вложение видно модели только в этом ходе, нигде не сохраняется и в ответ не возвращается.",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreAssistantChat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Ответ ассистента и дополненная история диалога.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreAssistantChatRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/assistant/chat/stream": {
+      "post": {
+        "operationId": "PostAssistantChatStream",
+        "summary": "Chat with the buyer assistant (streaming)",
+        "description": "Тот же ход ассистента, что и POST /store/assistant/chat, но ответ печатается по мере генерации (T10.1d). Транспорт — SSE (text/event-stream). События: `open` (поток открыт — по нему клиент понимает, что стриминг поддерживается, иначе откатывается на обычный POST), `delta` ({text} — фрагмент ответа), `reset` (сбросить напечатанное: модель написала преамбулу перед вызовом инструмента), `state` ({cart_id, order_id} — токены сессии изменились посреди хода: инструмент создал корзину или оформил заказ; клиент запоминает их сразу), `done` (авторитетный итог хода — тот же payload, что у обычного POST, плюс поле aborted), `error` ({message}). «Стоп» покупателя = обрыв соединения клиентом: ход прекращается, уже исполненные инструменты не откатываются, а последнее событие `state` оставляет клиенту актуальные токены. К последней реплике можно приложить files — фото или PDF (T10.4): вложение видно модели только в этом ходе, нигде не сохраняется и в ответ не возвращается.",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreAssistantChat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Поток событий хода ассистента (SSE). Полезная нагрузка события `done` — StoreAssistantChatStreamDone.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/assistant/cart": {
+      "get": {
+        "operationId": "GetAssistantCart",
+        "summary": "Read the assistant cart",
+        "description": "Состав корзины чата для полосы корзины над композером (T10.15). Нужен потому, что корзину меняют два пути: кнопки «−/+» (их ответ уже несёт свежую сводку) и сам ассистент инструментами — после хода модели клиент знает только cart_id. Без cart_id отвечает пустой сводкой.",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cart_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Id корзины чата, который клиент держит между ходами."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Актуальный состав корзины.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreAssistantCartRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/assistant/cart/items": {
+      "post": {
+        "operationId": "PostAssistantCartItems",
+        "summary": "Set quantities in the assistant cart",
+        "description": "Счётчики «−/+» на карточках подбора (T10.15): покупатель кладёт товар в корзину сам, без хода модели. Количество АБСОЛЮТНОЕ (сколько позиции должно стать), quantity=0 убирает позицию совсем — запрос идемпотентен, поэтому серию нажатий можно схлопывать дебаунсом и безопасно повторять после обрыва. Гость допускается: первое положительное количество создаёт корзину и возвращает её cart_id (клиент держит его так же, как в чате). Ассистент узнаёт об изменениях на следующем ходе — снимок корзины кладётся в контекст хода.",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreAssistantCartItems"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Актуальный состав корзины после применения количеств.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreAssistantCartRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/store/assistant/transcribe": {
+      "post": {
+        "operationId": "PostAssistantTranscribe",
+        "summary": "Transcribe a buyer voice message",
+        "description": "Распознать голосовое сообщение покупателя (T10.2): аудиозапись (base64) → текст. Ход ассистента роут НЕ делает: голос — не отдельный режим, распознанный текст падает в композер клиента, покупатель может его поправить и отправляет обычным сообщением в POST /store/assistant/chat (решение T11.4). Гость допускается. Пределы записи: не дольше 60 с (длительность присылает клиент — внутри контейнера opus/aac её без декодера не прочитать) и не больше 8 МБ содержимого. Аудио нигде не сохраняется — живёт ровно до конца запроса. Пустой text — не ошибка: значит не расслышали (тишина, шум), и клиент честно говорит об этом, оставляя ручной ввод.",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreAssistantTranscribe"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Расшифровка записи.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreAssistantTranscriptRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreAssistantCartItems": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id корзины чата. Необязателен: если корзины ещё нет, первое положительное количество её создаёт."
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "Целевые количества позиций. Абсолютные, не приращения.",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantCartItemInput"
+            }
+          }
+        }
+      },
+      "StoreAssistantCartItemInput": {
+        "type": "object",
+        "required": [
+          "variant_id",
+          "quantity"
+        ],
+        "properties": {
+          "variant_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Идентификатор варианта товара (variant_id карточки подбора)."
+          },
+          "quantity": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000,
+            "description": "Сколько единиц должно стать в корзине. 0 — убрать позицию."
+          }
+        }
+      },
+      "StoreAssistantCartRes": {
+        "type": "object",
+        "required": [
+          "cart"
+        ],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Актуальный id корзины (мог быть создан этим запросом). null — корзины по-прежнему нет."
+          },
+          "cart": {
+            "$ref": "#/components/schemas/StoreAssistantCartSummary"
+          }
+        }
+      },
+      "StoreAssistantCartSummary": {
+        "type": "object",
+        "required": [
+          "cart_id",
+          "currency",
+          "items",
+          "item_count",
+          "total"
+        ],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "description": "Id корзины; пустая строка — корзины ещё нет."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantCartLine"
+            }
+          },
+          "item_count": {
+            "type": "number",
+            "description": "Суммарное количество единиц во всех позициях."
+          },
+          "total": {
+            "type": "number",
+            "description": "Итог корзины в основной единице валюты (1500 = 1 500 ₸)."
+          }
+        }
+      },
+      "StoreAssistantCartLine": {
+        "type": "object",
+        "required": [
+          "variant_id",
+          "title",
+          "quantity",
+          "unit_price",
+          "total"
+        ],
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          }
+        }
+      },
+      "StoreAssistantMessage": {
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "assistant"
+            ]
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 4000,
+            "description": "Текст реплики. Пустым может быть только реплика ПОКУПАТЕЛЯ: у последней — если к ней приложены files (снимок без подписи — нормальное сообщение), у прошлых — если таким снимком был тот ход (файл к ним уже не прикладывается, вложение живёт ровно один ход). Ответ ассистента пустым не бывает."
+          }
+        }
+      },
+      "StoreAssistantFile": {
+        "type": "object",
+        "required": [
+          "mime_type",
+          "data"
+        ],
+        "properties": {
+          "mime_type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "Тип файла как его отдала система выбора файла (параметры и регистр допустимы)."
+          },
+          "data": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Содержимое файла в base64 (допустим префикс data-URL). Не больше 8 МБ."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Имя файла — только для показа в ленте («смета.pdf»); модели не уходит."
+          }
+        }
+      },
+      "StoreAssistantChat": {
+        "type": "object",
+        "required": [
+          "messages"
+        ],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "description": "История диалога целиком; последнее сообщение — от покупателя (role=user).",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantMessage"
+            }
+          },
+          "cart_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id корзины, которую клиент держит между ходами (получен из cart_id ответа). Необязателен: до первого добавления товара корзины ещё нет."
+          },
+          "order_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id последнего оформленного заказа (получен из order_id ответа). Клиент держит его между ходами, чтобы ассистент мог отследить статус заказа. Необязателен: до оформления заказа его ещё нет."
+          },
+          "files": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "description": "Вложения ЭТОГО хода (T10.4): фото списка от прораба, фото объекта, PDF. Относятся к последней реплике покупателя, между ходами не тянутся — в ответе их нет, обратно клиент их не шлёт. Принимаются image/jpeg, image/png, image/webp, image/heic, image/heif и application/pdf; таблицы (XLSX/CSV/DOCX) отклоняются отдельной ошибкой — их разбирает детерминированный парсер, а не зрительная модель. Пределы: 8 МБ на файл, 12 МБ суммарно, 3 файла за ход. Файл нигде не сохраняется: тело запроса → модель → конец запроса.",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantFile"
+            }
+          }
+        }
+      },
+      "StoreAssistantChatRes": {
+        "type": "object",
+        "required": [
+          "reply",
+          "messages"
+        ],
+        "properties": {
+          "reply": {
+            "type": "string",
+            "description": "Текст ответа ассистента."
+          },
+          "messages": {
+            "type": "array",
+            "description": "История, дополненная ответом ассистента (клиент хранит и шлёт обратно).",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantMessage"
+            }
+          },
+          "cart_id": {
+            "type": "string",
+            "description": "Актуальный id корзины (создаётся инструментом add_to_cart). Клиент хранит его и шлёт обратно следующим ходом. Отсутствует, пока корзина не создана."
+          },
+          "order_id": {
+            "type": "string",
+            "description": "Id последнего оформленного заказа (проставляется place_order). Клиент хранит его и шлёт обратно следующим ходом для отслеживания статуса через track_order. Отсутствует, пока заказ не оформлен."
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Read-only UI-вставки хода для отрисовки под ответом (карточки товара, оплата Kaspi, статус заказа, документы, просьба войти по номеру). Текстовый минимал + вставки. Пустой массив — вставок нет.",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantAttachment"
+            }
+          }
+        }
+      },
+      "StoreAssistantAttachment": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/StoreAssistantProductCard"
+          },
+          {
+            "$ref": "#/components/schemas/StoreAssistantPayment"
+          },
+          {
+            "$ref": "#/components/schemas/StoreAssistantOrderStatus"
+          },
+          {
+            "$ref": "#/components/schemas/StoreAssistantOrderDocuments"
+          },
+          {
+            "$ref": "#/components/schemas/StoreAssistantAuthPrompt"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type"
+        }
+      },
+      "StoreAssistantProductCard": {
+        "type": "object",
+        "required": [
+          "type",
+          "variant_id",
+          "title",
+          "price",
+          "currency",
+          "unit",
+          "in_stock",
+          "image_url"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "product_card"
+            ]
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number",
+            "description": "Цена в основной единице валюты (1500 = 1 500 ₸), НЕ в минорных."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true,
+            "description": "Единица измерения цены (мешок/тонна/м³/лист…)."
+          },
+          "in_stock": {
+            "type": "boolean"
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "StoreAssistantPayment": {
+        "type": "object",
+        "required": [
+          "type",
+          "provider",
+          "status",
+          "paid",
+          "amount",
+          "currency",
+          "qr_payload",
+          "payment_url"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "payment"
+            ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "kaspi"
+            ]
+          },
+          "status": {
+            "type": "string"
+          },
+          "paid": {
+            "type": "boolean"
+          },
+          "amount": {
+            "type": "number",
+            "nullable": true,
+            "description": "Сумма к оплате в тенге (итог корзины на момент счёта)."
+          },
+          "currency": {
+            "type": "string"
+          },
+          "qr_payload": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_url": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "StoreAssistantOrderStatus": {
+        "type": "object",
+        "required": [
+          "type",
+          "display_id",
+          "status_text",
+          "delivery_stage",
+          "courier_note",
+          "delivery_code"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "order_status"
+            ]
+          },
+          "display_id": {
+            "type": "number",
+            "nullable": true
+          },
+          "status_text": {
+            "type": "string",
+            "nullable": true
+          },
+          "delivery_stage": {
+            "type": "string",
+            "nullable": true,
+            "description": "Стадия заказа КОДОМ жизненного цикла: new, confirmed, assembling, partially_assembled, assembled, in_delivery, delivered, closed, canceled, returned. Клиент рисует по ней прогресс и подписывает стадию на своём языке."
+          },
+          "courier_note": {
+            "type": "string",
+            "nullable": true,
+            "description": "Прогресс курьера человеческим текстом, если рейс уже создан. null — курьер ещё не назначен."
+          },
+          "delivery_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). Клиент подписывает её на своём языке. null — заказ оформлен до появления слотов."
+          },
+          "delivery_window": {
+            "type": "string",
+            "enum": ["morning", "day", "evening"],
+            "nullable": true,
+            "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00. null — слота у заказа нет."
+          }
+        }
+      },
+      "StoreAssistantOrderDocuments": {
+        "type": "object",
+        "description": "Документы заказа со ссылками на PDF (счёт, накладная, внутренний акт). Покупатель открывает файл по ссылке прямо из ленты чата.",
+        "required": [
+          "type",
+          "display_id",
+          "documents"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "documents"
+            ]
+          },
+          "display_id": {
+            "type": "number",
+            "nullable": true,
+            "description": "Человекочитаемый номер заказа."
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantOrderDocument"
+            }
+          }
+        }
+      },
+      "StoreAssistantOrderDocument": {
+        "type": "object",
+        "required": [
+          "doc_type",
+          "title",
+          "number",
+          "url"
+        ],
+        "properties": {
+          "doc_type": {
+            "type": "string",
+            "enum": [
+              "invoice",
+              "waybill",
+              "internal_avr"
+            ],
+            "description": "Тип документа платформы."
+          },
+          "title": {
+            "type": "string",
+            "description": "Название документа для ленты («Счёт на оплату»)."
+          },
+          "number": {
+            "type": "string",
+            "description": "Человекочитаемый номер документа (INV-2026-000001)."
+          },
+          "url": {
+            "type": "string",
+            "nullable": true,
+            "description": "Ссылка на PDF; null — файл ещё рендерится."
+          }
+        }
+      },
+      "StoreAssistantAuthPrompt": {
+        "type": "object",
+        "description": "Просьба войти по номеру телефона: оформление заказа доступно только авторизованному покупателю (T10.8). Клиент рисует карточку с кнопкой входа; после входа покупатель возвращается в тот же диалог, а корзина, собранная гостем, переносится на него.",
+        "required": [
+          "type",
+          "reason"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "auth_prompt"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "checkout"
+            ],
+            "description": "Зачем нужен вход. checkout — оформление заказа."
+          }
+        }
+      },
+      "StoreAssistantChatStreamDone": {
+        "type": "object",
+        "required": [
+          "reply",
+          "messages",
+          "aborted"
+        ],
+        "properties": {
+          "reply": {
+            "type": "string",
+            "description": "Текст ответа ассистента."
+          },
+          "messages": {
+            "type": "array",
+            "description": "История, дополненная ответом ассистента (клиент хранит и шлёт обратно).",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantMessage"
+            }
+          },
+          "cart_id": {
+            "type": "string",
+            "description": "Актуальный id корзины (создаётся инструментом add_to_cart). Клиент хранит его и шлёт обратно следующим ходом. Отсутствует, пока корзина не создана."
+          },
+          "order_id": {
+            "type": "string",
+            "description": "Id последнего оформленного заказа (проставляется place_order). Клиент хранит его и шлёт обратно следующим ходом для отслеживания статуса через track_order. Отсутствует, пока заказ не оформлен."
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Read-only UI-вставки хода для отрисовки под ответом (карточки товара, оплата Kaspi, статус заказа, документы, просьба войти по номеру). Текстовый минимал + вставки. Пустой массив — вставок нет.",
+            "items": {
+              "$ref": "#/components/schemas/StoreAssistantAttachment"
+            }
+          },
+          "aborted": {
+            "type": "boolean",
+            "description": "Ход оборван покупателем («Стоп»): reply — то, что успело напечататься; пустая строка означает, что ответа в messages нет."
+          }
+        },
+        "description": "Итог потокового хода (событие `done` в SSE): то же, что у обычного POST, плюс признак обрыва по «Стоп»."
+      },
+      "StoreAssistantTranscribe": {
+        "type": "object",
+        "required": [
+          "mime_type",
+          "data"
+        ],
+        "properties": {
+          "mime_type": {
+            "type": "string",
+            "description": "Тип записи как его отдал рекордер, параметры допустимы: audio/webm;codecs=opus (Chrome), audio/ogg (Firefox), audio/x-m4a или audio/mp4 (Android/iOS), audio/aac, audio/wav. Другой контейнер — 400."
+          },
+          "data": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Содержимое записи в base64 (допустим префикс data-URL от FileReader.readAsDataURL). Не больше 8 МБ после декодирования."
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60000,
+            "description": "Длительность записи по данным клиента, мс. Необязательна; больше 60000 — 400."
+          }
+        }
+      },
+      "StoreAssistantTranscriptRes": {
+        "type": "object",
+        "required": [
+          "text",
+          "language"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Распознанный текст ровно как сказано, без перевода. Пустая строка — не расслышали."
+          },
+          "language": {
+            "type": "string",
+            "nullable": true,
+            "description": "Основной язык записи кодом BCP-47 без региона (ru, kk, en). null — модель не определила."
+          }
+        }
+      }
+    }
+  }
+}
