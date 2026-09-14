@@ -1,0 +1,379 @@
+/*
+ * Раскладка экрана «Дашборд» по макету владельца «СтройМаркет Продавец» (1a).
+ *
+ * Почему свои классы, а не утилиты Tailwind: дашборд Medusa поставляется уже
+ * собранным CSS, произвольные утилиты (grid-cols-4, text-[30px], произвольные
+ * значения) в нём не сгенерированы — их в расширении админки использовать
+ * нельзя. Поэтому метрики макета задаём классами `sm-*`, а цвета берём ТОЛЬКО
+ * из токенов бренда (styles/brand.css): ad-hoc цветов здесь нет.
+ *
+ * Метрики из макета: карточка KPI — радиус 12, отступ 16/18, число 30/700
+ * tabular-nums; панели — сетка 1.65fr / 1fr, шаг 16; шапка таблицы 30 px,
+ * капс 11 px; строки 44 px, текст 13 px.
+ */
+
+.sm-dash {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* --- KPI-карточки --- */
+
+/* Плиток пять (T4.11 добавил «Претензии»): пятая шестым столбцом не влезает, а
+   одна в новом ряду читается как «забытая». Держим все в один ряд на широком
+   экране, на планшете — два столбца (см. адаптив ниже). */
+.sm-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sm-kpi {
+  display: block;
+  width: 100%;
+  text-align: left;
+  /* Кнопка не наследует шрифт от документа — задаём явно, иначе карточка
+     выпадает из типографики панели. */
+  font-family: inherit;
+  cursor: pointer;
+  background: rgb(var(--sm-surface));
+  border: 1px solid rgb(var(--sm-border));
+  border-radius: 12px;
+  padding: 16px 18px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sm-kpi:hover {
+  border-color: rgb(var(--sm-accent) / 0.5);
+  box-shadow: 0 1px 6px rgb(var(--sm-scrim) / 0.06);
+}
+
+.sm-kpi-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sm-kpi-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--sm-ink-secondary));
+}
+
+.sm-kpi-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 4px;
+  flex: none;
+}
+
+.sm-kpi-value {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: rgb(var(--sm-ink));
+  font-variant-numeric: tabular-nums;
+  margin: 8px 0 2px;
+}
+
+.sm-kpi-hint {
+  font-size: 12.5px;
+  color: rgb(var(--sm-ink-muted));
+  min-height: 18px;
+}
+
+.sm-kpi-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgb(var(--sm-accent));
+  margin-top: 10px;
+}
+
+/* --- Панели --- */
+
+.sm-panels {
+  display: grid;
+  grid-template-columns: 1.65fr minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.sm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sm-panel {
+  background: rgb(var(--sm-surface));
+  border: 1px solid rgb(var(--sm-border));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.sm-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px 10px;
+}
+
+.sm-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgb(var(--sm-ink));
+  flex: 1;
+}
+
+.sm-panel-link {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgb(var(--sm-accent));
+  white-space: nowrap;
+}
+
+.sm-panel-body {
+  padding: 0 18px 12px;
+}
+
+/* Таблица очереди: номер, покупатель, состав, сумма, время в статусе, статус.
+   Колонка «ждёт» добавлена в T4.12: без неё заказ, стоящий шестой день, ничем
+   не отличался от вчерашнего. */
+.sm-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1.5fr) minmax(0, 1fr) 130px 74px 132px;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  font-size: 13px;
+  color: rgb(var(--sm-ink));
+  border-top: 1px solid rgb(var(--sm-border) / 0.7);
+}
+
+.sm-row-head {
+  height: 30px;
+  border-top: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-row-link {
+  cursor: pointer;
+}
+
+.sm-row-link:hover {
+  background: rgb(var(--sm-accent) / 0.06);
+}
+
+/* Компактные строки боковых панелей (остатки, приходы). */
+.sm-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 0;
+  font-size: 13px;
+  color: rgb(var(--sm-ink));
+  border-top: 1px solid rgb(var(--sm-border) / 0.7);
+}
+
+.sm-line:first-child {
+  border-top: 0;
+}
+
+.sm-line-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sm-line-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sm-line-sub {
+  font-size: 12px;
+  color: rgb(var(--sm-ink-muted));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sm-num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sm-muted {
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-empty {
+  font-size: 13px;
+  color: rgb(var(--sm-ink-muted));
+  padding: 14px 0 18px;
+}
+
+/* --- Деньги дня (T4.12) --- */
+
+/*
+ * Полоса денежных итогов между плитками «что требует внимания» и панелями.
+ * ЗАЧЕМ отдельным блоком, а не шестой KPI-плиткой: KPI-плитка — это счётчик
+ * задач со ссылкой «разобрать», а деньги никуда не ведут (действия по ним нет),
+ * и мешать их в один ряд значит сказать «выручка — тоже задача».
+ */
+/* Flex, а не grid с фиксированным числом колонок: ячеек либо четыре, либо три
+   (долг юрлиц выключен флагом на MVP) — при сетке из четырёх колонок третья
+   ячейка оставляла пустую четверть, и полоса читалась как недорисованная. */
+.sm-money {
+  display: flex;
+  flex-wrap: wrap;
+  background: rgb(var(--sm-surface));
+  border: 1px solid rgb(var(--sm-border));
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.sm-money-cell {
+  flex: 1 1 0;
+  padding: 14px 18px;
+  border-left: 1px solid rgb(var(--sm-border) / 0.7);
+  min-width: 0;
+}
+
+.sm-money-cell:first-child {
+  border-left: 0;
+}
+
+.sm-money-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-money-value {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgb(var(--sm-ink));
+  font-variant-numeric: tabular-nums;
+  margin: 6px 0 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sm-money-sub {
+  font-size: 12.5px;
+  color: rgb(var(--sm-ink-muted));
+  min-height: 18px;
+}
+
+.sm-money-alarm {
+  color: rgb(var(--sm-error));
+}
+
+/* --- Отчёт по стадиям (T4.12) --- */
+
+/* Стадия, среднее время, худший случай, сколько заказов прошло. */
+.sm-stage-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 120px 120px;
+  align-items: center;
+  gap: 12px;
+  height: 44px;
+  font-size: 13px;
+  color: rgb(var(--sm-ink));
+  border-top: 1px solid rgb(var(--sm-border) / 0.7);
+}
+
+.sm-stage-head {
+  height: 30px;
+  border-top: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(var(--sm-ink-muted));
+}
+
+/* Время в статусе в строке очереди дашборда: одной строкой и красным, если
+   заказ вышел за срок стадии.
+   ЗАЧЕМ цветом, а не меткой: в панели предпросмотра колонка узкая, и подпись
+   «вне срока» рядом с числом ломала «43 ч» на две строки (гейт U). Слово
+   «вне срока» несут плитка над панелью («29 вне срока») и полноценная колонка
+   экрана «Заказы»; здесь красное число отвечает на «что стоит дольше нормы»
+   тем же способом, каким рядом краснеет нулевой остаток. */
+.sm-row-waiting {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-row-waiting-overdue {
+  color: rgb(var(--sm-error));
+  font-weight: 600;
+}
+
+/* --- Скелет загрузки --- */
+
+.sm-skeleton {
+  background: rgb(var(--sm-border) / 0.8);
+  border-radius: 6px;
+  animation: sm-skel 1.4s ease-in-out infinite;
+}
+
+@keyframes sm-skel {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* --- Адаптив до планшета (спецификация 1t макета) --- */
+
+@media (max-width: 1400px) {
+  .sm-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1400px) {
+  /* Планшет: по две ячейки в ряд — 22-пиксельные суммы в четверть ширины
+     обрезались бы. */
+  .sm-money-cell {
+    flex: 1 1 50%;
+  }
+  .sm-money-cell:nth-child(3) {
+    border-left: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .sm-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sm-stage-row {
+    grid-template-columns: minmax(0, 1fr) 104px 104px;
+  }
+  .sm-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sm-row {
+    grid-template-columns: 64px minmax(0, 1.4fr) 120px 70px 118px;
+  }
+  .sm-row-hide-sm {
+    display: none;
+  }
+}
