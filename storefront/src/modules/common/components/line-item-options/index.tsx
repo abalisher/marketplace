@@ -7,18 +7,24 @@ type LineItemOptionsProps = {
   "data-value"?: HttpTypes.StoreProductVariant
 }
 
+// Подпись варианта в строке заказа/корзины. Служебное «Variant:» убрано:
+// покупателю нужен сам вариант («Мешок 50 кг»), а не английская метка.
 const LineItemOptions = ({
   variant,
   "data-testid": dataTestid,
   "data-value": dataValue,
 }: LineItemOptionsProps) => {
+  if (!variant?.title) {
+    return null
+  }
+
   return (
     <Text
       data-testid={dataTestid}
       data-value={dataValue}
-      className="inline-block txt-medium text-ui-fg-subtle w-full overflow-hidden text-ellipsis"
+      className="inline-block w-full overflow-hidden text-ellipsis text-body-medium text-ink-secondary"
     >
-      Variant: {variant?.title}
+      {variant.title}
     </Text>
   )
 }

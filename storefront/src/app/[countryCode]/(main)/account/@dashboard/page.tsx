@@ -1,22 +1,11 @@
-import { Metadata } from "next"
+import { redirect } from "next/navigation"
 
-import Overview from "@modules/account/components/overview"
-import { notFound } from "next/navigation"
-import { retrieveCustomer } from "@lib/data/customer"
-import { listOrders } from "@lib/data/orders"
-
-export const metadata: Metadata = {
-  title: "Account",
-  description: "Overview of your account activity.",
-}
-
-export default async function OverviewTemplate() {
-  const customer = await retrieveCustomer().catch(() => null)
-  const orders = (await listOrders().catch(() => null)) || null
-
-  if (!customer) {
-    notFound()
-  }
-
-  return <Overview customer={customer} orders={orders} />
+// «Аккаунт» вошедшего покупателя — это кабинет клиента (T10.6). Обзора-дубля
+// над списком заказов не держим: он повторял тот же список и добавлял шаг.
+// Гостю на этом адресе по-прежнему показывается вход (слот @login).
+export default async function AccountOverviewPage(props: {
+  params: Promise<{ countryCode: string }>
+}) {
+  const { countryCode } = await props.params
+  redirect(`/${countryCode}/cabinet/orders`)
 }

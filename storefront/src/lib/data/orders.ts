@@ -2,16 +2,18 @@
 
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
-import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { getAuthHeaders } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
+// Заказы НЕ кэшируем (T3.9). Стартер держал их с `cache: "force-cache"` и тегом
+// `orders`, а инвалидировал тег только свой чекаут-экшен. После пивота заказ
+// оформляет БЭКЕНД (ассистент в чате), инвалидировать тег из витрины некому — и
+// «Аккаунт → Заказы» показывали «пусто» даже после жёсткой перезагрузки
+// (блокер Б3 прогона 2026-08-13). Статус, документы и оплата меняются на стороне
+// продавца, поэтому свежесть здесь важнее экономии запроса.
 export const retrieveOrder = async (id: string) => {
   const headers = {
     ...(await getAuthHeaders()),
-  }
-
-  const next = {
-    ...(await getCacheOptions("orders")),
   }
 
   return sdk.client
@@ -24,8 +26,7 @@ export const retrieveOrder = async (id: string) => {
           "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product,*credit_lines",
       },
       headers,
-      next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ order }) => order)
     .catch((err) => medusaError(err))
@@ -40,10 +41,6 @@ export const listOrders = async (
     ...(await getAuthHeaders()),
   }
 
-  const next = {
-    ...(await getCacheOptions("orders")),
-  }
-
   return sdk.client
     .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
       method: "GET",
@@ -55,46 +52,15 @@ export const listOrders = async (
         ...filters,
       },
       headers,
-      next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ orders }) => orders)
     .catch((err) => medusaError(err))
 }
 
-export const createTransferRequest = async (
-  state: {
-    success: boolean
-    error: string | null
-    order: HttpTypes.StoreOrder | null
-  },
-  formData: FormData
-): Promise<{
-  success: boolean
-  error: string | null
-  order: HttpTypes.StoreOrder | null
-}> => {
-  const id = formData.get("order_id") as string
-
-  if (!id) {
-    return { success: false, error: "Order ID is required", order: null }
-  }
-
-  const headers = await getAuthHeaders()
-
-  return await sdk.store.order
-    .requestTransfer(
-      id,
-      {},
-      {
-        fields: "id, email",
-      },
-      headers
-    )
-    .then(({ order }) => ({ success: true, error: null, order }))
-    .catch((err) => ({ success: false, error: err.message, order: null }))
-}
-
+// Запрос переноса заказа (`createTransferRequest`) удалён вместе с формой
+// «Перенос заказов» в T3.9. Приём и отказ ниже оставлены: ссылки на них
+// приходят покупателю письмом от ядра.
 export const acceptTransferRequest = async (id: string, token: string) => {
   const headers = await getAuthHeaders()
 

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useActionState } from "react";
+import React, { useEffect, useActionState } from "react"
 
 import Input from "@modules/common/components/input"
 
@@ -47,11 +47,17 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
     setSuccessState(state.success)
   }, [state])
 
+  // Пустое имя показываем прочерком, а не строкой «null null»: у входа по
+  // номеру (T10.7) ФИО появляется только при первом оформлении, и до него
+  // покупатель видел в профиле именно «null null» (дефект приёмки 2026-09-07).
+  const fullName =
+    [customer.first_name, customer.last_name].filter(Boolean).join(" ") || "—"
+
   return (
     <form action={formAction} className="w-full overflow-visible">
       <AccountInfo
         label={m.account.name}
-        currentInfo={`${customer.first_name} ${customer.last_name}`}
+        currentInfo={fullName}
         isSuccess={successState}
         isError={!!state?.error}
         clearState={clearState}

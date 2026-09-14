@@ -1,37 +1,10 @@
-import { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { redirect } from "next/navigation"
 
-import AddressBook from "@modules/account/components/address-book"
-
-import { getRegion } from "@lib/data/regions"
-import { retrieveCustomer } from "@lib/data/customer"
-import { getServerMessages } from "@lib/i18n/server"
-
-export const metadata: Metadata = {
-  title: "Addresses",
-  description: "View your addresses",
-}
-
+// Адреса доставки живут в профиле кабинета (T10.6) — отдельной страницы у них
+// больше нет: покупатель правит адрес там же, где ФИО и телефон.
 export default async function Addresses(props: {
   params: Promise<{ countryCode: string }>
 }) {
-  const params = await props.params
-  const { countryCode } = params
-  const customer = await retrieveCustomer()
-  const region = await getRegion(countryCode)
-  const m = await getServerMessages()
-
-  if (!customer || !region) {
-    notFound()
-  }
-
-  return (
-    <div className="w-full" data-testid="addresses-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl-semi">{m.account.shippingAddresses}</h1>
-        <p className="text-base-regular">{m.account.shippingAddressesDesc}</p>
-      </div>
-      <AddressBook customer={customer} region={region} />
-    </div>
-  )
+  const { countryCode } = await props.params
+  redirect(`/${countryCode}/cabinet/profile`)
 }

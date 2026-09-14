@@ -12,8 +12,8 @@ import { useMessages } from "@lib/i18n/i18n-context"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Text } from "@medusajs/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
+import KaspiPayPanel from "@modules/common/components/kaspi-pay-panel"
 import React, { useEffect, useRef, useState } from "react"
-import QRCode from "react-qr-code"
 import ErrorMessage from "../error-message"
 
 type PaymentButtonProps = {
@@ -222,14 +222,28 @@ const KaspiPaymentButton = ({
     if (!payment || isPaid || isFailed) {
       return
     }
-    const timer = setInterval(async () => {
+    const poll = async () => {
       try {
         setPayment(await getKaspiPaymentStatus(cart.id))
       } catch {
         // сетевые сбои поллинга молча пробуем снова
       }
-    }, 3000)
-    return () => clearInterval(timer)
+    }
+    const timer = setInterval(poll, 3000)
+
+    // Возврат во вкладку — самый вероятный момент «уже оплатил»: на телефоне
+    // покупатель уходит по ссылке в приложение Kaspi и возвращается сюда же.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        poll()
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange)
+
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
   }, [payment, isPaid, isFailed, cart.id])
 
   // Оформление после оплаты (ровно один раз); кнопка — ручной запасной
@@ -257,28 +271,15 @@ const KaspiPaymentButton = ({
 
   return (
     <div className="flex flex-col items-start gap-y-4">
-      {payment?.qr_payload && !isPaid && !isFailed && (
+      {!isPaid && !isFailed && (payment?.qr_payload || payment?.payment_url) && (
         <div
           className="flex flex-col gap-y-3"
           data-testid="kaspi-payment-panel"
         >
-          <Text className="txt-medium text-ui-fg-subtle">
-            {m.checkout.payment.scanQr}
-          </Text>
-          <div className="bg-white p-3 border rounded-lg w-fit">
-            <QRCode value={payment.qr_payload} size={160} />
-          </div>
-          {payment.payment_url && (
-            <a
-              href={payment.payment_url}
-              target="_blank"
-              rel="noreferrer"
-              className="txt-medium text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              data-testid="kaspi-payment-link"
-            >
-              {m.checkout.payment.openLink}
-            </a>
-          )}
+          <KaspiPayPanel
+            qrPayload={payment.qr_payload}
+            paymentUrl={payment.payment_url}
+          />
         </div>
       )}
 

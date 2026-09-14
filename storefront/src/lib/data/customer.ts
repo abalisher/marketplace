@@ -7,7 +7,6 @@ import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import {
   getAuthHeaders,
-  getCacheOptions,
   getCacheTag,
   getCartId,
   removeAuthToken,
@@ -25,10 +24,13 @@ export const retrieveCustomer =
       ...authHeaders,
     }
 
-    const next = {
-      ...(await getCacheOptions("customers")),
-    }
-
+    // БЕЗ кэша, намеренно. Профиль покупателя правит не только витрина: ФИО и
+    // адрес доставки сохраняет ассистент на бэкенде при оформлении (T10.8), и
+    // тег `customers` в этот момент сбросить некому — закэшированный ответ
+    // жил вечно. На приёмке 2026-09-07 это дало два дефекта разом: профиль
+    // показывал «null null» и пустую адресную книгу при сохранённых данных, а
+    // истёкший токен продолжал выглядеть живой авторизацией (карточка входа в
+    // чате при этом не показывалась). Запрос дешёвый — читаем всегда свежее.
     return await sdk.client
       .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
         method: "GET",
@@ -36,8 +38,7 @@ export const retrieveCustomer =
           fields: "*orders",
         },
         headers,
-        next,
-        cache: "force-cache",
+        cache: "no-store",
       })
       .then(({ customer }) => customer)
       .catch(() => null)
@@ -127,7 +128,9 @@ export async function login(_currentState: unknown, formData: FormData) {
   }
 }
 
-export async function signout(countryCode: string) {
+// Выход. `redirectTo` — куда вернуть покупателя: из «Аккаунта» это страница
+// входа, из кабинета в оболочке чата — сам чат (там гость продолжает подбор).
+export async function signout(countryCode: string, redirectTo?: string) {
   await sdk.auth.logout()
 
   await removeAuthToken()
@@ -140,7 +143,7 @@ export async function signout(countryCode: string) {
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
 
-  redirect(`/${countryCode}/account`)
+  redirect(redirectTo ?? `/${countryCode}/account`)
 }
 
 export async function transferCart() {

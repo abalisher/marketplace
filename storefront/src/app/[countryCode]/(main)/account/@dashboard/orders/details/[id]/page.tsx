@@ -1,33 +1,11 @@
-import { retrieveOrder } from "@lib/data/orders"
-import OrderDetailsTemplate from "@modules/order/templates/order-details-template"
-import { Metadata } from "next"
-import { notFound } from "next/navigation"
+import { redirect } from "next/navigation"
 
-type Props = {
-  params: Promise<{ id: string }>
-}
-
-export async function generateMetadata(props: Props): Promise<Metadata> {
-  const params = await props.params
-  const order = await retrieveOrder(params.id).catch(() => null)
-
-  if (!order) {
-    notFound()
-  }
-
-  return {
-    title: `Order #${order.display_id}`,
-    description: `View your order`,
-  }
-}
-
-export default async function OrderDetailPage(props: Props) {
-  const params = await props.params
-  const order = await retrieveOrder(params.id).catch(() => null)
-
-  if (!order) {
-    notFound()
-  }
-
-  return <OrderDetailsTemplate order={order} />
+// Карточка заказа переехала в кабинет (T10.6). Редирект держим: ссылку
+// `/account/orders/details/:id` покупатель мог сохранить, и она приходила в
+// старых вставках ленты.
+export default async function OrderDetailPage(props: {
+  params: Promise<{ countryCode: string; id: string }>
+}) {
+  const { countryCode, id } = await props.params
+  redirect(`/${countryCode}/cabinet/orders/${id}`)
 }

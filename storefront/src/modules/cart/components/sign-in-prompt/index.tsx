@@ -5,7 +5,7 @@ import { getServerMessages } from "@lib/i18n/server"
 const SignInPrompt = async () => {
   const m = await getServerMessages()
   return (
-    <div className="bg-white flex items-center justify-between">
+    <div className="bg-surface flex items-center justify-between">
       <div>
         <Heading level="h2" className="txt-xlarge">
           {m.cart.signInTitle}

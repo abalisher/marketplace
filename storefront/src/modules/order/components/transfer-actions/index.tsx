@@ -41,10 +41,10 @@ const TransferActions = ({ id, token }: { id: string; token: string }) => {
   return (
     <div className="flex flex-col gap-y-4">
       {status?.accept === "success" && (
-        <Text className="text-emerald-500">{m.order.transferSuccess}</Text>
+        <Text className="text-success">{m.order.transferSuccess}</Text>
       )}
       {status?.decline === "success" && (
-        <Text className="text-emerald-500">{m.order.transferDeclined}</Text>
+        <Text className="text-success">{m.order.transferDeclined}</Text>
       )}
       {status?.accept !== "success" && status?.decline !== "success" && (
         <div className="flex gap-x-4">
@@ -71,7 +71,7 @@ const TransferActions = ({ id, token }: { id: string; token: string }) => {
           </Button>
         </div>
       )}
-      {errorMessage && <Text className="text-red-500">{errorMessage}</Text>}
+      {errorMessage && <Text className="text-error">{errorMessage}</Text>}
     </div>
   )
 }

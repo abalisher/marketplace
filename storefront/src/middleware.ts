@@ -100,6 +100,36 @@ async function getCountryCode(
   }
 }
 
+// После пивота 2026-07-22 путь покупателя — только чат: классический каталог не
+// нужен (решение владельца 2026-08-03). Эти пути и корень региона ведут в чат;
+// страницы аккаунта и заказов остаются доступными по прямым ссылкам.
+// `/cart` здесь же (T3.10): корзину ведёт ассистент в диалоге, а cookie-корзина
+// стартера после пивота не наполняется — страница показывала «пусто» даже при
+// полной корзине и уводила в каталог, который возвращает обратно в чат.
+const CHAT_ONLY_PREFIXES = [
+  "/store",
+  "/categories",
+  "/collections",
+  "/products",
+  "/cart",
+]
+
+const chatRedirect = (request: NextRequest, countryCode: string) => {
+  const rest = request.nextUrl.pathname.replace(`/${countryCode}`, "") || "/"
+  const isChatOnly = CHAT_ONLY_PREFIXES.some(
+    (prefix) => rest === prefix || rest.startsWith(`${prefix}/`)
+  )
+
+  if (rest !== "/" && !isChatOnly) {
+    return null
+  }
+
+  return NextResponse.redirect(
+    `${request.nextUrl.origin}/${countryCode}/chat`,
+    307
+  )
+}
+
 /**
  * Middleware to handle region selection and onboarding status.
  */
@@ -121,16 +151,18 @@ export async function middleware(request: NextRequest) {
 
   // if one of the country codes is in the url and the cache id is set, return next
   if (urlHasCountryCode && cacheIdCookie) {
-    return NextResponse.next()
+    return chatRedirect(request, countryCode) ?? NextResponse.next()
   }
 
   // if one of the country codes is in the url and the cache id is not set, set the cache id and redirect
   if (urlHasCountryCode && !cacheIdCookie) {
-    response.cookies.set("_medusa_cache_id", cacheId, {
+    const toChat = chatRedirect(request, countryCode)
+    const withCookie = toChat ?? response
+    withCookie.cookies.set("_medusa_cache_id", cacheId, {
       maxAge: 60 * 60 * 24,
     })
 
-    return response
+    return withCookie
   }
 
   // check if the url is a static asset

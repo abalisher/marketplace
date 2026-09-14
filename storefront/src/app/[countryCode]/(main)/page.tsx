@@ -1,39 +1,59 @@
 import { Metadata } from "next"
 
-import FeaturedProducts from "@modules/home/components/featured-products"
 import Hero from "@modules/home/components/hero"
-import { listCollections } from "@lib/data/collections"
+import ProductPreview from "@modules/products/components/product-preview"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { listProducts } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
+import { getServerMessages } from "@lib/i18n/server"
 
 export const metadata: Metadata = {
-  title: "Medusa Next.js Starter Template",
+  title: "СтройМаркет — черновые стройматериалы в Астане",
   description:
-    "A performant frontend ecommerce starter template with Next.js 15 and Medusa.",
+    "Черновые стройматериалы в Астане: отделочные материалы, электрика, сантехника и крепёж с доставкой и самовывозом.",
 }
 
 export default async function Home(props: {
   params: Promise<{ countryCode: string }>
 }) {
   const params = await props.params
-
   const { countryCode } = params
 
-  const region = await getRegion(countryCode)
+  const [region, m] = await Promise.all([
+    getRegion(countryCode),
+    getServerMessages(),
+  ])
 
-  const { collections } = await listCollections({
-    fields: "id, handle, title",
-  })
-
-  if (!collections || !region) {
+  if (!region) {
     return null
   }
+
+  const {
+    response: { products },
+  } = await listProducts({
+    countryCode,
+    queryParams: { limit: 8 },
+  })
 
   return (
     <>
       <Hero />
-      <div className="py-12">
-        <ul className="flex flex-col gap-x-6">
-          <FeaturedProducts collections={collections} region={region} />
+      <div className="content-container py-12">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-heading-medium text-ink">{m.home.popular}</h2>
+          <LocalizedClientLink
+            href="/store"
+            className="text-body-large text-accent hover:text-accent-pressed"
+          >
+            {m.home.wholeCatalogue}
+          </LocalizedClientLink>
+        </div>
+        <ul className="grid grid-cols-2 small:grid-cols-4 gap-x-6 gap-y-8">
+          {products.map((product) => (
+            <li key={product.id}>
+              <ProductPreview product={product} region={region} isFeatured />
+            </li>
+          ))}
         </ul>
       </div>
     </>

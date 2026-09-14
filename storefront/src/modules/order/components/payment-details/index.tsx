@@ -23,22 +23,22 @@ const PaymentDetails = async ({ order }: PaymentDetailsProps) => {
         {payment && (
           <div className="flex items-start gap-x-1 w-full">
             <div className="flex flex-col w-1/3">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
+              <Text className="text-body-large font-semibold text-ink mb-1">
                 {m.checkout.payment.methodLabel}
               </Text>
               <Text
-                className="txt-medium text-ui-fg-subtle"
+                className="text-body-large text-ink-secondary"
                 data-testid="payment-method"
               >
                 {paymentInfoMap[payment.provider_id].title}
               </Text>
             </div>
             <div className="flex flex-col w-2/3">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
+              <Text className="text-body-large font-semibold text-ink mb-1">
                 {m.checkout.payment.detailsLabel}
               </Text>
-              <div className="flex gap-2 txt-medium text-ui-fg-subtle items-center">
-                <Container className="flex items-center h-7 w-fit p-2 bg-ui-button-neutral-hover">
+              <div className="flex gap-2 text-body-large text-ink-secondary items-center">
+                <Container className="flex items-center h-7 w-fit p-2 bg-surface-dim">
                   {paymentInfoMap[payment.provider_id].icon}
                 </Container>
                 <Text data-testid="payment-amount">

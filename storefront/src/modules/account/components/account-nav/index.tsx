@@ -4,6 +4,7 @@ import { clx } from "@medusajs/ui"
 import { ArrowRightOnRectangle } from "@medusajs/icons"
 import { useParams, usePathname } from "next/navigation"
 
+import Building from "@modules/common/icons/building"
 import ChevronDown from "@modules/common/icons/chevron-down"
 import User from "@modules/common/icons/user"
 import MapPin from "@modules/common/icons/map-pin"
@@ -11,6 +12,7 @@ import Package from "@modules/common/icons/package"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
 import { signout } from "@lib/data/customer"
+import { FEATURE_COMPANIES } from "@lib/feature-flags"
 import { useMessages } from "@lib/i18n/i18n-context"
 
 const AccountNav = ({
@@ -32,7 +34,7 @@ const AccountNav = ({
         {route !== `/${countryCode}/account` ? (
           <LocalizedClientLink
             href="/account"
-            className="flex items-center gap-x-2 text-small-regular py-2"
+            className="flex items-center gap-x-2 text-body-medium py-2"
             data-testid="account-main-link"
           >
             <>
@@ -42,15 +44,15 @@ const AccountNav = ({
           </LocalizedClientLink>
         ) : (
           <>
-            <div className="text-xl-semi mb-4 px-8">
+            <div className="text-heading-medium mb-4 px-8">
               {m.account.hello.replace("{name}", customer?.first_name ?? "")}
             </div>
-            <div className="text-base-regular">
+            <div className="text-body-large">
               <ul>
                 <li>
                   <LocalizedClientLink
                     href="/account/profile"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    className="flex items-center justify-between py-4 border-b border-line px-8"
                     data-testid="profile-link"
                   >
                     <>
@@ -65,7 +67,7 @@ const AccountNav = ({
                 <li>
                   <LocalizedClientLink
                     href="/account/addresses"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    className="flex items-center justify-between py-4 border-b border-line px-8"
                     data-testid="addresses-link"
                   >
                     <>
@@ -77,10 +79,26 @@ const AccountNav = ({
                     </>
                   </LocalizedClientLink>
                 </li>
+                {/* Юрлица заморожены на MVP (T10.9) — пункт возвращает флаг. */}
+                {FEATURE_COMPANIES && (
+                  <li>
+                    <LocalizedClientLink
+                      href="/account/company"
+                      className="flex items-center justify-between py-4 border-b border-line px-8"
+                      data-testid="company-link"
+                    >
+                      <div className="flex items-center gap-x-2">
+                        <Building size={20} />
+                        <span>{m.account.company.nav}</span>
+                      </div>
+                      <ChevronDown className="transform -rotate-90" />
+                    </LocalizedClientLink>
+                  </li>
+                )}
                 <li>
                   <LocalizedClientLink
                     href="/account/orders"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8"
+                    className="flex items-center justify-between py-4 border-b border-line px-8"
                     data-testid="orders-link"
                   >
                     <div className="flex items-center gap-x-2">
@@ -93,7 +111,7 @@ const AccountNav = ({
                 <li>
                   <button
                     type="button"
-                    className="flex items-center justify-between py-4 border-b border-gray-200 px-8 w-full"
+                    className="flex items-center justify-between py-4 border-b border-line px-8 w-full"
                     onClick={handleLogout}
                     data-testid="logout-button"
                   >
@@ -112,9 +130,11 @@ const AccountNav = ({
       <div className="hidden small:block" data-testid="account-nav">
         <div>
           <div className="pb-4">
-            <h3 className="text-base-semi">{m.account.account}</h3>
+            <h3 className="text-body-large font-semibold">
+              {m.account.account}
+            </h3>
           </div>
-          <div className="text-base-regular">
+          <div className="text-body-large">
             <ul className="flex mb-0 justify-start items-start flex-col gap-y-4">
               <li>
                 <AccountNavLink
@@ -143,6 +163,17 @@ const AccountNav = ({
                   {m.account.addresses}
                 </AccountNavLink>
               </li>
+              {FEATURE_COMPANIES && (
+                <li>
+                  <AccountNavLink
+                    href="/account/company"
+                    route={route!}
+                    data-testid="company-link"
+                  >
+                    {m.account.company.nav}
+                  </AccountNavLink>
+                </li>
+              )}
               <li>
                 <AccountNavLink
                   href="/account/orders"
@@ -152,7 +183,7 @@ const AccountNav = ({
                   {m.account.orders}
                 </AccountNavLink>
               </li>
-              <li className="text-grey-700">
+              <li className="text-ink-secondary">
                 <button
                   type="button"
                   onClick={handleLogout}
@@ -188,8 +219,8 @@ const AccountNavLink = ({
   return (
     <LocalizedClientLink
       href={href}
-      className={clx("text-ui-fg-subtle hover:text-ui-fg-base", {
-        "text-ui-fg-base font-semibold": active,
+      className={clx("text-ink-secondary hover:text-ink", {
+        "text-ink font-semibold": active,
       })}
       data-testid={dataTestId}
     >

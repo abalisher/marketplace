@@ -15,7 +15,6 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "@lib/data/locale-actions"
-import { listCartShippingMethods } from "./fulfillment"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -414,21 +413,14 @@ export async function placeOrder(cartId?: string) {
     throw new Error("Cart not found when placing an order")
   }
 
-  // Способ получения выводим из выбранной опции: опции pickup-наборов
-  // (fulfillment_set.type === "pickup", «Самовывоз: <склад>») бэкенд фиксирует
-  // в OrderLifecycle как delivery_method=pickup, остальные — delivery.
-  const selectedOptionId = cart.shipping_methods?.at(-1)?.shipping_option_id
-  const shippingOptions = await listCartShippingMethods(id)
-  const isPickup =
-    shippingOptions?.find((option) => option.id === selectedOptionId)
-      ?.service_zone?.fulfillment_set?.type === "pickup"
-
+  // После пивота 2026-07-22 единственный способ получения — доставка (самовывоз
+  // и продажа у окна сняты; бэкенд принимает только delivery_method=delivery).
   const { order } = await sdk.client
     .fetch<{ order: HttpTypes.StoreOrder }>(`/store/orders`, {
       method: "POST",
       body: {
         cart_id: id,
-        delivery_method: isPickup ? "pickup" : "delivery",
+        delivery_method: "delivery",
       },
       headers,
     })
@@ -441,9 +433,8 @@ export async function placeOrder(cartId?: string) {
 
   const countryCode = cart.shipping_address?.country_code?.toLowerCase()
 
-  const orderCacheTag = await getCacheTag("orders")
-  revalidateTag(orderCacheTag)
-
+  // Тег `orders` больше не инвалидируем: заказы читаются без кэша (T3.9) —
+  // оформление идёт и из чата, где витрина в процессе не участвует.
   removeCartId()
   redirect(`/${countryCode}/order/${order.id}/confirmed`)
 }

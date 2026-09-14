@@ -1,33 +1,26 @@
-import { Github } from "@medusajs/icons"
-import { Button, Heading } from "@medusajs/ui"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import { getServerMessages } from "@lib/i18n/server"
 
-const Hero = () => {
+const Hero = async () => {
+  const m = await getServerMessages()
+
   return (
-    <div className="h-[75vh] w-full border-b border-ui-border-base relative bg-ui-bg-subtle">
-      <div className="absolute inset-0 z-10 flex flex-col justify-center items-center text-center small:p-32 gap-6">
-        <span>
-          <Heading
-            level="h1"
-            className="text-3xl leading-10 text-ui-fg-base font-normal"
-          >
-            Ecommerce Starter Template
-          </Heading>
-          <Heading
-            level="h2"
-            className="text-3xl leading-10 text-ui-fg-subtle font-normal"
-          >
-            Powered by Medusa and Next.js
-          </Heading>
+    <div className="relative h-[75vh] w-full border-b border-line bg-surface-dim">
+      <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-6 text-center small:p-32">
+        <span className="flex flex-col gap-4">
+          <h1 className="text-heading-large text-ink small:text-4xl small:leading-tight">
+            {m.home.heroTitle}
+          </h1>
+          <h2 className="text-body-large text-ink-secondary small:text-2xl small:leading-10">
+            {m.home.heroSubtitle}
+          </h2>
         </span>
-        <a
-          href="https://github.com/medusajs/nextjs-starter-medusa"
-          target="_blank"
+        <LocalizedClientLink
+          href="/store"
+          className="flex min-h-[48px] items-center rounded-chip bg-accent px-6 text-button text-on-accent transition-colors hover:bg-accent-pressed"
         >
-          <Button variant="secondary">
-            View on GitHub
-            <Github />
-          </Button>
-        </a>
+          {m.home.goToCatalogue}
+        </LocalizedClientLink>
       </div>
     </div>
   )

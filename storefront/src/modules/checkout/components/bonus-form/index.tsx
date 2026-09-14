@@ -64,7 +64,7 @@ const BonusForm: React.FC<BonusFormProps> = ({ cart, balance }) => {
   }
 
   return (
-    <div className="w-full bg-white flex flex-col">
+    <div className="w-full bg-surface flex flex-col">
       <div className="txt-medium">
         <form action={(a) => applyBonus(a)} className="w-full mb-5">
           <Label className="flex gap-x-1 my-2 items-center">

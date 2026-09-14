@@ -7,8 +7,10 @@ const Help = async () => {
   const m = await getServerMessages()
   return (
     <div className="mt-6">
-      <Heading className="text-base-semi">{m.order.needHelp}</Heading>
-      <div className="text-base-regular my-2">
+      <Heading className="text-body-large font-semibold">
+        {m.order.needHelp}
+      </Heading>
+      <div className="text-body-large my-2">
         <ul className="gap-y-2 flex flex-col">
           <li>
             <LocalizedClientLink href="/contact">

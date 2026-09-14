@@ -27,7 +27,10 @@ const LanguageSwitcher = () => {
   }
 
   return (
-    <div className="flex items-center gap-x-2" aria-label={messages.common.language}>
+    <div
+      className="flex items-center gap-x-2"
+      aria-label={messages.common.language}
+    >
       {LOCALES.map((locale) => (
         <button
           key={locale}
@@ -35,6 +38,8 @@ const LanguageSwitcher = () => {
           onClick={() => select(locale)}
           disabled={isPending}
           className={clx(
+            // Тап-таргет 48 px (та же правка, что у переключателя темы, T3.11).
+            "flex min-h-[48px] min-w-[48px] items-center justify-center px-1 small:min-h-[32px] small:min-w-0 small:px-2",
             "txt-compact-small text-ui-fg-subtle hover:text-ui-fg-base transition-fg",
             { "text-ui-fg-base font-semibold": locale === current }
           )}

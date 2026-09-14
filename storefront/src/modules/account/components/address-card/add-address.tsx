@@ -50,12 +50,17 @@ const AddAddress = ({
 
   return (
     <>
+      {/* Кнопка «новый адрес» — строка, а не карточка в рост соседних: в
+          профиле кабинета (T10.6) адресов часто нет вовсе, и пустой блок
+          220px читался как сломанный экран (находка гейта U T10.6b). */}
       <button
-        className="border border-ui-border-base rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between"
+        className="border border-line rounded-rounded p-4 min-h-[72px] w-full flex items-center justify-between gap-3"
         onClick={open}
         data-testid="add-address-button"
       >
-        <span className="text-base-semi">{m.account.newAddress}</span>
+        <span className="text-body-large font-semibold">
+          {m.account.newAddress}
+        </span>
         <Plus />
       </button>
 
@@ -139,7 +144,7 @@ const AddAddress = ({
             </div>
             {formState.error && (
               <div
-                className="text-rose-500 text-small-regular py-2"
+                className="text-error text-body-medium py-2"
                 data-testid="address-error"
               >
                 {formState.error}
