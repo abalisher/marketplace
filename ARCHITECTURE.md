@@ -2,6 +2,11 @@
 
 Обновляется при каждом изменении границ модулей. Детали модулей — в `docs/modules/`.
 
+> ⚠️ **Пивот 2026-07-22** (см. `DECISIONS.md`/`docs/DOMAIN.md`): один магазин одного продавца (не маркетплейс),
+> один склад, покупатель — чат-ассистент (не классический каталог), POS убран, водитель — gig-actor `/driver/*`
+> в отдельном `apps/driver`, добавлен модуль `procurement` + ИИ-приёмка. Таблицы ниже частично отражают до-пивотную
+> модель — правятся по мере реализации.
+
 ## Общая схема
 
 Паритет платформ: покупатель и продавец могут работать и с телефона, и с веба.
@@ -18,20 +23,22 @@
                                 (сгенерирован из контракта) │   JS SDK / встроено
                                                             ▼              ▼
 ┌─────────────── backend/ (Medusa v2, TypeScript) ──────────────────────────┐
-│  src/api/store|admin|webhooks  ← тонкие роуты, вызывают workflows         │
+│  src/api/store|admin|driver|webhooks ← тонкие роуты, вызывают workflows   │
 │  src/workflows/                ← сквозные сценарии (заказ, отгрузка...)   │
 │  Ядро Medusa: products, carts, orders, inventory(мульти-склад),           │
 │               promotions, customers, payments, notifications              │
-│  src/modules/ (кастом): company, scoring, bonus, logistics,               │
-│                         documents, estimator, payment-kaspi               │
+│  src/modules/ (кастом): company, scoring, bonus, logistics, auth-phone,   │
+│                         documents, estimator, payment-kaspi, assembly,    │
+│                         driver, procurement                               │
 │  src/links/  ← связи кастомных моделей с ядром (без прямых FK)            │
-│  src/admin/  ← экраны веб-админки: аналитика, скоринг, модерация          │
+│  src/admin/  ← панель продавца: дашборд, очередь, модерация, закуп        │
 │  src/subscribers/ (события → уведомления)   src/jobs/ (крон)              │
 └──────────────┬─────────────────────┬───────────────────────────────────── ┘
                ▼                     ▼
         PostgreSQL 16            Redis 7 (кэш, события, workflow engine)
 
-Внешние интеграции: Kaspi Pay (payment-kaspi) · SMS/Push-провайдер (notification provider)
+Внешние интеграции: Kaspi Pay (payment-kaspi) · SMS/Push-провайдер (notification provider;
+                    код входа покупателя — auth-phone, до выбора провайдера dev-канал)
                     Claude API + STT (estimator) · 1С (api/webhooks + экспорт) · Карты/гео (logistics)
 ```
 
@@ -39,16 +46,27 @@
 
 | Модуль | Отвечает за | Ключевые модели |
 |---|---|---|
-| `company` | Юрлица-покупатели: БИН, документы, сотрудники, их лимиты | Company, Employee, SpendLimit |
+| `company` ⛔ | Юрлица-покупатели: БИН, документы, сотрудники, их лимиты. **Заморожен флагом `FEATURE_COMPANIES`** (T10.9) | Company, Employee, SpendLimit |
 | `order-lifecycle` | Жизненный цикл заказа из ТЗ (Новый…Закрыт/Отменён/Возврат) поверх order ядра + лог переходов | OrderLifecycle, OrderLifecycleEvent |
-| `scoring` | Рейтинг покупателя, лимит отсрочки/кредита | ScoreCard, ScoringRule |
+| `scoring` ⛔ | Рейтинг покупателя, лимит отсрочки/кредита. **Заморожен вместе с юрлицами** (`FEATURE_COMPANIES`) | ScoreCard, ScoringRule |
 | `bonus` | Бонусный счёт: начисление % после закрытия заказа, списание при оплате | BonusAccount, BonusTransaction |
 | `logistics` | Рейсы, назначение водителей, GPS-точки, тарифная сетка доставки | Trip, TripStop, DeliveryTariff, GpsPing |
 | `documents` | Генерация PDF: счёт (при заказе), накладная (при отгрузке), внутренний АВР | Document, DocumentTemplate |
 | `estimator` | ИИ-расчёт материалов: нормативная база расхода, распознавание файлов/голоса | MaterialNorm, Estimate, EstimateLine |
 | `payment-kaspi` | Провайдер Kaspi Pay/QR за стандартным платёжным шлюзом Medusa | (реализация Payment Provider API) |
+| `auth-phone` | Вход покупателя «телефон + одноразовый код» за ядровым auth-модулем (рядом с `emailpass`) | (реализация Auth Provider API; код — в `provider_metadata`) |
+| `driver` | Водитель-gig: самрегистрация по телефону, профиль о себе (ФИО, машина), допуск к работе решением продавца. Свой actor_type `driver` и поверхность `/driver/*` | Driver |
+| `assembly` | Сборка оплаченного заказа: распад на задания по категориям (группа = категория), отметки сборщика, флаг нехватки отгрузке | AssemblyTask, AssemblyTaskItem |
+| `procurement` *(пивот)* | Закуп: поставщики, приходы, партии, себестоимость → питает inventory; не виден покупателю. ИИ-приёмка (накладная/фото) | Supplier, Receipt, Batch, CostEntry *(проект)* |
 
 Правило: модули не знают друг о друге. Сквозная логика — только в `src/workflows/`.
+
+**Фича-флаги.** Домены, отложенные за пределы MVP, не удаляются, а прячутся флагом окружения
+(`backend/src/lib/feature-flags.ts`; гейт роутов — `backend/src/api/utils/feature-gate.ts`, отключённый
+роут отвечает 404). Сейчас флаг один — `FEATURE_COMPANIES` (юрлица: `company`, `scoring`, кредитный
+лимит, внутренний АВР), по умолчанию выключен. Клиенты держат собственные копии значения
+(`NEXT_PUBLIC_FEATURE_COMPANIES` на витрине, `--dart-define=FEATURE_COMPANIES` в мобильных), панель
+продавца спрашивает флаги по сети (`GET /admin/feature-flags`). Подробности — DECISIONS 2026-08-27.
 
 ## Ключевые сквозные сценарии (workflows)
 
@@ -66,9 +84,9 @@
 
 | Роль | Мобильно | Веб |
 |---|---|---|
-| Покупатель (физ/юр) | `mobile/apps/buyer` | `storefront/` (Next.js) |
-| Продавец: руководитель, менеджер, кладовщик, бухгалтер | `mobile/apps/partner` | `backend/src/admin/` (экраны по ролям) |
-| Водитель | `mobile/apps/driver` (GPS, камера) | — (не нужен) |
+| Покупатель (физ/юр) | `mobile/apps/buyer` — **чат-ассистент** | `storefront/` (Next.js) — **чат-ассистент** |
+| Продавец: руководитель, менеджер, кладовщик, бухгалтер | `mobile/apps/partner` (роль «сборщик» — задания сборки по категориям, T10.12) | `backend/src/admin/` (seller-first экраны) |
+| Водитель *(gig, не сотрудник)* | `mobile/apps/driver` (GPS, камера; самрегистрация, actor `/driver/*`) | — (не нужен) |
 | Админ / Суперадмин | — | `backend/src/admin/` |
 
 Правило паритета: новая фича покупателя/продавца = один workflow в бэкенде + экран в мобилке + экран в вебе.

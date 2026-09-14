@@ -1,162 +1,1660 @@
 # Состояние проекта
 
-> Обновляется агентом В КОНЦЕ КАЖДОЙ сессии/итерации цикла. Это главный файл «памяти» между сессиями.
-> Формат бэклога — чекбоксы: цикл (`/loop`) берёт первую невыполненную задачу, выполняет, проверяет, отмечает.
+> Короткая сводка «где мы». Бэклог и статусы задач — `docs/PLAN.md`; гейты качества — `docs/QUALITY.md`;
+> полный журнал до 2026-07-27 — `docs/archive/STATE-2026-07.md`. Обновляется в конце каждой
+> сессии/итерации: 1–3 строки в «Журнал», сдвиг «Следующего шага», актуализация проблем.
 
-**Последнее обновление:** 2026-07-21 (mobile — устранён блокер api_client; core верифицирован) · **Фаза:** 2 — Ядро домена
+**Последнее обновление:** 2026-09-14 — **T10.19: подбор без карточек в ленте чата.** Правка
+владельца: длинный список карточек мешал читать ответ, а назначение счётчиков в ленте на демо не
+поняли. Бэкенд больше не отдаёт `product_card`, промпт велит давать выбор текстом (до пяти вариантов
+с ценой за единицу и наличием); на витрине карточки удалены, полоса корзины над композером —
+единственное место правки количества, подписана «Изменить»/«Готово». Гейты **К✅** (backend tsc 0,
+unit ассистента 170/170; витрина lint/tsc без новых ошибок), U и Ф не проводились — стенд надо
+перезапустить (backend `medusa start` без горячей перезагрузки, витрина — `npm run build` + рестарт).
+Парный таск buyer и снятие схемы из контракта — T10.19b.
 
-## Что сделано
-- [x] Разблокировка mobile-трека — фикс коллизии `operationId` в контракте: store-роуту `/store/orders/{id}/documents` дан уникальный `operationId: "StoreGetOrderDocuments"` (`backend/src/api/store/orders/orders.oas.json`, было `GetOrdersIdDocuments` — совпадало с admin-версией). Регенерация: `npm run contract:generate` (115 путей, 684 схемы — ок) → `dart run swagger_parser` (34 клиента, 133 запроса) → `build_runner` (1690 outputs) → `dart format`. Результат: `OrdersClient` теперь `getOrdersIdDocuments` (admin) + `storeGetOrderDocuments` (store) — дубликата нет, `api_client` компилируется. Верификация: `flutter analyze packages/api_client packages/core` — «No issues found»; **тест `core` — 3/3 зелёные** (ранее блокировался). Также этим закрыта итерация 2 (`core` полностью верифицирован).
-- [x] Mobile buyer, паритет — итерация 2 (фундамент `core`) — ВЕРИФИЦИРОВАН после снятия блокера (тест 3/3, см. пункт выше): написан код инфраструктуры — `packages/core/lib/config/{app_config,app_config_provider}.dart` (конфиг из `--dart-define`: `MEDUSA_BASE_URL` дефолт `http://localhost:9000`, `MEDUSA_PUBLISHABLE_KEY`; секрет не в коде), `network/dio_provider.dart` (Dio с baseUrl+таймаутами+заголовком `x-publishable-api-key`), `network/medusa_api_provider.dart` (провайдер `MedusaStoreApi` поверх Dio; импорт `show MedusaStoreApi` из-за коллизии имени `Provider` с моделью api_client). Удалён Calculator-скаффолд `core.dart`, тест переписан на провайдеры (override конфига → проверка baseUrl/заголовка). **Riverpod: вынужденно без генераторного синтаксиса** — `riverpod_generator` (2.x→source_gen^2, 3.x→analyzer<9) несовместим с пиннингом `api_client` (json_serializable 6.14 → analyzer≥10/source_gen^4); используются обычные `Provider` из `flutter_riverpod ^2.6.1` (см. DECISIONS). Верификация (после снятия блокера): `flutter analyze packages/core` — «No issues found», `dart format --set-exit-if-changed` чист, тест `core` 3/3 зелёный.
-- [x] Mobile buyer, паритет — итерация 1 (фундамент `ui_kit`): дизайн-токены + тема Material 3. Файлы `packages/ui_kit/lib/{app_colors,app_spacing,app_radius,app_typography,app_theme}.dart` (по одной сущности на файл; `abstract final class` для холдеров токенов; `buildAppTheme()` собирает `ThemeData` из токенов). Удалён Calculator-скаффолд `ui_kit.dart` + переписан `test/ui_kit_test.dart` (проверяет M3/брендовый primary/фон/кнопку). БЕЗ barrel: консюмеры импортируют конкретные файлы (`package:ui_kit/app_theme.dart`), т.к. запрет реэкспортов. Токены ПРОВИЗОРНЫЕ (нейтральные, синий primary #2563EB) — уточнить после дизайн-хэндоффа. Верификация: `flutter pub get` ок, `dart format --set-exit-if-changed` чист, `flutter analyze packages/ui_kit` — «No issues found», `flutter test` — 2/2 зелёные. Изоляция соблюдена: mobile-only, TS не читался, api_client не трогался.
-- [x] Витрина, локализация — подзадача 2 (хвост — мелкие поверхности): 404-страницы (`app/not-found` + `(main)`/`(checkout)`/`(main)/cart` — `common.{pageNotFound,pageNotFoundDesc,cartNotFoundDesc,goToFrontpage}`, все async server), заголовки+описания dashboard-страниц аккаунта (addresses/profile/orders — `account.{shippingAddresses,shippingAddressesDesc,profileDesc,ordersDesc}`), промокоды в чекауте (`checkout/components/discount-code` — client, `checkout.promo.{addCodes,applied,removeCode}` + Apply переиспользует `checkout.bonus.apply`), onboarding-CTA товара (`products/components/product-onboarding-cta` — server, `product.{demoProductCreated,continueSetupPrompt,continueSetupButton}`). Финальный `grep`-свип видимых строк по `src/modules`+`src/app` — чисто (остаётся только SEO-метадата `metadata.title/description` во вкладке/для поисковиков — отдельная тема, не UI-строки). Верификация: tsc изменённых чист, `next lint` чист. **Локализация видимого UI витрины (ru/kk/en) по сути завершена.**
-- [x] Витрина, локализация — подзадача 2 (модуль `order` — детали/подтверждение заказа): `modules/order/components/{order-summary,help,shipping-details,payment-details,order-details,onboarding-cta,transfer-actions}` + `templates/{order-completed-template,order-details-template}`. Новый namespace `order.*` (orderSummary/summary/subtotal/needHelp/contact/returnsExchanges/method/paidAt/thankYou/orderPlacedSuccess/confirmationSent/orderDate/orderNumber/orderStatus/paymentStatus/orderDetails/backToOverview/transfer*/testOrderCreated/completeSetup*); итоги/оплата/доставка переиспользуют `cart.totals.*` и `checkout.{shipping,payment,addresses}.*`. **Важно:** `order-details-template` был `"use client"`, но хуков не использовал и рендерит компоненты, которые стали async-server — переведён в async server (`getServerMessages`); клиент не может рендерить server-компоненты, проверил всех потребителей (все страницы/шаблоны серверные, 0 `use client`). Клиентскими остались только `onboarding-cta`/`transfer-actions` (есть интерактив). Статусы заказа/оплаты (`formatStatus` от enum) оставлены как есть — это бэкенд-enum, не UI-строка. Верификация: tsc изменённых чист, `next lint` чист. **Модуль `order` полностью локализован.**
-- [x] Витрина, локализация — подзадача 2 (аккаунт, часть 3 — адреса/заказы/перенос + layout): `modules/account/components/{order-card,order-overview,address-card/add-address,address-card/edit-address-modal,transfer-request-form}` (все client, `useMessages`) + `templates/account-layout` (server → `getServerMessages`). Строки: карточка заказа («{n} тов.» через инвариантный `itemsUnit`, «ещё», «Подробнее»), пустой список заказов (noOrdersTitle/Description/continueShopping), модалки адресов (newAddress/addAddress/editAddress/save/provinceState; поля — `common.address.*`; edit/remove — `common.edit`/`account.remove`), перенос заказа (orderTransfers/transferQuestion/transferConnect/orderId/requestTransfer + transferRequested/transferEmailSent через `.replace()`), футер аккаунта (gotQuestions/faqText/customerService). `address-book` — без строк (обёртка). Верификация: tsc изменённых чист, `next lint` чист. **Модуль `account` полностью локализован** (auth + nav + overview + профиль + адреса + заказы + layout).
-- [x] Витрина, локализация — подзадача 2 (аккаунт, часть 2 — страница профиля): `modules/account/components/{account-info,profile-name,profile-email,profile-phone,profile-password,profile-billing-address}`. `account-info` — общий редактор (client `useMessages`): «Изменить»/«Отмена» (edit→`common.edit`, cancel→`account.cancel`), «Сохранить» (saveChanges), «{label} обновлено успешно» (updatedSuccessfully), дефолт ошибки (errorOccurred, вынесен из default-параметра в `errorMessage ?? m.account.errorOccurred`). profile-* (все client): label редактора (`account.name`/`common.address.email`/phone/`account.password`/`account.billingAddress`), поля форм переиспользуют `common.address.*` (+ новый `apartment`), пароли — `account.{oldPassword,newPassword,confirmPassword,passwordNotShown,passwordUpdateNotImplemented}`, «Платёжный адрес не задан» (noBillingAddress, в useMemo — добавлен `m` в deps). Верификация: tsc изменённых чист, `next lint` чист. Осталось по аккаунту: address-book/address-card (add-address/edit-address-modal), order-card/order-overview, transfer-request-form.
-- [x] Витрина, локализация — подзадача 2 (аккаунт, часть 1 — вход/регистрация/навигация/обзор): `modules/account/components/{login,register,account-nav,overview}`. Namespace `account.*` (welcomeBack/loginSubtitle/signIn/notAMember/joinUs; registerTitle/registerSubtitle/byCreatingAccount/privacyPolicy/and/termsOfUse/join/alreadyMember/password; account/hello/profile/addresses/orders/logout/overview/signedInAs/completed/saved/recentOrders/datePlaced/orderNumber/totalAmount/goToOrder/noRecentOrders); поля форм переиспользуют `common.address.*`. login/register/account-nav — client (`useMessages`); overview — сделан async server (`getServerMessages`, рендерится из серверной @dashboard/page). Интерполяция `{name}`/`{id}` — через `.replace()` (как `savedPrompt`). Верификация: tsc изменённых чист, `next lint` чист. Осталось по аккаунту: profile-* (name/email/phone/password/billing-address), address-book/address-card, order-card/order-overview, account-info, transfer-request-form.
-- [x] Витрина, локализация — подзадача 2 (шапка/подвал/мини-корзина): `modules/layout/templates/{nav,footer}` (server → `getServerMessages`) + `modules/layout/components/cart-dropdown` (client → `useMessages`). Namespace `nav.*` (account, cart), `footer.*` (categories, collections, allRightsReserved) + расширен `cart.*` (remove, subtotal, exclTaxes, goToCart, emptyBag). Локализованы: ссылки «Аккаунт»/«Корзина (n)», разделы подвала «Категории»/«Коллекции», копирайт; в мини-корзине — заголовок, «Количество», «Удалить», «Промежуточный итог (без налогов)», «Перейти в корзину», «Ваша корзина пуста». Бренд «Medusa Store» и dev-ссылки (GitHub/Documentation/Source code) оставлены. Верификация: tsc изменённых чист, `next lint` чист. Общая обвязка витрины (шапка/подвал/корзина) теперь локализована. Следующий слайс: аккаунт (`modules/account`).
-- [x] Витрина, локализация — подзадача 2 (карточка товара): `modules/products/components/{product-actions,product-actions/mobile-actions,product-tabs,related-products}` — namespace `product.*` (addToCart/outOfStock/selectVariant, tabs info/shipping, info-характеристики material/country/type/weight/dimensions, shipping-проза fastDelivery/simpleExchanges/easyReturns + desc, relatedProducts + subtitle). Клиентские (actions/tabs) — useMessages; related-products — server (getServerMessages). Верификация: tsc изменённых чист, `next lint` чист. Основной путь витрины (каталог→товар→корзина→чекаут) локализован. Следующие слайсы: аккаунт (`modules/account`), nav/footer.
-- [x] Витрина, локализация — подзадача 2 (каталог/список товаров): `modules/store/templates/index` (заголовок «Все товары», сделан async + `getServerMessages`) + `store/components/refinement-list/sort-products` (client, `useMessages`: «Сортировка» + опции Сначала новые/Цена по возр./убыв.). Namespace `store.*` (allProducts, sort.*). Верификация: tsc изменённых чист, `next lint` чист. Следующие слайсы: карточка товара (`modules/products`), аккаунт, nav/footer.
-- [x] Витрина, локализация — подзадача 2 (корзина): `modules/cart/{templates/items,templates/summary,components/empty-cart-message,components/sign-in-prompt}` — namespace `cart.*` (title/summary/goToCheckout/emptyDescription/exploreProducts/signIn*/columns). Введён серверный helper `lib/i18n/server.ts` `getServerMessages()` = getMessages(resolveLocale()) для СЕРВЕРНЫХ компонентов (клиентские — useMessages): items/empty/sign-in — серверные (сделаны async), summary — client. Верификация: tsc изменённых чист, `next lint` чист. Следующие слайсы: каталог/товар (`modules/store`,`modules/products`), аккаунт, nav/footer.
-- [x] Витрина, локализация — подзадача 2 (ВЕСЬ ЧЕКАУТ ЛОКАЛИЗОВАН): `cart-totals` + `checkout/components/{addresses,shipping-address,payment,payment-button,review,shipping}`. Namespaces `cart.totals`, `checkout.{addresses,payment,review,shipping}`, `common.{edit,language,address}`. Покрыто: форма адреса (все поля First/Last name/Address/Company/Postal/City/Province/Country/Phone/Email + чекбокс billing=shipping + приветствие с {name} + summary Contact/Shipping/Billing + «адреса совпадают»), доставка (способ/самовывоз/магазин/перейти к оплате), оплата (метод/Kaspi QR/статусы {status}/Gift card/Бонусы), подтверждение (заголовок+согласие), итоги. Через `useMessages()`; словари ru/kk/en синхронны (Messages). Верификация: tsc изменённых чист (pre-existing starter-ошибки `service_zone` в shipping — не мои), `next lint` чист. Следующие слайсы: каталог/товар/корзина (`modules/products`,`modules/cart`), аккаунт, nav/footer.
-- [x] Витрина, локализация UI — каркас (подзадача 1): словарный i18n `storefront/src/lib/i18n/` (ru основной/kk/en; выбран вместо next-intl — легче, без миграции роутинга). `config.ts`, `messages/{en,ru,kk}.ts` (en канон, `Messages=typeof en`; ru/kk типизированы и проверяются tsc), `dictionaries.ts` (getMessages), `resolve-locale.ts` (локаль из cookie `_medusa_locale`, дефолт ru), `i18n-context.tsx` (клиентский I18nProvider + useMessages/useLocale). Провайдер сидируется в КОРНЕВОМ `app/layout.tsx` (сделан async, читает cookie) — покрывает main+checkout одним изменением, `<html lang>` от локали. Переключатель языка `modules/layout/components/language-switcher` (updateLocale+router.refresh) в футере. Демонстратор — локализован `checkout/components/bonus-form`. Покрытие остальных экранов — инкрементально (расширять словари). Отделено от бэкенд-контентной локали (`x-medusa-locale`). Решения — DECISIONS (2026-07-21); паттерн — в storefront/CLAUDE.md. Верификация: `next lint` чистый (мои файлы; в стартере — upstream-предупреждения), tsc изменённых чистый (в стартере есть pre-existing tsc-ошибки). Живой e2e/`next build` — остаточный долг (нужен бэкенд+dev-сервер).
-- [x] POS гэп 3 сверки — привязка покупателя к counter-заказу по телефону: `POST /admin/counter-carts` принимает опциональный `phone`; шаг `resolve-counter-cart-customer` (в create-counter-cart перед createCart) находит покупателя по телефону (query.graph по customer.phone — сервисный фильтр по phone недоступен) либо заводит гостевого (email синтезируется `pos+<digits>@marketplace.local` при отсутствии; Medusa требует email), передаёт customer_id+email в createCart. Компенсация удаляет только заведённого. ЭМПИРИКА: ядровый createCart сам делает find-or-create по email → customer_id есть всегда; смысл гэпа — привязка по ТЕЛЕФОНУ (реальный покупатель) + переиспользование при повторной продаже. Решения — DECISIONS (2026-07-21). Контракт перегенерирован (`phone` в AdminCreateCounterCart), Dart, flutter analyze 0 проблем. Верификация: counter-carts.spec.ts +2 теста (11/11), tsc обоих tsconfig чистый, lint 0 ошибок. Гэпы partner-сверки: закрыты 1/2/3/4/5/8; открыты 6 (пуши), 7 (роли).
-- [x] Модуль `logistics` — дизайн-проект (выбор владельца): расширен `docs/modules/logistics.md` до полного проекта с предложенными MVP-границами. Чистый дизайн, кода нет (прецедент payment-kaspi подзадача 0). Ключевое: logistics НЕ дублирует ядро/order-lifecycle (fulfillment/shipment/markDelivered + in_delivery/delivered/delivery_code уже есть) — добавляет исполнительный слой водителя (рейсы/точки/GPS) под жизненным циклом; отметка «выдано» на точке триггерит существующий `deliver-order`. Модели-предложение: `Trip`/`TripStop`(delivery|return_pickup, фото/подпись/чек-лист)/`DeliveryTariff`(администрируемая сетка)/`GpsPing`. Предложено отложить за MVP: realtime-GPS канал (SSE/WS)+живая карта → MVP polling'ом; оптимизация маршрута; партнёрская логистика; пуши. Открытые вопросы владельцу (границы MVP, GPS polling vs realtime, водитель=user или своя сущность, провайдер карт, тарифные зоны) — в logistics.md. Решения — DECISIONS (2026-07-21). **Реализация (подзадачи 1–3) ЖДЁТ ОК владельца по объёму.**
-- [x] Модуль `estimator`, подзадача 2b (MVP ГОТОВ) — admin API + справочник-UI нормативов: `GET/POST /admin/material-norms` (upsert по code, workflow `upsert-material-norm` с компенсацией) + `DELETE /admin/material-norms/:id` (workflow `delete-material-norm` с компенсацией-восстановлением — мутация в workflow по правилу no-service-mutations-in-api-route). Settings-страница `src/admin/routes/settings/material-norms/page.tsx` (таблица + drawer `material-norm-drawer.tsx` create/edit; категория — Select из ядрового `GET /admin/product-categories`; base Select, active Switch). Типы — `src/admin/lib/estimator.ts`. Контракт/Dart НЕ трогали (admin-only). Решения — DECISIONS (2026-07-21). Верификация: 3 http-теста (`material-norms-routes.spec.ts`: upsert create→update+список, consumption≤0 400, delete+404), tsc обоих tsconfig чистый, lint 0 ошибок, `medusa build` backend+frontend зелёный. **Модуль `estimator` готов по MVP (1+2a+2b); ИИ-подзадача 3 отложена.**
-- [x] Модуль `estimator`, подзадача 2a — store API + подборка по сегментам: сопоставление material_kind↔каталог через `category_id` норматива (владелец «сам решай» → явный маппинг по категории; добавлена nullable-колонка `category_id` в MaterialNorm + миграция). `POST /store/estimates` (расчёт по ручным параметрам, гость допускается, workflow `create-estimate` с компенсацией) + `GET /store/estimates/:id` + `GET /store/estimates/:id/suggestions?currency_code=` (по категории норматива query.graph берёт published-товары, группирует по `product_card.segment`, на сегмент — самый дешёвый вариант в валюте + наличие по остаткам; total=кол-во×цена; позиции без category_id — без опций). OAS-фрагмент `store/estimates/estimates.oas.json`. Решения — DECISIONS (2026-07-21). Контракт 115 путей/684 схем/9 фрагментов (+3 пути, +7 схем), Dart, flutter analyze 0 проблем. Верификация: 3 http-теста (`estimator-routes.spec.ts`: расчёт с количествами; подборка economy/comfort с ценами/итогами/наличием; 404); tsc обоих tsconfig чистый, lint 0 ошибок. Полный http-набор не перегонялся — роуты аддитивны.
-- [x] Модуль `estimator`, подзадача 1 — дизайн + модуль (MVP без ИИ): расчёт материалов по нормативной базе. Реализован «упрощённый первый шаг» ТЗ 7 — РУЧНОЙ ввод параметров + администрируемая нормативная база → количества; ИИ-распознавание файлов (Claude API) и STT — ОТЛОЖЕНЫ отдельным этапом. Модели: `MaterialNorm` (администрируемый справочник: code/work_type/material_kind/base[area|volume|length|count]/consumption_per_unit/unit/active), `Estimate` (customer_id nullable-колонка, source manual|file|voice, status draft|calculated, params json, file_id для будущего распознавания, hasMany lines), `EstimateLine` (material_kind/quantity/unit/norm_code + подборка segment/product_id/unit_price/total — заполняется в подзадаче 2). Чистые `calculateMaterialQuantity` (расход×измеритель по базе; volume из area×height; ceil) и `buildEstimateLines` (отсев нулевых) — standalone в constants. Сервис: getActiveNorms, createManualEstimate. Результат рекомендательный. Решения — DECISIONS (2026-07-21). API не менялся → контракт/Dart не трогали. Верификация: 6 тестов модуля (`estimator.spec.ts`), tsc обоих tsconfig чистый, lint 0 ошибок, миграция `Migration20260721061739` прогнана, приложение с модулем поднимается (http 4/4). Подзадачи 2 (подборка каталога + API) и 3 (ИИ — отложена) — в `docs/modules/estimator.md`.
-- [x] Модуль `scoring`, подзадача 3 (последняя не-отложенная — MVP ГОТОВ) — админ-UI: Settings-страница правил `src/admin/routes/settings/scoring-rules/page.tsx` + drawer `scoring-config-drawer.tsx` (идиома bonus-program; `GET/POST /admin/scoring-config`). Блок «Credit scoring» на нашей странице компании `routes/companies/[id]/page.tsx` (балл/компоненты/вычисленный+ручной+свободный лимит из `GET /admin/companies/:id/scorecard`) + drawer ручной корректировки `credit-limit-drawer.tsx` (`POST .../scorecard/limit`). Карточка на НАШЕЙ странице компании (company — кастомная сущность без ядровой detail-зоны для widget'а). Типы — `src/admin/lib/scoring.ts`. Контракт/Dart не трогали (admin-UI). Решения — DECISIONS (2026-07-21). Верификация: tsc обоих tsconfig чистый, lint 0 ошибок, `medusa build` backend+frontend зелёный; headless-прокликивание — остаточный долг. **Модуль `scoring` готов по MVP (1+2a+2b+3); подзадача 2c — применение лимита к постоплате — отложена вместе с включением постоплаты юрлиц.**
-- [x] Модуль `scoring`, подзадача 2b — пересчёт рейтинга из истории компании: шаг `gather-company-scoring-inputs` (query.graph по link company↔order + `order_lifecycle.status`; завершённые delivered|closed — кол-во + сумма через сервис order; штраф canceled|returned; tenure из company.created_at) → workflow `recompute-company-scoring` → `upsert-score-card` (компенсация) → событие `scoring.recomputed`. Триггеры: джоба `jobs/recompute-scoring.ts` (крон `0 3 * * *` по approved-компаниям) + событийный `subscribers/recompute-scoring-on-order-closed.ts` (на `order_lifecycle.status_changed` to=closed, только заказы юрлиц по link) + subscriber-заглушка `scoring-recomputed`. Идемпотентно (upsert одной карточки). Решения — DECISIONS (2026-07-21). API не менялся → контракт/Dart не трогали. Верификация: 2 http-теста (`scoring-recompute.spec.ts`: балл из 1 завершённого заказа; штраф за отмену + счёт только завершённых); tsc обоих tsconfig чистый, lint 0 ошибок. Эмпирика: асинхронный подписчик documents-waybill при быстрых переходах в тесте ловит «Transaction query already complete» — фоновый шум, тест не роняет.
-- [x] Модуль `scoring`, подзадача 2a — admin API: `GET/POST /admin/scoring-config` (настраиваемые правила, workflow `update-scoring-config` с компенсацией, идиома bonus-config) + `GET /admin/companies/:id/scorecard` (карточка + свободный лимит; нет карточки → нулевая, не 404) + `POST /admin/companies/:id/scorecard/limit` (ручная корректировка `setManualLimit` + note, workflow `set-company-credit-limit` с компенсацией + событие `scoring.limit_changed` + subscriber-заглушка `scoring-limit-changed`). company_id — не FK, роут карточки работает с любым id. Контракт/Dart НЕ трогали (admin-конфиг только для веб-админки, прецедент bonus-config). Решения — DECISIONS (2026-07-21). Верификация: 5 http-тестов (`scoring-routes.spec.ts`: конфиг дефолты+апдейт+400, нулевая карточка, ручной лимит set/сброс, отрицательный 400); tsc обоих tsconfig чистый, lint 0 ошибок. Полный http-набор не перегонялся — роуты аддитивны.
-- [x] Модуль `scoring`, подзадача 1 — дизайн + модуль: рейтинг юрлица (балл 0..100) + вычисляемый лимит отсрочки (ТЗ 4.7), правила НАСТРАИВАЕМЫЕ. Модели: `ScoringConfig` (singleton весов/порогов + маппинг балла→лимит, идиома BonusConfig, `getOrCreateConfig`) и `ScoreCard` (карточка на компанию: `company_id` опазной колонкой; `score`, `credit_limit` вычисленный, `manual_limit` ручной override, `reserved` занятая часть, `components` json-разбивка, `note` аудит). Чистые `calculateScore` (взвешенная сумма orders/volume/tenure с потолками − штраф за возвраты, clamp 0..100) и `scoreToLimit` (порог → линейно с потолком) — standalone-функции в constants (не методы, правило `service-methods-must-be-async`, идиома bonus). Сервис: getOrCreateConfig, upsertScoreCard (пересчёт+сохранение), setManualLimit (override/сброс), availableCredit (эффективный − reserved). Входные факторы собираются СНАРУЖИ (workflow/джоба, подзадача 2) — модуль заказы/компанию не знает. КЛЮЧЕВОЕ: постоплата в чекауте ОТЛОЖЕНА → MVP = вычислить+хранить+показать балл/лимит, применение к оплате — подзадача 2; MVP-объём факторов/весов вынесен владельцу на ревью (scoring.md «открытые вопросы»). Решения — DECISIONS (2026-07-21). API не менялся → контракт/Dart не трогали. Верификация: 6 тестов модуля (`scoring.spec.ts`: чистые функции, singleton, upsert одной карточки+пересчёт, ручной лимит+сброс, неизвестная компания→0); tsc обоих tsconfig чистый, lint 0 ошибок, миграция `Migration20260721054338` прогнана, приложение с модулем поднимается (http 4/4). Подзадачи 2 (пересчёт+API+постоплата) и 3 (админ-UI) — в `docs/modules/scoring.md`.
-- [x] Модуль `reviews`, подзадача 3 (последняя — МОДУЛЬ ГОТОВ) — админ-UI: очередь диспутов `src/admin/routes/disputes/page.tsx` (идиома `order-queue`: копия DataTableFilter ядра, статус точкой, server-side фильтр status, дефолт активные; клик по строке → drawer ведения, т.к. диспут не ядровая сущность и своей страницы не имеет) + `components/dispute-transition-drawer.tsx` (кнопки доступных переходов по стейт-машине, резолюция обязательна при resolved/rejected, reopen из терминальных недоступен). Widget `src/admin/widgets/order-reviews-card.tsx` (`order.details.after`): отзывы заказа с модерацией hide/publish в «...»-меню, диспуты заказа (клик → тот же drawer), глобальная сводка рейтинга в шапке. Хук `hooks/use-reviews.ts` (мутации moderate/transition), типы/meta `lib/reviews.ts` (дубль из модуля — браузерный бандл). Контракт/Dart НЕ трогали (admin-UI только для веб-админки). Решения — DECISIONS (2026-07-21). Верификация: tsc обоих tsconfig чистый, lint 0 ошибок, `medusa build` backend+frontend зелёный (админ-UI компилируется); эндпоинты покрыты http-тестами reviews-routes 8/8 (2a/2b); headless-прокликивание React-UI — остаточный долг (build+tsc+http покрывают; UI — копия проверенных идиом).
-- [x] Модуль `reviews`, подзадача 2b — admin API + workflows: `GET /admin/orders/:id/reviews` (все отзывы заказа, вкл. скрытые) + `GET /admin/orders/:id/disputes` + `GET /admin/reviews/summary` (сводка supplier+delivery, только опубликованные) + `POST /admin/reviews/:id/moderate` (hide/publish, workflow `moderate-review` с компенсацией) + `GET /admin/disputes` (очередь: фильтр status, дефолт активные open+in_review, FIFO, пагинация; query парсится в роуте) + `POST /admin/disputes/:id/transition` (workflow `transition-dispute` → `recordDisputeTransition` с компенсацией + событие `dispute.status_changed` + subscriber-заглушка `dispute-status-changed`). Admin-сериализаторы добавляют customer_id. OAS в новом фрагменте `admin/reviews/reviews.oas.json` (tag Reviews). Решения — DECISIONS (2026-07-21). Контракт 112 путей/677 схем/8 фрагментов (+6 путей, +11 схем), Dart 32 клиента, flutter analyze 0 проблем. Верификация: reviews-routes.spec.ts дополнен 2 admin-тестами (8/8: список+модерация+сводка до/после скрытия; очередь+стейт-машина+запрет из терминального 400); tsc обоих tsconfig чистый, lint 0 ошибок. Полный http-набор не перегонялся — роуты аддитивны.
-- [x] Модуль `reviews`, подзадача 2a — store API + workflows: тонкие store-роуты → workflows, гейт права в шаге через query.graph (модуль reviews заказ не знает). `POST/GET /store/orders/:id/reviews` — оставить/читать свои отзывы; workflow `create-review` (шаг `validate-review-eligibility`: заказ принадлежит покупателю И статус ∈ delivered|closed, `target=delivery` только при `delivery_method=delivery` → `create-review` с компенсацией → событие `review.created`). `POST/GET /store/orders/:id/disputes` — открыть/читать свои диспуты; workflow `open-dispute` (шаг `require-own-order` — диспут на ЛЮБОЙ свой заказ, в т.ч. до доставки → `open-dispute` с блоком второго активного → `dispute.opened`). Владение — гейт-шагом (чужой → 404); auth customer автоматически (`/store/orders*`). Сериализаторы `api/utils/serialize-review.ts`, subscriber-заглушки `review-created`/`dispute-opened`. OAS в store/orders/orders.oas.json (tag Reviews). Решения — DECISIONS (2026-07-21). Контракт 106 путей/666 схем/7 фрагментов (+2 пути, +8 схем), Dart 32 клиента, flutter analyze 0 проблем. Верификация: 6 http-тестов (`reviews-routes.spec.ts`: отзыв на недоставленный 400, supplier+delivery на доставленном+дубль 400+чтение, delivery-отзыв для pickup 400, чужой 404; диспут open+второй активный 400+чтение, чужой 404); tsc обоих tsconfig чистый, lint 0 ошибок. Полный http-набор не перегонялся — роуты аддитивны, события reviews.* эмитят только новые workflows.
-- [x] Модуль `reviews`, подзадача 1 — дизайн + модуль (выбор владельца: reviews раньше logistics): новый модуль `reviews` (ключ `reviews`) — отзывы (рейтинг поставщика и доставки РАЗДЕЛЬНО, ТЗ) + диспуты «проблема с заказом». Домен полностью кастомный. Модели: `Review` (`order_id`/`customer_id` опазными колонками — НЕ FK/link, как documents; `target` supplier|delivery — раздельная оценка строкой на объект; `rating` 1..5 границы в сервисе; `comment`; `status` published|hidden — модерация) и `Dispute` (`category` not_delivered|damaged|wrong_item|quality|other; `description`; `status` open→in_review→resolved|rejected; `resolution`). Сервис: `createReview` (границы+уникальность на (заказ,покупатель,target)), `setReviewStatus` (модерация), `getRatingSummary` (среднее+кол-во ТОЛЬКО опубликованных, округление 0.1), `openDispute` (блок второго АКТИВНОГО по заказу), `recordDisputeTransition` (стейт-машина); чистая `assertDisputeTransition` — standalone-функция в constants.ts, НЕ метод (правило `service-methods-must-be-async`; идиома bonus). Право оставить отзыв/открыть диспут (свой доставленный/закрытый заказ; доставку — только delivery) — гейт слоя API/workflow (подзадача 2), не модели. API не менялся → контракт/Dart не трогали. Подзадачи 2 (API+workflows+события) и 3 (админ-UI: очередь диспутов + модерация отзывов + widget) — в `docs/modules/reviews.md`. Решения — DECISIONS (2026-07-21). Верификация: 7 тестов модуля (`reviews.spec.ts`), tsc обоих tsconfig чистый, lint 0 ошибок, миграция `Migration20260721045616` прогнана, приложение с модулем поднимается (http stock-location-limit 4/4).
-- [x] Модуль `documents`, подзадача 4 (последняя — МОДУЛЬ ГОТОВ) — админ-UI: API реквизитов `GET/POST /admin/document-settings` (тонкие роуты поверх `getOrCreateSettings` + workflow `update-document-settings` с компенсацией-откатом, идиома update-bonus-config; zod `AdminUpdateDocumentSettings` — все поля опциональны, nullable-строки принимают null для сброса, seller_name непустой, seller_email формат email; контракт/Dart НЕ трогали — admin-конфиг только для веб-админки, прецедент bonus-config). Админ-UI: Settings-страница `src/admin/routes/settings/document-requisites/page.tsx` + drawer `components/document-requisites-drawer.tsx` (идиома settings/bonus-program: секция «метка—значение» + Edit-drawer, пустое необязательное поле=null) + widget `src/admin/widgets/order-documents-card.tsx` (`order.details.after`: список документов заказа из `GET /admin/orders/:id/documents`, скачивание PDF по публичному `file_url` прямым `<a href>`, экспорт 1С — кнопка тянет JSON через admin-API с auth и отдаёт Blob-файлом); типы — `src/admin/lib/documents.ts` (браузерный бандл код модуля не импортирует). Решения — DECISIONS (2026-07-21). Верификация: http `documents-routes` 7/7 (+3 теста `/admin/document-settings`: дефолты, частичный апдейт+сброс поля в null+непереданное не затирается, невалидный email 400); tsc обоих tsconfig чистый, lint 0 ошибок, `medusa build` backend+frontend зелёный (админ-UI компилируется). Живой сервер+эндпоинты покрыты http-тестами; прокликивание React-UI headless-браузером — остаточный долг (build+tsc покрывают компиляцию, UI — копия проверенных идиом; браузерную автоматизацию мешал повторный сон машины). ВАЖНО: полные http-прогоны во время сна машины дают ложные таймауты (`Time` в тысячи секунд) — верифицировать батчами на активной машине.
-- [x] Модуль `documents`, подзадача 3 — store/admin API: тонкие read-only роуты поверх сервиса (выборка по `order_id`, без module link). `GET /store/orders/:id/documents` — документы покупателя в ЛК (текущие версии, `visible_to_buyer`, владение `requireOwnOrder` → чужой 404; сериализатор `api/utils/serialize-document.ts` отдаёт только публичные поля + `file_url` для скачивания PDF из File Module, БЕЗ `file_id`/snapshot; под auth customer автоматически — `/store/orders*`). `GET /admin/orders/:id/documents` — все типы и ВСЕ версии заказа (история, новые сверху; +`is_latest`/`file_id`, без снапшота); namespace `/documents` под ядровым `:id` не конфликтует с `:id/{cancel,complete}` (как `/lifecycle`). `GET /admin/orders/:id/documents/export` — снапшоты текущих версий (реквизиты/позиции/суммы деньгами+бонусами раздельно) для 1С, JSON (официальные ЭСФ/АВР — вручную на kgd.gov.kz, платформа даёт исходные данные). Отвергнуто: проксирующий download (локальный File уже отдаёт публичный `file_url`), `/store/documents` без привязки к заказу (отложено). OAS-фрагменты в `store|admin/orders/orders.oas.json`; контракт 104 пути/658 схем/7 фрагментов (+3 пути документов, +6 схем; admin-пути POS-гэпа целы), Dart 32 клиента/120 запросов. Решения — DECISIONS (2026-07-20). Верификация: 4 http-теста (`documents-routes.spec.ts`: свои документы+file_url без внутренних полей, чужие 404, admin-список с is_latest/file_id, экспорт со снапшотом); tsc обоих tsconfig чистый, lint 0 ошибок, flutter analyze 0 проблем. Полный http-набор не перегонялся — роуты только read-only GET, существующих кодопутей не трогают.
-- [x] Модуль `documents`, подзадача 2 — рендер PDF + автовыпуск: рендерер `workflows/utils/render-document-pdf.ts` — чистая функция `(снапшот)→Buffer` на `pdfkit` (без Chromium) с встроенным кириллическим TTF **PT Sans** (Regular+Bold, SIL OFL, закоммичен в `src/modules/documents/assets/fonts/` + `OFL.txt`; путь резолвится от файла-рендерера с запасным вариантом от cwd); рисует шапку, реквизиты продавца, покупателя, таблицу позиций, итоги деньгами/бонусами раздельно (ТЗ 4.10), подвал. `@types/pdfkit` — в devDependencies. Workflow `issue-order-document` (шаги `build-order-document-snapshot` → `issue-order-document` → `render-and-attach-document` → `emitEventStep(document.issued)`): снапшот из СЕРВИСА order (query.graph не отдаёт BigNumber-цены/кол-ва надёжно), `total_money`=order.total (уже за вычетом бонусных кредитных линий), `total_bonus`=сумма кредитных линий; загрузка PDF — ядровый File Module (`Modules.FILE.createFiles`, base64), компенсации удаляют файл и строку при откате. КЛЮЧЕВОЕ: **выпуск — в ПОДПИСЧИКАХ, НЕ внутри place-order/ship-order** (документ вторичен, сбой рендера не должен откатывать заказ): `order-invoice.ts` на ядровом `order.placed` (эмитится completeCart — покрывает и place-order, и place-counter-order) выпускает счёт + внутренний АВР для заказов юрлиц (по link company↔order); `order-waybill.ts` на нашем `order_lifecycle.status_changed` — накладная при `in_delivery` для доставки и при `delivered` для самовывоза/counter (способ — из lifecycle); `document-issued.ts` — заглушка уведомления (идиома order-status-changed/bonus-accrued). Идемпотентность — пропуск, если текущая версия документа типа уже есть. ЭМПИРИКА: локальная шина в `medusaIntegrationTestRunner` РЕАЛЬНО диспетчеризует подписчиков (не только эмитит) → подписчиков тестируем ЛИБО прямым вызовом хендлера, ЛИБО поллингом результата шины (не оба сразу — иначе гонка двойного выпуска, проявление MVP-нумерации без блокировки; в проде `order.placed` один раз). ПРОД-ДОЛГ: `medusa build` не копирует TTF в `.medusa/server` — при прод-развёртывании шрифты доставить рядом (в «Известные проблемы»); частичная накладная на отгруженную часть отложена (MVP — одна на заказ). Решения — DECISIONS (2026-07-20). Верификация: 8 новых http-тестов (`documents-issue.spec.ts`: рендер валидного PDF с кириллицей `%PDF`, первая накладная+привязка файла, переиздание с сохранением номера, внутренний АВР, автосчёт на order.placed, идемпотентность на фейковом order_id, накладная подписчиком на in_delivery + пропуск постороннего перехода); весь http зелёный на чистых прогонах — все 14 сьютов (documents 8, kaspi 12, bonus-accrual/spend/expiry, order-routes/lifecycle/delivery 9, counter-carts, catalog×2, company×2, stock-limit) ≈140 тестов (первый полный прогон дал 9 «падений» с `Time 92645s` — флейк от сна машины, чистые перезапуски батчами зелёные); unit 37/37, tsc обоих tsconfig чистый, lint 0 ошибок, `medusa build` backend+frontend зелёный. Модуль (модели/сервис) не менялся → modules-набор не перегонялся.
-- [x] Модуль `documents`, подзадача 1 — дизайн + модель: новый модуль `documents` для автогенерации документов-оснований заказа (счёт/накладная/внутренний АВР, ТЗ 4.10). Формат MVP — **PDF через `pdfkit`** (выбор владельца; кириллица встраиванием TTF, рендер в подзадаче 2); хранение файла — File Module ядра, модуль держит только метаданные + `file_id`. Модели: `Document` (тип, `order_id` — опазная ссылка-колонка на заказ, НЕ link/FK; `number` человекочитаемый INV-2026-000001, `version`/`is_latest` — версионность, `file_id`/`file_url`, `snapshot` json, `total_money`/`total_bonus` РАЗДЕЛЬНО, видимость по сторонам), `DocumentSetting` (singleton реквизитов продавца, идиома BonusConfig), `DocumentSequence` (счётчик номеров `<type>:<year>`). Сервис: `getOrCreateSettings`, `nextDocumentNumber` (последовательность на тип/год, read-modify-write без блокировки — MVP), `issueDocument` (версионность: переиздание снимает `is_latest`, новая версия = +1 с ТЕМ ЖЕ номером; первая — свежий номер; `file_id` пуст до рендера), `attachRenderedFile`. КЛЮЧЕВОЕ: заказ хранится колонкой `order_id` (не link) — сервису он нужен сам для группировки версий/нумерации по `(order_id, type)`, это внутренняя логика домена (в отличие от order-lifecycle/bonus, где заказ — забота workflow через link); FK нет, модуль order не импортируется — изоляция цела; выборка документов заказа (подзадача 3) — прямым `query.graph(entity:"document", filters:{order_id})`. API не менялся → контракт/Dart не трогали. Подзадачи 2 (рендер pdfkit + шаг + wiring в place-order/ship-order + internal_avr юрлицам + событие `document.issued`), 3 (store/admin API + ЛК + экспорт 1С), 4 (админ-UI реквизитов + widget на заказе) — в `docs/modules/documents.md`. Решения — DECISIONS (2026-07-19). Верификация: 6 тестов модуля (`documents.spec.ts`: singleton, нумерация по типу/году, защита от неизвестного типа, первая версия, переиздание с сохранением номера, attach), modules 71/71, tsc обоих tsconfig чистый, lint 0 ошибок, миграция `Migration20260719050925` прогнана.
-- [x] POS-гэпы бэкенда (гэпы 1/2/4/8 сверки partner-раунда) — ЗАКРЫТЫ: (1) POS-корзина — admin-ресурс `/admin/counter-carts`: POST создание (workflow `create-counter-cart` + шаг `resolve-counter-cart-context`: регион явный/единственный, канал продаж склада с предпочтением дефолтного, pickup-опция склада 0 ₸ — completeCart требует shipping method, адрес склада как shipping_address; метка `metadata.counter=true` — не-POS корзина по этим роутам 404; email опционален, иначе служебный `pos@marketplace.local`), GET `/:id` (хелпер `retrieveCounterCart`: тоталы query.graph + `credit_lines.amount`, позиции через сервис cart — BigNumber-эмпирика), line-items add/update/delete — ядровые cart-workflows напрямую из тонких роутов. (2) Оплата от продавца: `POST|GET /admin/counter-carts/:id/payment/kaspi` (те же `init/sync-cart-kaspi-payment`; общий маппер ответа вынесен в `api/utils/kaspi-payment-response.ts`) + `POST .../payment/cash` (новый workflow `init-cart-cash-payment` + обобщённый шаг `get-cart-provider-payment-state`; сессия `pp_system_default` авторизуется в completeCart); переключение Kaspi↔cash бесплатно — `createPaymentSessionsWorkflow` ядра заменяет сессии коллекции (подтверждено тестом). Завершение — прежний `POST /admin/counter-orders` (нюанс: `lifecycle` в его ответе — на момент создания, статус перечитывать GET'ом). (3) Очередь `GET /admin/order-lifecycles`: фильтр `delivery_method` + поиск `q` (display_id, «#» допускается; email $ilike) — кросс-модульного фильтра по link-полям query.graph нет, поиск вторым запросом со стороны order (link читается в обе стороны), кэп 100, пустой результат — короткое замыкание. (4) Контракт: `generate-contract.mjs` мерджит whitelist `ADMIN_BASE_PATHS` из официальной Admin-спеки (логин `/auth/user/{auth_provider}`, `/auth/token/refresh`, orders/products list+get, stock-locations) с транзитивным замыканием схем; admin-операциям префикс `Admin` в operationId и свои теги — Store/Admin-спеки используют ОДИНАКОВЫЕ id для зеркальных операций, Dart-кодоген падал на дубле (выявил смоук-тест api_client, не analyze); фрагмент `counter-carts.oas.json` + параметры q/delivery_method в orders.oas.json. Контракт 101 путь/652 схемы/7 фрагментов; Dart 32 клиента (CounterCartsClient, AdminAuth/AdminOrders/AdminProducts/AdminStockLocations); устаревших клиентов swagger_parser сам не удаляет — осиротевшие файлы (вне export.dart) чистить руками. Гэпы 3 (привязка покупателя по телефону), 5–7 — открыты, сверка обновлена. Решения — DECISIONS (2026-07-18, три записи). ВАЖНО для будущих тестов: состояние БД НЕ переживает границу `it` в medusaIntegrationTestRunner (строки исчезают, sequence сбрасывается; фикстуры beforeAll живут) — каждый тест самодостаточен. Верификация: 9 новых http-тестов (`counter-carts.spec.ts`: создание+pickup, склад без pickup 400, позиции, не-POS 404, наличные→counter-order, Kaspi paid→authorized→заказ, Kaspi pending→400, переключение оплаты, очередь q/method одним сценарием), весь http 132/132 (ночной прогон 131/132 — флейк bonus-accrual от сна машины, чистый перезапуск 7/7), modules 65/65, unit 37/37, tsc обоих tsconfig чистый, lint 0 ошибок, flutter analyze 0 проблем, `bash scripts/ci.sh` — CI OK (после починки дубля operationId).
-- [x] Partner-app, дизайн-раунд 1 — ТЗ «Окно склада» готово к прогону через claude.ai/design: `mobile/design/partner/BRIEF.md` (объём: очередь заказов + сборка/частичная сборка + передача в доставку, выдача онлайн-самовывоза, POS-продажа с Kaspi QR/наличными; навигация 4 вкладки Заказы·Продажа·Выдача·Профиль; визуальная система buyer-раунда зафиксирована и НЕ пересматривается, новые компоненты — QueueOrderCard/DeliveryMethodBadge/AssemblyItemRow/PaymentQRPanel/CartDockBar/CustomerRow; вне раунда: дашборд/остатки/цены/возвраты/бухгалтерия, вручение доставки = driver-раунд) + `mobile/design/partner/domain-reconciliation.md` (сверка с бэкендом ДО дизайна: что готово — очередь/переходы/counter-orders/Kaspi-механика; 8 гэпов бэкенду — POS-корзина от продавца, admin-вариант Kaspi-инициализации (store-роут требует customer-auth), привязка покупателя по телефону, `q`/фильтр метода в очереди, накладная=`documents`, пуши, роли сотрудников продавца, admin-auth+ядровые admin-роуты в контракте). Решения — DECISIONS (2026-07-18, partner-app). Только документы — кода/тестов нет; бриф сверен с фактическим API (`counter-orders/route.ts`, `place-counter-order.ts` прочитаны).
-- [x] Витрина, часть 2 — Kaspi QR в чекауте + бонусы + чистка каталога: (1) Kaspi: фильтр провайдера снят, шаг Payment инициализирует НАШИМ `POST /store/carts/:id/payment/kaspi` (server action), Review — `KaspiPaymentButton`: QR (`react-qr-code`) + ссылка + поллинг GET каждые 3с → authorized → авто-`placeOrder()`; на Review первичная загрузка через GET-статус, init только fallback (init ревалидирует carts → ремаунт → цикл перерендеров); `KASPI_MOCK_SCENARIO` (server-env витрины, см. `.env.template`) — исход мока, для проходимого dev-чекаута `paid` (в локальный `.env` добавить руками — агенту файл закрыт). (2) Бонусы: `lib/data/bonus.ts` + форма `bonus-form` в summary чекаута (идиома discount-code; `applyCartBonus` возвращает строку ошибки — prod Next редактирует исключения server actions), строка «Bonuses» в `cart-totals` из `credit_lines` (`reference="bonus_account"`, хелпер `lib/util/bonus.ts`); `*credit_lines` добавлен в fields `retrieveCart`/`retrieveOrder` — ядро считает total с вычетом линий ТОЛЬКО если они запрошены (эмпирика подтверждена на HTTP-роуте); полная оплата бонусами (total=0, без платёжной сессии) — `paidByBonus` по образцу paidByGiftcard в payment/review/payment-button. (3) Чистка: `cleanup-starter-catalog.ts` (apparel сида стартера — deleteProductsWorkflow; «Demo Order Product» → draft через сервис, НЕ удалён — на нём демо-заказы) + dev-утилита `grant-demo-bonus.ts <email> [amount]`. API/контракт не менялись (только клиентский код витрины + 2 backend-скрипта). Решения — DECISIONS (2026-07-18). Верификация: e2e headless-Edge 3 сценария (частичный бонус 500 + Kaspi paid → заказ, леджер 6000→5500; QR-панель стабильна при pending, полная оплата бонусами 8000→0 при потолке 100 → заказ pickup без сессии, конфиг возвращён на 50; превышение потолка → ошибка бэкенда в форме), каталог без apparel/demo-товара, cleanup идемпотентен, консольных ошибок наших страниц 0; backend tsc×2/lint чистые, storefront lint/tsc изменённых файлов чистые, `bash scripts/ci.sh` — CI OK.
-- [x] Витрина: доставка региона KZ + оформление + способы получения (долг из «Известных проблем» закрыт): (1) `seed-kz.ts` — блок доставки (идемпотентен): default shipping profile + link товаров сида к нему, провайдер `manual_manual` на обоих складах, наборы «Kazakhstan Delivery» (shipping, «Доставка по Астане» 2000 KZT) + `Pickup — <склад>` на каждый склад (pickup, «Самовывоз: <склад>» 0 KZT) — стартер нативно рисует тумблер «Pick up your order» по `fulfillment_set.type`; (2) storefront `placeOrder` переведён на наш `POST /store/orders` (ядровый `cart.complete` оставлял бы заказ без lifecycle), `delivery_method` выводится из типа набора выбранной опции; чекаут — гейт логина (redirect на `/{cc}/account`); Kaspi спрятан из списка оплат до собственного QR-UI (фильтр в `lib/data/payment.ts`); (3) фикс стартера: кириллические handle товаров (decodeURIComponent в `products/[handle]/page.tsx`, 500 → работает; + notFound до getImagesForVariant). Нюанс: пустой каталог после пересида = устаревший дисковый кэш Next — чистить `storefront/.next`. Решения — DECISIONS (2026-07-17, витрина). Верификация: сид дважды (идемпотентен); e2e headless-Edge: каталог KZT → товар → корзина → гейт гостя → логин → адрес → доставка → Manual Payment → подтверждение; второй заказ через самовывоз («Самовывоз: Склад Астана — Центр»); у обоих заказов lifecycle через admin API: new + delivery|pickup; Kaspi в чекауте отсутствует (проверено скриптом); консольных ошибок наших страниц 0 (2 hydration-warning'а стартера — upstream); backend tsc/lint чистые, storefront lint чистый, tsc изменённых файлов чистый.
-- [x] Bonus, подзадача 4 (последняя — МОДУЛЬ ГОТОВ) — сгорание + admin API/UI: джоба `src/jobs/expire-bonuses.ts` (ежечасно `30 * * * *`, в противофазе с accrue; БЕЗ workflow — один модуль, компенсаций нет, события через event bus): фаза 1 — сервисный `expireLots` (идемпотентен) + `bonus.expired` на счёт; фаза 2 — `bonus.expiring_soon` за `expiry_notice_days` (новое поле конфига, default 7, 0=выкл) с агрегацией по счёту (сумма+ближайший срок), идемпотентность — маркер `expiry_notified_at` на лоте (новая колонка; ставится ПОСЛЕ эмита — упавший прогон предупредит дважды, осознанно); лоты несут свой `expires_at` → досгорают и после выключения сгорания в конфиге; миграция прогнана. Subscriber-заглушки `bonus-expiring-soon.ts`/`bonus-expired.ts`, константы в events.ts. Admin API: `GET/POST /admin/bonus-config` (частичный апдейт; POST — workflow `update-bonus-config` с компенсацией-откатом) + `GET /admin/customers/:id/bonus` (баланс + 20 последних операций для widget'а; статик под ядровым `:id` — прецедент orders/:id/lifecycle). Контракт/Dart НЕ трогали (admin-роуты конфига — только для веб-админки, решение в DECISIONS). Админ-UI: страница Settings → Bonus Program (`src/admin/routes/settings/bonus-program/` — Settings-экстеншен, секция «метка—значение» + Edit-drawer, идиома product-card-drawer; сегменты economy/comfort/business в `admin/lib/bonus.ts` продублированы осознанно) + widget `customer-bonus-card.tsx` (`customer.details.after`: баланс + последние операции своим запросом). Демо-сид `seed-demo-bonus.ts` (счёт: обычный/скоро сгорающий/просроченный лоты + списание, идемпотентен). Решения — DECISIONS (2026-07-17, сгорание). Верификация: 11 новых http-тестов (`bonus-expiry.spec.ts`: сгорание+событие+идемпотентность через spy на event bus, expiring_soon один раз/вне окна/notice=0, конфиг 401/дефолты/частичный апдейт/сброс null/zod 400×3, customer-bonus баланс+история без lot_breakdown/нулевой/404), весь http 123/123, modules 65/65, unit 37/37, lint 0 ошибок, tsc обоих tsconfig чистый, `medusa build` зелёный; UI прокликан headless-браузером (Edge: настройки → drawer → сохранение/откат, widget 6,600 KZT + история) — 0 ошибок консоли.
-- [x] Bonus, подзадача 3 — списание в оформлении: механизм — КРЕДИТНЫЕ ЛИНИИ КОРЗИНЫ ядра (не order credit lines из дизайн-дока: ядро вычитает линии из `cart.total`, completeCart сам копирует их в заказ — суммы «деньгами/бонусами» разделены для `documents`, при total=0 ядро пропускает платёж — заказ полностью на бонусах без payment collection). Применение — намерение, списание — при оформлении: `POST /store/carts/:id/bonus` → workflow `apply-cart-bonus` (проверки fail fast в `validate-cart-bonus-spend`: счёт/баланс/валюта/потолок от суммы ДО вычета бонусов; линия `reference="bonus_account"`; повторный POST заменяет сумму; `DELETE` → `remove-cart-bonus`, идемпотентен) + `refreshPaymentCollectionForCartWorkflow` ядра после apply/remove (сумма collection синхронизируется, устаревшие Kaspi-сессии/инвойс сбрасываются — клиент инициализирует оплату заново); шаг `spend-cart-bonus` в ОБОИХ workflow завершения корзины (place-order И place-counter-order — иначе корзина с бонусами, пробитая у окна, получила бы скидку без движения по леджеру) строго между `ensure-cart-payment-authorized` и completeCart (компенсация — `revertSpend`; перепроверка потолка/баланса на момент оформления), после completeCart — link заказа к spend-транзакции + `bonus.spent` (+subscriber-заглушка `bonus-spent.ts`; имя эмиттера `.config({name:"emit-bonus-spent"})` — в place-counter-order уже есть emitEventStep из applyOrderTransition). `ensure-cart-payment-authorized`: total<=0 при наличии кредитных линий → сессия не требуется. `GET /store/bonus` — баланс+история (счёт лениво НЕ создаётся, `lot_breakdown` наружу не отдаётся). ЭМПИРИКА 2.17.2: `cart.total` в query.graph учитывает кредитные линии ТОЛЬКО если запрошен `credit_lines.amount` (с одним `.id` — total без вычета). Решения — DECISIONS (2026-07-17). Контракт 89 путей/641 схема/6 фрагментов (`store/bonus/bonus.oas.json` новый + `/store/carts/{id}/bonus` в carts.oas.json); Dart 27 клиентов/103 запроса (BonusClient), flutter analyze 0 проблем. Верификация: 14 новых http-тестов (`bonus-spend.spec.ts`), весь http 112/112, modules 65/65, unit 37/37, tsc обоих tsconfig чистый, lint 0 ошибок.
-- [x] Bonus, подзадача 2 — начисление: workflow `accrue-order-bonus` (шаги: `prepare-order-bonus-accrual` — ВСЕ инварианты в workflow, джоба лишь предфильтр: lifecycle=closed, последний переход `to=delivered` из лога + `return_window_days` истекло, accrual по link'у order↔bonus_transaction ещё нет; база позиции — `unit_price × quantity` через сервис order (query.graph не отдаёт BigNumber позиций), сегмент — `product_card.segment` по link'у одним запросом; `get-or-create-bonus-account` — ленивый счёт, link customer↔account создаётся ВНУТРИ шага (условное создание, компенсация удаляет только созданное); `credit-bonus-account` — лот type=accrual, `expires_at` от момента начисления (null при выключенном сгорании), компенсация — зеркальный откат; link транзакции к заказу — маркер идемпотентности; `emitEventStep(bonus.accrued)`). Нулевая сумма (процент 0 / floor → 0) — no-op без транзакции (ветка `when`): заказ остаётся кандидатом следующих прогонов — безвредно. Джоба `src/jobs/accrue-bonuses.ts` (ежечасно `0 * * * *`): кандидаты query.graph по `order_lifecycle.status=closed` + окно от delivered, отсев уже начисленных, ошибки по-заказно логируются и не роняют прогон; скан линеен по closed-заказам (MVP-приемлемо, при росте — маркер на lifecycle). Subscriber-заглушка `bonus-accrued.ts` (идиома order-status-changed), `modules/bonus/events.ts` — `bonus.accrued` (константы spent/expiring/expired — по мере эмиттеров, подзадачи 3–4). API не менялся → контракт/Dart не трогали. Решения — DECISIONS (2026-07-16, начисление). Верификация: 7 новых http-тестов (`bonus-accrual.spec.ts`), весь http 98/98, modules 65/65, unit 37/37, tsc обоих tsconfig чистый, lint 0 ошибок.
-- [x] Bonus, подзадача 1 — дизайн + модуль: полный дизайн в `docs/modules/bonus.md` (store credit в ядре OSS 2.17.2 НЕТ — проверено tsc-зондом, упоминание в `backend/CLAUDE.md` исправлено; промо не подходит; ядровый `createOrderCreditLinesWorkflow` ЕСТЬ — кандидат «оплаты бонусами» в подзадаче 3). Модуль `bonus`: `BonusAccount` (balance денормализован, kzt) / `BonusTransaction` (леджер: amount всегда >0, направление в type `accrual|spend|expiry|manual_credit|manual_debit`; ЛОТЫ — remaining/expires_at у кредитных типов; `lot_breakdown` у списаний для отката) / `BonusConfig` (singleton через `getOrCreateConfig`: accrual_percent=1, segment_percents json — ключи-строки, тип сегмента из catalog не импортируем; max_spend_percent=50 — дефолт до уточнения владельцем; expiry_days=null; return_window_days=14). Сервис: credit / spend (FIFO по лотам — ближайшее сгорание первым; расхождение баланса с лотами → UNEXPECTED_STATE) / revertSpend (по lot_breakdown, для компенсаций) / expireLots (идемпотентен, сгорает только несписанный остаток) + чистые `calculateOrderAccrual` (по товарным позициям, floor по сумме) и `assertSpendWithinCap`. Links: customer↔bonus_account (1:1, счёт лениво), order↔bonus_transaction (1:N — идемпотентность начисления по link'у). Миграция прогнана (3 таблицы + 2 link-таблицы). Начисление/списание/сгорание/API — подзадачи 2–4 (см. bonus.md). Решения — DECISIONS (2026-07-16, bonus). Верификация: 10 новых тестов модуля (всего modules 65/65), http 91/91 (приложение с модулем поднимается), unit 37/37, lint 0 ошибок, tsc обоих tsconfig чистый. Попутно докоммичен остаток прошлой сессии — `seed-demo-delivery-methods.ts` (демо трёх способов получения, запускать после seed-demo-order.ts).
-- [x] Заказ, подзадача 5 — способы получения + приёмка + продажа у окна (поправка 2026-07-15): поля `delivery_method` (enum delivery|pickup|counter, default delivery, фиксируется при создании) и `delivery_code` в `OrderLifecycle` (миграция прогнана); стейт-машина параметризована методом (`assertOrderStatusTransition(from,to,method)`: pickup — выдача `assembled→delivered` без in_delivery и без частичной выдачи; counter — свёрнутый `new→delivered→closed`); код получения — 6 цифр, шаг `issue-delivery-code` в ship-order (повторная отгрузка не перевыпускает), хранится открыто, виден ТОЛЬКО покупателю (`GET /store/orders/:id/lifecycle`), в admin-ответах отсутствует; проверка кода — чистая `assertDeliveryConfirmation` в `recordTransition` («передан по коду» — способ подтвердить delivered, не статус); в `deliver-order` наш переход идёт ПЕРЕД ядровым markDelivered (компенсируемость; неверный код не трогает ядро); ЭМПИРИКА: ядровый `markOrderFulfillmentAsDelivered` не требует shipment — pickup/counter обходятся без фиктивной отгрузки; продажа у окна — workflow `place-counter-order` (completeCart с предусловием оплаты → lifecycle counter + links → fulfillment всех позиций через новый шаг `get-order-items` → new→delivered → markDelivered) + роут `POST /admin/counter-orders` (статик под /admin/orders конфликтует с ядровым :id); store place принимает `delivery_method` (только delivery|pickup); admin deliver принимает `delivery_code`; админ-UI: метод в виджете (грей-бейдж) и очереди (колонка Method), карта переходов `ORDER_TRANSITIONS` — на каждый метод, вручение delivery — через диалог с обязательным кодом (`deliver-order-prompt.tsx`). Контракт 87 путей/635 схем, Dart 26 клиентов/100 запросов. Верификация: модульные 8/8, http 17/17 (`order-delivery-methods.spec.ts` новый: pickup-цикл, ship самовывозу — 400, counter одним вызовом с проверкой физики ядра, counter из store — 400; в `order-routes` полный delivery-цикл: код из ЛК покупателя, без кода/с неверным — 400), tsc обоих tsconfig чистый, flutter analyze 0 проблем. Решения — DECISIONS (2026-07-16, способы получения).
-- [x] Проанализировано ТЗ (выжимка → `docs/DOMAIN.md`), выбран объём: полный MVP (вариант Б).
-- [x] Выбран и утверждён стек: Flutter (3 приложения) + Medusa v2 + PostgreSQL + Redis + Docker/VPS КЗ (см. `docs/DECISIONS.md`).
-- [x] Спроектирована и создана структура репозитория, файлы памяти, ignore-правила, docker-compose для локальной среды.
-- [x] Скаффолд бэкенда Medusa v2 (2.17.2) перенесён из temp в `backend/` (сохранён `backend/CLAUDE.md`, удалены лишние `.gitkeep`); `package.json` → `@marketplace/backend`; `medusa-config.ts` читает env; `backend/.env.example` + локальный `backend/.env` привязаны к дефолтам `infra/docker-compose.yml`; команды запуска добавлены в корневой `CLAUDE.md`.
-- [x] Бэкенд поднят и проверен end-to-end: `npm install` (1343 пакета), контейнеры postgres/redis подняты, `npx medusa db:migrate` (миграции ядра + сид), создан admin `admin@example.com`. Дев-сервер стартует на :9000; проверено: `/health`→200, `/app` (админка)→200 HTML, `/store/products`→400 (роут жив, нужен publishable key), логин admin `/auth/user/emailpass`→200 + JWT.
-- [x] Скаффолд mobile (Flutter 3.44.2 / Dart 3.12.2): три приложения `--empty` (org `kz.marketplace`, имена `marketplace_buyer/partner/driver`, платформы android/ios/web — Windows-таргет недоступен, нет Visual Studio) + пакеты `core`, `ui_kit`, `api_client`; всё связано в Pub Workspace (`mobile/pubspec.yaml` + `resolution: workspace` у членов, единый lock). Приложения зависят от всех трёх пакетов. Верификация: `dart format` чисто (шаблонные main.dart переформатированы), `flutter analyze` — 0 проблем, `flutter build web` ×3 — успех. Команды в корневом `CLAUDE.md`, статус скаффолда — в `mobile/CLAUDE.md`.
-- [x] Конвейер контракта, часть 1: `backend/scripts/generate-contract.mjs` (`npm run contract:generate`) генерирует `contracts/openapi.json` — официальная Store-спека v2 с docs.medusajs.com (66 путей, 588 схем) + мердж фрагментов `backend/src/api/**/*.oas.json` (пока 0). Решение и конвенция фрагментов — в `DECISIONS.md`. Верификация: спека сгенерирована, JSON валиден, `/store/products` присутствует, servers указывает на :9000. Нюанс: js-yaml 5.x — только именованные ESM-экспорты (`import { load }`).
-- [x] Конвейер контракта, часть 2: Dart-кодоген настроен — swagger_parser 1.44 + retrofit/dio + json_serializable в `mobile/packages/api_client` (23 клиента, ~800 моделей). Сырая спека Medusa кодоген ломала четырьмя способами — в `generate-contract.mjs` добавлены нормализации (см. DECISIONS.md), включая обход бага спеки Medusa (`default: "variant"` у boolean). Верификация: смоук-тест пакета (компилирует весь экспорт) зелёный, `flutter analyze` — 0 проблем, формат применён. Команды конвейера — в корневом `CLAUDE.md` и `contracts/README.md`.
-- [x] CI-скелет: `scripts/ci.sh` — backend lint + unit-тесты, storefront lint, mobile format-check + analyze + тесты пакетов с `test/`. Прогнан целиком — зелёный. Попутно: тест-скрипты backend переведены на `cross-env` (POSIX-префиксы env не работали на Windows) + `--passWithNoTests`; восстановлен потерянный при извлечении из turbo-обёртки `backend/integration-tests/setup.js` (канонический из стартера). Интеграционные тесты бэкенда в ci.sh не входят (нужны контейнеры) — запускаются отдельно.
-- [x] Скаффолд витрины: официальный Next.js Starter Storefront склонирован в `storefront/` (без `.git`/`.github`, yarn-артефакты удалены — в монорепо npm; `package.json` → `@marketplace/storefront`, снят `packageManager: yarn`). `storefront/.env` привязан к бэкенду :9000 с publishable key из сида (`Default Publishable API Key`, привязан к Default Sales Channel), `NEXT_PUBLIC_DEFAULT_REGION=de` (из сид-региона Europe). Верификация: дев-сервер на :8000, главная `/de`→200, каталог `/de/store`→200 со всеми 4 сид-товарами, `npm run lint`→зелёный (eslint поднят 8.10→8.57.1 — старый падал на правиле `no-html-link-for-pages` из eslint-config-next 15; остались только upstream-предупреждения react-hooks стартера). Команды добавлены в корневой `CLAUDE.md`.
-- [x] Скаффолд модуля `company`: модели `Company` (bin unique, статус модерации, документы jsonb) / `Employee` (role admin|member, без FK на customer — будет link) / `SpendLimit` (bigNumber, период order|day|week|month, несколько лимитов на сотрудника), сервис с `approveCompany`/`rejectCompany` (reason обязателен), регистрация в `medusa-config.ts`, миграция прогнана, 5 интеграционных тестов зелёные (`test:integration:modules`, нужен docker-postgres + `backend/.env.test`; devDep `pg-god` — peer у test-utils). Дизайн-решения — в DECISIONS.md (2026-07-13). Правило линта `@medusajs/link-no-cross-module-relationship` отключено: баг разделителей путей на Windows, ложно флагует внутримодульные связи (комментарий в `eslint.config.ts`). Дев-сервер с модулем поднимается, `/health`→200.
-- [x] Links модуля `company`: `backend/src/links/employee-customer.ts` (1:1) и `company-order.ts` (1:N, `isList`); `npx medusa db:migrate` создал link-таблицы. Верификация: миграция прошла, `query.graph("customer", fields: ["employee.company.*"])` работает (проверено тестами workflows).
-- [x] API модуля `company`: store `/store/companies` (регистрация), `/store/companies/me` (профиль), `/store/companies/me/employees[/:id][/spend-limits/:limit_id]` (сотрудники/лимиты, только админ компании) + admin `/admin/companies[/:id][/approve|/reject]` (очередь модерации FIFO). Роуты тонкие: zod-схемы в `validators.ts` + `validateAndTransformBody/Query` в `src/api/middlewares.ts` (там же `authenticate("customer")` на все store-роуты) → workflow с `throwOnError: true` (ошибки шагов корректно мапятся в 400/404 errorHandler'ом ядра). Хелперы прав — `store/companies/helpers.ts` (чужие ресурсы → 404). OAS-фрагмент `companies.oas.json` (только store-часть — решение в DECISIONS), контракт перегенерирован (72 пути, 604 схемы, 1 фрагмент), Dart-клиент перегенерирован (24 клиента, появился CompaniesClient). Верификация: 16 новых http-тестов (`company-routes.spec.ts`) + весь `test:integration:http` (26) зелёные, lint чистый, `flutter analyze` — 0 проблем, смоук-тест api_client зелёный, `bash scripts/ci.sh` — CI OK. Нюанс: первый admin-user не создаётся по HTTP (только CLI/invite) — в тестах через контейнер, см. DECISIONS (2026-07-13).
-- [x] Workflows модуля `company` (7 шт, `backend/src/workflows/` + шаги в `steps/`): `create-company` (регистрация: pending-компания + сотрудник-админ из customer + link; валидации БИН/«не сотрудник»), `approve-company`/`reject-company`, `create-employee`/`delete-employee`, `create-spend-limit`/`delete-spend-limit`. Все шаги с компенсациями; линковка — ядровые `createRemoteLinkStep`/`removeRemoteLinkStep`. Верификация: 10 интеграционных тестов зелёные (`test:integration:http`), lint чистый, дев-сервер поднимается, `/health`→200. ВАЖНО для будущих тестов workflows: `run()` не бросает без `throwOnError: true`, а ошибка шага — plain object, не `instanceof Error`, поэтому `expect().rejects.toThrow` не работает — см. DECISIONS.md (2026-07-13) и хелпер в `integration-tests/http/company-workflows.spec.ts`.
+**Предыдущее обновление:** 2026-09-11 — **стенд переехал на постоянный адрес своего домена:
+`https://stand.kenenai.com`** (решение владельца: «домен каждый раз меняется, а по IP браузер
+ругается»). Домен куплен в Cloudflare Registrar — зона сразу в Cloudflare, NS делегировать не
+пришлось. Путь выбран через **именованный туннель**, а не сертификат на домен: провайдер не
+выводит наружу 80/443, поэтому ни HTTP-01, ни TLS-ALPN-01 не пройдут, а `certbot` с DNS-проверкой
+оставил бы порт в адресе навсегда (`…:4440`) — то самое неудобство, от которого уходим. Вход по IP
+остаётся ЗАПАСНЫМ и проверен рабочим (`https://95.47.96.14:4440`, 200 по `/health`, `/app`,
+`/picker/` снаружи).
+**Прогон по ролям — 19 из 20 зелёных** (`smoke-domain.sh`, гоняется на сервере): страницы
+`/ /app /picker/ /health`; вход админа, продавца и сборщика с cookie сессии под флагом `Secure`;
+очередь заданий сборщика; вход покупателя по телефону (код + токен); каталог по публикуемому
+ключу; фото товара и PDF счёта открываются; в базе НЕТ ни одной ссылки на старый адрес (0 товаров,
+0 документов). Единственный незакрытый пункт — кэш Cloudflare (ниже).
+**Как устроено:** режим туннеля переключает одна переменная `TUNNEL_RUN` в `.env` (готовый хвост
+команды `cloudflared`, а не токен — иначе ручной `docker compose up -d` молча возвращал бы стенд
+на случайный адрес); `infra/prod/set-origin.sh` меняет адрес во всех пяти строках `.env` разом и
+ДОБАВЛЯЕТ его в CORS, не затирая запасной вход; `make-tls-cert.sh` кладёт в SAN оба адреса;
+`deploy-server.sh` выпускает сертификат сам, дотягивает в существующий `.env` новые переменные из
+шаблона и в конце пишет, какой режим туннеля поднят.
+**Найдено и закрыто заранее:** адрес стенда лежит АБСОЛЮТНЫМИ ссылками в базе (фото товаров
+`/media/:file`, PDF документов `/static/:file`), поэтому переезд правкой окружения оставил бы
+битые фото и нескачиваемый счёт МОЛЧА. Заведён `backend/src/scripts/rebase-media-urls.ts`
+(идемпотентен, зовётся на каждом развёртывании; при переезде переписал 8 документов из 8, товары
+уже были выровнены сидами). Оптимизатор картинок витрины правки не потребовал: `remotePatterns`
+собирается из `NEXT_PUBLIC_MEDIA_BASE_URL` и едет за адресом сам.
+**Три дефекта, вскрытых самим переездом:** (1) значение с пробелами в `.env` роняло развёртывание —
+`deploy-server.sh` читает файл через `source`, и `TUNNEL_RUN=run --token …` без кавычек bash
+понимает как запуск команды «--token»; теперь `set-env.sh` кавычит такие значения сам;
+(2) **кэш Cloudflare отдавал окно сборщика двухдневной давности** — сборка Flutter'а не содержит
+хэшей в именах файлов, nginx не слал для них `Cache-Control`, и Cloudflare применял свой дефолт
+`max-age=14400`; на диске и через nginx файл свежий, через домен — `cf-cache-status: HIT`. Закрыто
+заголовком `Cache-Control: no-cache` на `location /picker/`. **Кэш у каждого краевого узла свой**:
+с машины разработчика приходила новая сборка, с сервера — старая, поэтому проверять надо минимум
+с двух точек; (3) файл, примонтированный в контейнер ПООДИНОЧКЕ, привязан к inode — доставка
+`tar`'ом создаёт его заново, и nginx продолжает работать со старой конфигурацией, причём `nginx -t`
+и `nginx -s reload` отрабатывают успешно и молчат; нужен `--force-recreate`.
+**Кэш почищен владельцем, контрольный прогон — 22 из 22 зелёных** (`cf-cache-status` стал
+`REVALIDATED`/`EXPIRED` с обеих точек, старого адреса в бандле сборщика 0 вхождений). Оба входа
+проверены снаружи с машины разработчика: домен и IP отдают 200 по `/health`, `/app`, `/picker/`.
+Гейты **К✅ В✅**.
+**Не сделано:** PDF-инструкция `docs/guide/` называет адрес по IP — пересобрать (продолжение T8.7).
 
-- [x] Админ-UI модерации компаний (`backend/src/admin/routes/companies/`): пункт «Companies» в сайдбаре; по требованию владельца — «никакой разницы» со стандартными списками ядра: блок фильтров скопирован построчно с внутреннего DataTableFilter дашборда (чипы → «Add filter» → «Clear all», чип открывается при добавлении, пустой исчезает), server-side поиск и сортировка (новые параметры `q`/`order` в `GET /admin/companies`, list-роут переведён на сервис модуля ради `q`), статус точкой в списке / StatusBadge на карточке, «...»-меню действий в строках и в шапке карточки; тексты — на английском, как ядро (ru-локали у ядра нет, локализация — отдельная задача). Общий код: `hooks/use-company-moderation.ts`, `components/reject-company-prompt.tsx`. Детали и пересмотры — DECISIONS (2026-07-13, три записи об админ-UI). UI прокликан headless-браузером (playwright-core + системный Edge): логин, список, Add filter → чип, поиск, row-actions, карточка, диалоги — скриншоты сняты, ошибок в консоли нет; `q`/`order` проверены и через API. Данные — react-query + `@medusajs/js-sdk` (сессия; js-sdk и icons стали прямыми зависимостями). Попутно починен `medusa build` — был сломан до этой сессии, tsc не входил в CI: `model.enum` не принимает readonly-кортежи (спред-копии в 3 моделях), documents-каст в `create-company` step (json-колонка типизируется как `Record`), `sdk.ts` без `import.meta` (CJS-проход build компилит и `src/admin`). В `scripts/ci.sh` добавлен шаг «backend: typecheck» (`tsc --noEmit` обоих tsconfig). Верификация: tsc чистый, `npm run build` зелёный, lint чистый, интеграционные тесты 5+26 зелёные, дев-сервер + `/admin/companies` проверены вживую; в dev-БД посеяны 3 демо-компании (pending/approved/rejected, у каждой сотрудник-админ) для ручной проверки UI.
+**Предыдущее обновление:** 2026-09-09 — **инструкция к стенду одним PDF** (`docs/guide/`):
+`guide.html` + `screens/*.png` + `build.sh` (печать системным Chrome, зависимостей нет) →
+`stroymarket-guide.pdf`, 11 страниц, 16 кадров. Пять разделов: доступ (адреса, сертификат, учётки),
+покупатель (вход по номеру → расчёт → корзина → окно доставки → Kaspi QR → заказ и документы),
+продавец (очередь, карточка заказа, отгрузка по категориям, документы, подтверждение мок-оплаты,
+цены и остатки), сборщик (окно `/picker/`), границы стенда. **Все кадры сняты живьём с VPS**, путь
+покупателя прошёл одной сессией — суммы сходятся от корзины (93 300 ₸) до счёта (95 300 ₸) и заказа
+№5. Побочно вскрылось: **окно сборщика работает только по собственному адресу стенда** — в сборку
+вшит `MEDUSA_BASE_URL`, и через cloudflare-туннель вход даёт «Нет связи с сервером» (в инструкции
+это оговорено). Съёмочные скрипты подросли: домен cookie теперь берётся из `--base` (раньше был
+захардкожен `localhost`, кадры со стенда снять было нельзя), у витринного шутера появилось действие
+`{capture}` (промежуточный кадр внутри сценария — живой путь с входом по OTP в отдельные кадры не
+разбить) и снят троттлинг фоновых таймеров (иначе поллинг оплаты в ленте не срабатывал), у
+админского — `{clickPoint}`/`{type}` (Flutter-окно сборщика: полей в DOM нет) и `--insecure`
+(самоподписанный сертификат). Гейт **К✅** (node --check обоих скриптов, PDF собран и просмотрен
+постранично). На стенде осталось три демо-заказа (№3–№5), заведённых съёмкой.
 
-- [x] Коммит `7cd2195` — весь каркас Фазы 1 + модуль `company` одним коммитом (артефакты сквозные — контракт и Dart-клиент уже включают company-роуты, чистое разделение ломало бы собираемость промежуточного коммита). Попутно: в корневой `.gitignore` добавлено исключение `!.env.test` — файл декларировался «в репо», но правило `.env.*` его игнорировало.
-- [x] Каталог, подзадача 2 — workflows модерации карточек: `create-product-card` (карточка + link 1:1 к товару ядра, дубль запрещён), `submit-product-for-moderation` (draft|rejected → proposed; сертификаты обязательны, сброс rejection_reason), `approve-product-card` / `reject-product-card` (proposed → published/rejected; комментарий при reject обязателен), `remoderate-product` + subscriber `src/subscribers/product-updated.ts` (правка published-товара с карточкой → снова proposed). Ключевое решение (DECISIONS 2026-07-14): общий шаг `update-product-status` меняет статус через СЕРВИС модуля product, не через ядровый workflow — событие `product.updated` не эмитится, approve не зацикливается с subscriber'ом; событие эмитят только правки через ядровые workflows. Верификация: 13 новых интеграционных тестов (`catalog-workflows.spec.ts`), весь `test:integration:http` — 39 зелёных (subscriber-тесты подтвердили событийную асимметрию эмпирически), lint чистый, tsc обоих tsconfig чистый. Нюанс: типы link-полей `query.graph` генерируются в `.medusa/types` при старте dev-сервера — после добавления link'а поднять dev до `/health`→200, иначе tsc не видит `product.product_card`.
-- [x] Каталог, подзадача 1 — дизайн + модуль `catalog`: полный дизайн в `docs/modules/catalog.md` (что закрывает ядро: категории, карточка+варианты, статусы модерации `product.status`, мульти-склад stock_location/inventory; что кастом), решение в DECISIONS (2026-07-14). Модель `ProductCard` (segment enum economy|comfort|business, unit, certificates jsonb, rejection_reason) + сервис (инварианты комментария модерации) + link `product-product-card.ts` (1:1) + регистрация в `medusa-config.ts`, миграция прогнана (таблицы `product_card`, `product_product_catalog_product_card`). Верификация: 5 интеграционных тестов модуля зелёные (всего modules 10, http 26 — приложение с новым модулем поднимается), lint без ошибок, tsc обоих tsconfig чистый.
+**Предыдущее обновление:** 2026-09-09 — **стенд переведён на канонический адрес
+`https://95.47.96.14:4440` (решение владельца «работаем через IP и 4440»), портал сборщика починен,
+найден и закрыт дефект ссылок на документы.** HTTPS оказался не косметикой: по http стенд не работает
+по существу и ломается МОЛЧА — в production и Medusa, и витрина ставят cookie с флагом `Secure`,
+поэтому не проходит ни вход в панель (`/auth/session` отвечает 200 без `Set-Cookie`), ни вход
+покупателя по телефону; плюс без защищённого контекста браузер не даёт микрофон, и кнопки голоса в
+чате не существует вовсе. Сертификат самоподписанный с SAN `IP:95.47.96.14` (`make-tls-cert.sh`),
+http отдаёт редирект, `/health` оставлен на http для скриптов. Рядом живёт Cloudflare Tunnel — тот
+же стенд без предупреждений браузера, но с меняющимся адресом; он ходит в nginx по https, иначе
+вход в панель через него не работает.
+**Портал сборщика не работал по той же причине:** web-сборка `apps/partner` вшивает адрес бэкенда в
+бандл, и была собрана с `http://…:8040` — с https-страницы запросы блокируются как смешанное
+содержимое. Пересобран с https-адресом. **Правило на будущее: смена адреса стенда требует
+пересборки И витрины, И портала сборщика.**
+**Дефект ссылок на документы:** файловый модуль в `medusa-config.ts` не был объявлен, локальный
+провайдер собирал ссылки от `http://localhost:9000/static`, и этот адрес уезжал покупателю в чат и
+кабинет как есть. Модуль объявлен с `backend_url` из `STATIC_BASE_URL`, уже выпущенный счёт
+переписан.
+**Проверено живыми вызовами по новому адресу:** вход всех трёх учёток персонала (токен + cookie
+сессии), вход покупателя по телефону (код + токен), очередь заданий сборщика (200, задание по
+заказу №1: отделка, 4 позиции), все файлы Flutter-сборки, страницы `/ /kz/chat /kz/store /app
+/picker/ /health`, фото товаров, голос (2,6 с, `ru`), ассистент потоком (первый байт 0,16 с, 13
+событий), PDF счёта (52 КБ, валидный).
+**Полный контрольный прогон на стенде: `npm run demo:rehearse` — 42 проверки, 0 дефектов.** Пять
+актов по живым роутам: вход по номеру → диалог (подбор → корзина → адрес → окно доставки → счёт
+Kaspi → dev-оплата → заказ №2 на 101 500 ₸ → трекинг) → кабинет → панель (приём → сборка ДВУМЯ
+заданиями по категориям «Отделочные материалы» и «Крепёж» → отгрузка → вручение по коду) →
+документы физлицу (счёт + накладная). Свежие документы получили правильный публичный адрес — это и
+есть проверка правки файлового модуля на новых данных; покупателю показывается по одной текущей
+версии (`is_latest`), v1 помечены неактуальными. Состояние стенда после прогона: заказ №1 в сборке,
+заказ №2 вручён. Гейты: **К✅** (tsc 0, eslint 0, всё проверено на стенде).
 
-- [x] Каталог, подзадача 3 — store/admin API: store — фильтр `?segment=` у ядрового `GET /store/products` (middleware `filter-by-segment.ts` на wildcard-матчере `/store/products*` — wildcard регистрируются РАНЬШЕ статических ядровых валидаторов, поэтому segment вырезается из query до строгой ядровой схемы и подменяется фильтром `id`; повторная регистрация `validateAndTransformQuery` ядро НЕ переопределяет — см. DECISIONS 2026-07-14), `GET /store/products/:id/availability` (город → склад, `available = stocked − reserved`, не-published → 404), `GET /store/products/:id/alternatives` (та же категория + тот же сегмент, limit 1–20); admin — очередь модерации БЕЗ кастомного роута (ядровый `GET /admin/products?status[]=proposed&fields=*product_card` умеет q/order/links — проверено тестом) + `POST /admin/products/:id/moderation/{submit,approve,reject}`. Контракт: фрагмент `store/products/products.oas.json`, в `generate-contract.mjs` добавлен `x-extendPaths` (точечное добавление параметров к существующим операциям) → 74 пути, 611 схем, 2 фрагмента; Dart-клиент перегенерирован (25 клиентов). Верификация: 14 новых http-тестов (`catalog-routes.spec.ts`), весь `test:integration:http` — 53 зелёных, tsc обоих tsconfig чистый, `flutter analyze` — 0 проблем, смоук api_client зелёный, `bash scripts/ci.sh` — CI OK.
+**Предыдущее обновление:** 2026-09-08 — **стенд развёрнут на VPS (95.47.96.14), доступен снаружи по
+одному порту суффиксами пути.** Прод-инфры не было вовсе (в `infra/` только postgres/redis для
+разработки, контейнеров бэкенда и витрины не существовало) — появились `backend/Dockerfile`,
+`storefront/Dockerfile`, `infra/prod/` (compose + nginx + окружение + `deploy-server.sh` +
+`set-env.sh`), `scripts/deploy.sh` и `scripts/migrate-remote.sh`. **Раскладка:** `/` витрина
+покупателя, `/app` панель, `/picker/` окно сборщика (Flutter web `apps/partner`), API родными
+префиксами; nginx слушает 80, провайдер NAT-ит внешний 8040. **Проверено снаружи, а не по
+состоянию контейнеров:** все четыре пути отдают 200, фото товаров `/media/*.jpg` отдаётся, и ГЛАВНОЕ —
+**ИИ отвечает живьём** (запрос про гипсокартон → 3 с, ответ из реального каталога с четырьмя
+карточками и ценами в тенге). База: 179 таблиц, 196 миграций, каталог 22 товара / 39 вариантов /
+4 категории / 2 склада, учётки админа, продавца и четырёх сборщиков.
+**Главный долг: `medusa db:migrate` В КОНТЕЙНЕРЕ ЗАВИСАЕТ** — после «Running migrations...»
+управление уходит в `MedusaAppMigrateUp` и не возвращается, не применив ни одной миграции (замерено
+отладочным протоколом Node: живой сокет к Postgres и три таймера, ожидающих запросов нет;
+воспроизводится из исходника и прод-сборки, при любых флагах и обоих NODE_ENV, тогда как
+`medusa exec` и сервер в том же контейнере работают). Обход — `scripts/migrate-remote.sh`
+(ssh-туннель + локальный инструментарий); причина не найдена. Ещё четыре мины сняты по ходу и
+описаны в DECISIONS 2026-09-08: шрифты бланков не доезжают до прод-сборки, том загрузок резолвится
+от cwd прод-сборки (`.medusa/server/static`), `next/image` резал бы все фото с IP-адреса,
+публикуемый ключ требует `export` (окружение приоритетнее `.env` при подстановке в Compose).
+**Не сделано осознанно:** HTTPS (сертификат на IP не выдаётся — нужен домен), S3, бэкапы базы;
+Redis поднят, но конфигурацией не используется. **Вход покупателя держится на dev-канале OTP** —
+SMS-провайдера нет. Гейты: **К✅** (eslint 0, tsc 0 оба конфига; все скрипты и compose
+валидированы; проверка — живым обращением к развёрнутому стенду).
 
-- [x] Каталог, подзадача 4 — админ-UI: очередь модерации карточек (`src/admin/routes/product-moderation/`, идиомы `routes/companies`: копия DataTableFilter ядра, статус точкой, server-side `q`/`order`; чип Status предустановлен на Proposed, данные — ядровый `GET /admin/products?fields=*product_card`, клик по строке → ядровая страница товара) + widget `src/admin/widgets/product-catalog-card.tsx` (зона `product.details.after`: сегмент/ед.изм./сертификаты/причина отклонения, Create/Edit в Drawer, Submit/Approve/Reject в «...»-меню; данные своим запросом — prop `data` link-полей не содержит). Попутно API: upsert-роут `POST /admin/products/:id/product-card` (роут выбирает create/update-workflow по наличию карточки) + новый workflow `update-product-card` — правка карточки published-товара возвращает его в `proposed` явно (правка нашей модели `product.updated` не эмитит; решение — DECISIONS 2026-07-14, админ-UI каталога). Сид демо-товаров: `npx medusa exec ./src/scripts/seed-demo-catalog.ts` (draft/proposed/rejected, идемпотентен). Верификация: 5 новых http-тестов (весь `test:integration:http` — 58 зелёных), tsc обоих tsconfig чистый, lint чистый, `medusa build` зелёный, UI прокликан headless-браузером (playwright-core + системный Edge, 14 шагов: пресет-чип, смена фильтра, поиск, row-actions, reject-диалог с обязательной причиной, approve без зацикливания subscriber'а, правка published-карточки → Proposed, submit черновика, причина отклонения, empty state без карточки) — 0 ошибок консоли, скриншоты сняты.
+**Предыдущее обновление:** 2026-09-08 — **оплата Kaspi на стенде подтверждается кнопкой в панели**
+(просьба владельца: «а то каждый раз заходить на сервер неудобно»). Мок Kaspi сам не платит —
+исход инвойса задаётся при создании, — и «покупатель оплатил» до сих пор говорили только утилитой
+`npm run kaspi:pay` с сервера. Теперь это раздел **Настройки → «Оплата Kaspi»** рядом с «Кодами
+входа»: неоплаченные счета списком (имя, номер, дата, сумма), кнопка на каждом и общая «Оплатить
+последний счёт» — ровно поведение утилиты без аргумента. Токен покупателя не нужен: админ-роут
+`/admin/kaspi-mock-payments` идёт к платёжной сессии напрямую. Вне `KASPI_MODE=mock` экран честно
+говорит, что подтверждать оплату из панели нельзя (POST — 404), в контракт роут не выносится.
+Регламент показа переписан с окна терминала на вкладку панели. Таск T12.23. Гейты: **К✅**
+(eslint 0, tsc 0 оба конфига, http `kaspi-payment` 24/24, живой клик по кнопке перевёл счёт в
+`paid`) и **U✅** (3 кадра `docs/qa/screens/T12.23`). Съёмка шла на ВТОРОМ бэкенде (`PORT=9001`) на
+той же базе — стенд владельца на :9000 не трогали; чтобы кнопка появилась там, бэкенд нужно
+перезапустить.
 
-- [x] Каталог, подзадача 5 (последняя) — ограничение складов + сид региона KZ: middleware `limitStockLocationsPerCity` на `POST /admin/stock-locations` (`backend/src/api/admin/stock-locations/limit-per-city.ts`; count по `address.city` через query.graph, регистронезависимо, ≥5 → NOT_ALLOWED/400, склады без города не ограничиваются, лимит-константа `MAX_STOCK_LOCATIONS_PER_CITY`) + сид `backend/src/scripts/seed-kz.ts` (`npx medusa exec ./src/scripts/seed-kz.ts`, идемпотентен): валюта KZT в магазин, регион `Kazakhstan` (kzt/kz/`pp_system_default`), 2 склада в Астане (linked к Default Sales Channel), категория «Строительные материалы», 4 published-товара стройматериалов по сегментам с ценами в тенге и остатками по обоим складам (через реальный флоу модерации create→submit→approve). Витрина переключена: `storefront/.env` → `NEXT_PUBLIC_DEFAULT_REGION=kz`. Решения — DECISIONS (2026-07-14, склады+KZ); нюанс supported_currencies (relation, тянуть через query.graph) и осознанно отложенный fulfillment — там же. Верификация: 4 новых http-теста (`stock-location-limit.spec.ts`), весь `test:integration:http` — 62 зелёных, tsc обоих tsconfig чистый, lint без ошибок; сид прогнан на dev-БД (и повторно — идемпотентен), вживую через API проверено: регион KZ (kzt/kz), цены вариантов в KZT (6000/3200/120/450000/8000), фильтр `?segment=economy` → 2 товара, `/availability` — Астана 40+30=70 по двум складам.
+**Предыдущее обновление:** 2026-09-07 — **приёмка владельцем: вход по номеру разваливался через
+сутки.** Токен жил 1 день (дефолт Medusa), cookie витрины — 7 дней: на вторые сутки бэкенд видел
+гостя, а витрина продолжала показывать кабинет из закэшированного `/store/customers/me`. Отсюда
+разом три симптома — ассистент просил войти у вошедшего покупателя, карточки «Войти по номеру» при
+этом не было (её прятал признак входа СО СТРАНИЦЫ), а профиль печатал «null null» и пустую
+адресную книгу при сохранённых ФИО и адресе (их правит ассистент на бэкенде, тег кэша сбрасывать
+некому). Починено: `jwtExpiresIn: "7d"`, `retrieveCustomer` без кэша, просьба войти рисуется
+всегда (правда о сессии — только у бэкенда), пустые поля профиля — прочерком. Плюс замечание
+владельца «кнопка выйти нужна сейчас»: выхода из учётки не было вовсе — кнопка добавлена в рельс
+кабинета, уводит в чат. Таски T12.18–T12.21. Гейты: **К✅** (eslint витрины 0 ошибок, tsc бэкенда
+0). **Стенду нужна пересборка:** витрина крутится как `next start` (прод-сборка), бэкенд —
+`medusa develop`; правки видны только после `npm run build` + рестарта обоих.
 
-- [x] payment-kaspi, подзадача 3 — живой транспорт `KaspiHttpClient` (`kaspi-http-client.ts`): порт QR-флоу референса tapter-dev за адаптером `KaspiClient` (`POST /api/qr/create` → `invoice_id`=QrOperationId, `qr_payload`=`payment_url`=QrToken; `GET /api/qr/status?qrOperationId=`; `POST /api/refund/create`; cancel — через единственный cancel-эндпоинт референса, QR истекает сам). Маппинг статусов fail-safe: `paid` ТОЛЬКО на явный `Processed`, незнакомый статус → `pending` (опрашиваем дальше, не авторизуем). Webhook: подпись `X-Webhook-Signature: sha256=<hex>` (HMAC SHA-256 от raw body, `timingSafeEqual`) ОБЯЗАТЕЛЬНА → невалидная/отсутствует — NOT_ALLOWED; состояние из сырого `status` Kaspi, событие `payment.*` — запасной маппинг. Ветка `live` фабрики `create-kaspi-client.ts` собирает клиент из env `KASPI_API_URL` (адрес развёрнутого automation-сервера, НЕ kaspi.kz) + `KASPI_MERCHANT_ID`/`KASPI_API_KEY` + НОВЫЙ `KASPI_WEBHOOK_SECRET` — все четыре обязательны, ошибка перечисляет недостающие (молчаливого отката в мок нет); плейсхолдеры в `.env.example`. HTTP — инжектируемый fetch (по умолчанию глобальный Node 18+, таймаут `AbortSignal.timeout` 10s; тестам не нужны nock/undici-mock и перехват глобалей — решение DECISIONS 2026-07-16). Интерфейс `KaspiClient`, провайдер и оформление НЕ менялись; замена на официальный API при договоре — только этот файл + фабрика. API-роуты не менялись → контракт/Dart не трогали. Верификация: 21 новый unit (`kaspi-http-client.unit.spec.ts`, всего unit 37/37), `test:integration:http --testPathPattern=kaspi-payment` 12/12 (mock-путь цел), tsc обоих tsconfig чистый, lint 0 ошибок.
-- [x] payment-kaspi, подзадача 2 — оплата в оформлении заказа: store-роуты `POST/GET /store/carts/:id/payment/kaspi` (POST — инициализация: payment collection ядра + сессия `pp_kaspi_kaspi` + QR/ссылка из `data`, идемпотентен — существующая сессия переиспользуется; GET — статус/polling) поверх workflows `init-cart-kaspi-payment` (оркестрация ядровых `createPaymentCollectionForCartWorkflow`/`createPaymentSessionsWorkflow` через when/then; порядок шагов — зависимостью по данным через transform, см. DECISIONS) и `sync-cart-kaspi-payment`. КЛЮЧЕВОЕ (DECISIONS 2026-07-15, подзадача 2): у `IPaymentModuleService` нет метода «спросить статус провайдера без побочек» → polling = попытка `authorizePaymentSession` (провайдер сам опрашивает инвойс; оплачено → authorized + Payment ядра, нет → pending, ошибка глотается) — хелпер `workflows/utils/settle-kaspi-payment-session.ts`. Предусловие 100% предоплаты — шаг `ensure-cart-payment-authorized` перед `completeCartWorkflow` в `place-order`: сессия обязана быть (400 «no payment session»), Kaspi-сессия — оплачена (перед проверкой синхронизируется — страховка от гонки); pp_system_default авторизует сам completeCart (тесты заказа не задеты). Владение корзиной — `requireOwnCart` (чужая → 404), auth customer на `/store/carts/:id/payment/kaspi` (ядровые роуты корзины — гостевые). `scenario` в теле POST — только для мока. `seed-kz.ts` — блок 2a: идемпотентно добавляет `pp_kaspi_kaspi` региону Kazakhstan (payment_providers — link, читается query.graph). Контракт: фрагмент `store/carts/carts.oas.json` → 86 путей/633 схемы/5 фрагментов; Dart-клиент 26 клиентов/99 запросов. Верификация: 12 новых http-тестов (`kaspi-payment.spec.ts`), весь `test:integration:http` — 87 зелёных, unit 16/16, tsc обоих tsconfig чистый, lint 0 ошибок, сид прогнан дважды (идемпотентен), `bash scripts/ci.sh` — CI OK.
-- [x] payment-kaspi, подзадача 1 — провайдер (мок) + регистрация под шлюзом ядра: `backend/src/modules/payment-kaspi/` — класс `KaspiPaymentProvider extends AbstractPaymentProvider` (`static identifier="kaspi"`, все 10 методов Provider API), интерфейс `KaspiClient` (`types.ts`), детерминированный `KaspiMockClient` (СТАТЕЛЕСС — исход оплаты закодирован в `invoice_id` `kaspi_mock_<state>_<uuid>`, поэтому тесты гоняют сценарии через `data.kaspi_scenario`, не залезая во внутреннее состояние), фабрика `create-kaspi-client.ts` (mock|live по env `KASPI_MODE`; live бросает до появления `KaspiHttpClient` в подзадаче 3), регистрация `ModuleProvider(Modules.PAYMENT, {services:[...]})` (`index.ts`) + подключение в `medusa-config.ts` внутри `options.providers` ядрового `@medusajs/medusa/payment`. Своих моделей домена НЕТ (состояние — в `data` сессии). env-плейсхолдеры `KASPI_MODE/KASPI_MERCHANT_ID/KASPI_API_KEY` в `.env.example`. **Сигнатуры Provider API выяснены через tsc, не по памяти** (node_modules закрыт — риск из STATE): зонд-класс + типы-«ловушки» → ошибки TS2416/`--noErrorTruncation` печатают ожидаемые сигнатуры (см. DECISIONS 2026-07-15). Верификация: tsc обоих tsconfig 0 ошибок, lint 0 ошибок, `test:unit` — 16/16 зелёных (чистый unit, без docker → в CI), dev-сервер поднят и в таблице `payment_provider` появился `pp_kaspi_kaspi` (enabled) рядом с `pp_system_default`. API-роутов нет → контракт/Dart не трогали (подзадача 2).
-- [x] payment-kaspi, подзадача 0 — дизайн модуля: полный дизайн в `docs/modules/payment-kaspi.md` (Kaspi = Payment Provider ядра `@medusajs/payment`, НЕ своя платёжная подсистема; пишем только класс `KaspiPaymentProvider` + точки интеграции в оформление — collection/session/Payment/Capture/Refund/webhook-роут даёт ядро; свои модели домена не нужны — Kaspi-состояние в `data` сессии, деньги в ядровых Payment/Refund; транспорт к Kaspi изолирован за интерфейсом `KaspiClient` с `KaspiMockClient`/`KaspiHttpClient`, выбор по env `KASPI_MODE` — из-за отсутствия песочницы; флоу QR асинхронный, подтверждение webhook+polling; сценарии оплаты — оркестрация суммой collection; объём MVP — 100% предоплата, остальное отложено до `scoring`/`bonus`). Решение и отвергнутые альтернативы — DECISIONS (2026-07-15, payment-kaspi). Подзадачи расписаны в дизайн-доке и бэклоге ниже. Кода/верификации пока нет — это чистый дизайн.
-- [x] Заказ, подзадача 4 (последняя) — админ-UI жизненного цикла: UI-роут очереди `src/admin/routes/order-queue/` (путь `order-queue`, НЕ `orders` — клэш с ядровым списком; пункт сайдбара «Order Queue»; данные `GET /admin/order-lifecycles`, идиомы `routes/companies`: копия DataTableFilter ядра, статус точкой, server-side фильтр статуса + сортировка FIFO; поиска нет — эндпоинт `q` не отдаёт; клик по строке → ядровая страница заказа) + widget `src/admin/widgets/order-lifecycle-card.tsx` (зона `order.details.after`): статус StatusBadge'ом, доступные из него переходы в «...»-меню (карта `ORDER_TRANSITIONS` в `lib/order.ts` — подмножество стейт-машины сервиса; из `partially_assembled` только ship, `returned` — через returnFlow), лог переходов; позиции/fulfillment для сборки/отгрузки берутся из данных ядровой страницы (prop `data` — `items[].quantity`/`fulfillments[]` там полны, в отличие от query.graph), отмена — диалог с необязательной причиной; общий hook `hooks/use-order-lifecycle.ts` инвалидирует `["order-lifecycle"]`+`["orders"]`. Демо-данные: `npx medusa exec ./src/scripts/seed-demo-order.ts` (3 заказа new/confirmed/in_delivery, строит минимальную доставку KZ, идемпотентен). Решения — DECISIONS (2026-07-15, подзадача 4). Верификация: tsc обоих tsconfig чистый, lint 0 ошибок, `medusa build` (backend+frontend) зелёный; UI прокликан headless-браузером (playwright-core + системный Edge): логин → очередь (3 заказа, корректные #/email/статусы) → фильтр status=in_delivery (1 строка) → страница заказа (widget виден) → «...»-меню (для new: Confirm | Cancel order) → Confirm → статус Confirmed, бейдж обновился, 0 ошибок консоли (единственная — ядровый validateDOMNesting в CostBreakdown, не наш код).
-- [x] Заказ, подзадача 3 — store/admin API: тонкие роуты поверх workflow из подзадачи 2, БЕЗ переопределения ядровых роутов заказа (решение — DECISIONS 2026-07-15). Store: `POST /store/orders` (`{cart_id}`→`placeOrderWorkflow`, у ядра POST на этом пути нет), `GET /store/orders/:id/lifecycle` (свой статус ТЗ + лог переходов; владение — `requireOwnOrder`, чужой → 404), `POST /store/orders/:id/cancel` (отмена покупателем до отгрузки). Admin: `GET /admin/order-lifecycles` (очередь: фильтр статуса/сортировка FIFO/пагинация; ОТДЕЛЬНЫЙ ресурс — под `/admin/orders` статик конфликтует с ядровым `:id`, а сам `GET /admin/orders` — список дашборда, не перекрываем), `GET /admin/orders/:id/lifecycle` (статус+история), переходы `POST /admin/orders/:id/lifecycle/{confirm,start-assembly,complete-assembly,ship,deliver,close,cancel}` (namespace `/lifecycle/` не перекрывает ядровые `/admin/orders/:id/{cancel,complete}`). actor_type: store→buyer, admin→admin. zod-валидаторы в `store/orders/validators.ts`+`admin/orders/validators.ts`, регистрация в `api/middlewares.ts` (auth customer на `/store/orders*`). Контракт: 2 фрагмента (`store/orders`, `admin/orders`), `generate-contract.mjs` обобщён — мерджит новые методы на уже существующий путь (наш POST рядом с ядровым GET `/store/orders`); 74→85 путей, 611→630 схем, 2→4 фрагмента; Dart-клиент перегенерирован (25 клиентов, 97 запросов). Верификация: 8 новых http-тестов (`order-routes.spec.ts`: place/статус/владение-404/cancel/очередь/полный цикл переходов/невалидный переход-400), весь `test:integration:http` — 75 зелёных, tsc обоих tsconfig чистый, lint 0 ошибок, `flutter analyze` — 0 проблем, api_client-смоук зелёный, `bash scripts/ci.sh` — CI OK.
-- [x] Заказ, подзадача 2 — `placeOrder` + переходы жизненного цикла: workflow `place-order` (обёртка над ядровым `completeCartWorkflow` — order+резерв ядра → шаг `create-order-lifecycle` (`OrderLifecycle=new`) → `createRemoteLinkStep` link 1:1 order↔lifecycle + условный link order↔company через `resolve-order-company`); общий шаг `record-status-transition` (находит lifecycle по order, применяет `service.recordTransition`, компенсация — откат статуса + удаление записи лога; поэтому `recordTransition` теперь возвращает `{lifecycle, event}`) + хелпер `apply-order-transition` (шаг + `emitEventStep`); сценарные workflow `confirm-order`/`start-order-assembly` (чистый статус), `complete-order-assembly` (ядровый `createOrderFulfillment` → assembled/partially_assembled — статус сборки считаем сами сравнением заказано↔собрано, шаг `determine-assembly-status`), `ship-order` (`createOrderShipment` → in_delivery), `deliver-order` (`markOrderFulfillmentAsDelivered` → delivered), `close-order` (`completeOrder` → closed), `cancel-order` (id `cancel-order-lifecycle` — `cancel-order` занят ядром; `cancelOrder` → canceled); subscriber `order-status-changed` — заглушка уведомления на событие `order_lifecycle.status_changed` (свои `order.*` не эмитим — ядро уже шлёт placed/completed/canceled; решения — DECISIONS 2026-07-14). Верификация: 5 http-тестов (`order-lifecycle-workflows.spec.ts` — полная фикстура доставки: fulfillment set/service zone/provider link/shipping option/payment session; happy-path new→…→closed, частичная сборка, cancel, инвариант), весь `test:integration:http` — 67→68 зелёных, module-тесты 6 зелёных, tsc обоих tsconfig чистый, lint 0 ошибок. Нюанс: query.graph не отдаёт вычисляемые/BigNumber-поля ядра (line item `quantity`, `fulfillment_status`) — читать через сервис order; link-поля через query.graph работают.
-- [x] Заказ, подзадача 1 — дизайн + модуль `order-lifecycle`: полный дизайн в `docs/modules/order.md` (что закрывает ядро — completeCart+резерв, fulfillment/shipment/deliver/complete/cancel; сопоставление статусов ТЗ↔ядро — этапы «Подтверждён»/«В сборке» ядро не знает → кастомный статус как source of truth; стейт-машина переходов; хуки событий и осознанные отложки — оплата/лимиты/документы/уведомления/бонус/скоринг/fulfillment KZ). Модуль `order-lifecycle` (ключ `order_lifecycle` — НЕ `order`, тот занят ядром): модели `OrderLifecycle` (status enum из 10 статусов ТЗ, default `new`, previous_status, note) + `OrderLifecycleEvent` (лог переходов: from/to/actor_type/actor_id/reason, бессрочно) + сервис (чистая функция-инвариант `assertOrderStatusTransition` + метод `recordTransition`: проверка+лог+обновление) + link `order-lifecycle.ts` (1:1 к order ядра) + регистрация в `medusa-config.ts`, миграция прогнана (таблицы `order_lifecycle`, `order_lifecycle_event`, link-таблица). Решение (DECISIONS 2026-07-14): имя сущности `OrderLifecycle`, НЕ `OrderStatus` — GraphQL-тип `OrderStatus` занят ядровым enum, совпадение ломало db:generate («Cannot extend type OrderStatus»). Верификация: 6 интеграционных тестов модуля зелёные (всего modules 16), tsc обоих tsconfig чистый, lint без ошибок, приложение с модулем+линком поднимается (db:migrate + links sync прошли).
+**Предыдущее обновление:** 2026-09-06 (вечер) — **совместный прогон с владельцем: четыре дефекта,
+которых не видели тесты.** Путь показа прошли РУКАМИ. **Голос закрыт вживую:** `transcribe` → 200
+за 2,5–3,1 с, контейнер `audio/webm` из Chrome модель принимает — отдельный STT-провайдер не нужен,
+развилка №6 закрыта. Найдено и исправлено: (1) кнопка «Завершить сборку» у продавца обходила
+задания сборщиков — убрана по решению владельца; (2) роль `picker` падала в `owner`, и сборщик
+открывал панель магазина ЦЕЛИКОМ — заведена роль, редирект на заглушку `/app/picker` со ссылкой на
+приложение, у оператора убраны закуп, модерация, водители и ядровые «Товары» (решение владельца
+«фокус на основных задачах»); (3) **очередь сборщика по сети не работала НИКОГДА** — в контракте
+`status` был описан объединением «строка | массив», кодоген делал `dynamic` и звал `.toJson()` у
+строки; (4) **сборщик не мог отметить ни одной позиции** — клиент слал `note: null` в поле,
+объявленное `.optional()`; вылечено `include_if_null: false` на весь пакет `api_client`.
+**Общая причина всех четырёх:** экраны проверялись фейками и юнитами, живого вызова не было ни разу
+(гейт U T10.12 прямо пишет «данные через фейк-репозиторий, сеть не нужна»). Web-сборки приложения
+сборщика не существовало вовсе — собрана и поднята на :3100, dev-origin дописан в `adminCors`.
+Аудит агентом нашёл, что **заготовка ИИ-приёмки не сошлась бы с каталогом** (песок, щебень,
+арматура сняты с публикации) — накладная переписана и прогнана живым роутом `parse-invoice`.
+Очередь заказов развёрнута новыми сверху (правка владельца). Гейты: **К✅** — eslint 0, tsc 0 оба
+конфига, unit 594/594, `flutter analyze` 0, partner 33/33, buyer 132/132, **три полных прогона
+репетиции подряд (№70–№72) по 42 проверки, 0 дефектов**; сборку в репетиции теперь закрывают САМИ
+СБОРЩИКИ своими учётками, с проверкой изоляции групп. Стенд оставлен по регламенту: два свежих
+заказа в работе (№73, №74), просрочки и претензий нет.
+**Внимание:** в этот же день параллельно шла ДРУГАЯ сессия (бланки документов, ниже) — номера
+тасков разъехались, мой «очередь новыми сверху» перенумерован в **T12.17**.
 
-## В работе
-**Следующий шаг:** mobile buyer, итерация 3 — первый экран пути покупателя: **каталог/список товаров**. В `apps/buyer`: подключить `ProviderScope` в `main.dart`, применить тему `ui_kit` (`buildAppTheme`), feature-first `lib/features/catalog/{providers,screens,widgets}`. Провайдер списка товаров через `medusaApiProvider.products` (эндпоинт `/store/products`, метод в `ProductsClient` — сверить имя/параметры в сгенерированном клиенте как в ПУБЛИЧНОМ API; регион/валюта — Medusa требует `region_id` или country; продумать выбор региона KZ). Экран: список карточек товара (название, цена, тумбнейл) — строить ТОЛЬКО из `ui_kit` (добавить нужные компоненты-примитивы в ui_kit, если нет: карточка, скелетон/лоадер, ошибка). Локализация ru/kk с первого экрана (см. mobile/CLAUDE.md — решить механизм: flutter gen-l10n ARB или лёгкий словарь). Верификация: `flutter pub get` → `dart format --set-exit-if-changed .` → `flutter analyze` → тесты → `flutter build web`/`apk` (Windows-таргет недоступен). Заметка: buyer app пока не имеет своих зависимостей на riverpod/core/ui_kit в pubspec — проверить и добавить (`core`, `ui_kit`, `flutter_riverpod` уже транзитивно?), см. `apps/buyer/pubspec.yaml`. ПРАВИЛА ИЗОЛЯЦИИ: работая над mobile — НЕ читать TS-код бэкенда/витрины, источник API — только `contracts/openapi.json`; `mobile/packages/api_client/lib/src/generated` — генерируется, руками не править (при изменении контракта — регенерация по CLAUDE.md). Верификация mobile: `cd mobile && flutter pub get`, `dart format .`, `flutter analyze` (сборка `flutter build web`/`apk` из каталога приложения; Windows-таргет недоступен). Локализация витрины (весь видимый UI ru/kk/en) — ЗАВЕРШЕНА; опциональный остаток (SEO-метадата) отложен как низкоприоритетный.
+**Предыдущее обновление:** 2026-09-06 — **T12.7: документы перестали быть черновиком.** Замечание
+владельца («вид документов как черновик… у нас два одинаковых документа»; «счёт как чек, у нас же
+пока ФЛ») закрыто: три типа печатались ОДНИМ макетом и различались строкой заголовка — теперь у
+каждого свой бланк. **Накладная — форма З-2** (приложение 26 к приказу МФ РК от 20.12.2012 № 562):
+угловой штамп, «Номер документа / Дата составления», отправитель-получатель-ответственный,
+девять утверждённых граф со сплошной сеткой, «всего отпущено … прописью», подписи «Отпустил /
+Главный бухгалтер / Получил». **Счёт двуликий:** физлицу — расчётный документ магазина (позиции,
+итоги, сумма прописью, штамп «ОПЛАЧЕНО · Kaspi · дата», без банковской рамки: счёт выпускается
+ПОСЛЕ оплаты), юрлицу — казахстанский бланк с рамкой «образец платёжного поручения»
+(ИИК/Кбе/БИК/КНП), подписями и М.П. **АВР** — двусторонний акт. Ресерч показал главное: у счёта
+утверждённой формы в РК НЕТ (нужен только набор реквизитов для платежа), у накладной есть —
+отсюда и разная свобода в оформлении (DECISIONS 2026-09-06). Появились: сумма прописью
+(`src/lib/format/amount-in-words.ts`, без Intl), единица измерения и артикул позиции в снапшоте
+(из карточки каталога по link), факт оплаты в снапшоте, реквизиты Кбе/КНП/руководитель
+(`Migration20260906120000`, поля в «Настройки → Реквизиты документов»). Гейты: **К✅** (eslint 0,
+tsc 0 оба конфига, unit 592/592 (67 сьютов), http documents-issue + documents-routes
+25/25, миграция на стенде, живой выпуск по заказу № 69 — счёт и
+накладная) и **U✅** (6 кадров `docs/qa/screens/T12.7`, отчёт `docs/qa/2026-09-06-T12.7-ui.md`;
+кадры поймали 7 дефектов, включая ДВЕ ОДИНАКОВЫЕ строки в документе — в снапшот шло название
+товара без варианта). Три развилки владелец отдал исполнителю («сам решай»): НДС не
+заводим (продавец не плательщик), `invoice` в «Квитанцию» не переименовываем (слово живёт в шести
+поверхностях, а замечание закрыто видом бланка), мок-руководитель на стенде остаётся —
+обоснования в DECISIONS 2026-09-06. Отложено: QR Kaspi на счёте.
 
-За эту сессию цикла: `documents`/`reviews`/`scoring`/`estimator` — MVP готовы; `logistics` — спроектирован (ждёт ОК владельца); POS-гэп 3 закрыт; локализация витрины — основной путь (каталог/товар/корзина/чекаут) + обвязка (nav/footer/мини-корзина) готовы, осталась в основном «аккаунт». Дальше по умолчанию — продолжать локализацию экран за экраном, расширяя словари. Прочее: headless-прокликивание админ-UI (flaky — сон машины); гэпы 6 (пуши)/7 (роли) — блок/дизайн; owner-gated: `logistics` реализация, `estimator` 3 (ИИ), постоплата `scoring` 2c. Параллельно у владельца — дизайн-раунд 1 partner-app + ревью объёма logistics.
-Модуль `documents` — ГОТОВ (4/4 подзадачи, 2026-07-21): модель, рендер PDF + автовыпуск в подписчиках, store/admin API + ЛК + экспорт 1С, админ-UI реквизитов + widget документов. Остаточный долг — прокликать админ-UI headless-браузером (покрыт tsc+build+http). Гэп 5 сверки partner-app (`documents` — накладная POS) закрыт. Параллельно у владельца — дизайн-раунд 1 partner-app (`mobile/design/partner/`), ждёт прогона через claude.ai/design. Параллельно у владельца — дизайн-раунд 1 partner-app: бриф + сверка написаны (`mobile/design/partner/`), ждём прогона через claude.ai/design → handoff вернётся в `mobile/design/partner/`. Гэпы бэкенда 1/2/4/8 из сверки ЗАКРЫТЫ (2026-07-19); гэп 5 (`documents` — накладная POS) закрыт выпуском накладной по заказу (2026-07-20). Открыты гэпы 3 (привязка покупателя по телефону), 6 (пуши), 7 (роли).
+**Предыдущее обновление:** 2026-09-06 — **эпик E12 «Демо 7 сентября» закрыт целиком (6 тасков).**
+Всё, что к показу делается без человека у устройства, сделано и проверено на живом стенде.
+**Главное: путь показа проходится целиком — 36 проверок, 0 дефектов.** Появился
+`backend/scripts/demo-rehearsal.mjs` (`npm run demo:rehearse`) — репетиция пятью актами по ЖИВЫМ
+HTTP-роутам: вход по телефону → диалог (подбор → корзина → адрес → окно доставки → счёт Kaspi →
+dev-оплата → заказ → трекинг) → кабинет → панель (приём → сборка ДВУМЯ заданиями по категориям →
+отгрузка → вручение по коду, вручение без кода отбито) → документы физлицу (счёт + накладная, АВР
+отбит). У него же есть остановка на стадии (`STOP_AFTER`) — утром показа ею набивается очередь
+свежими заказами. **Стенд приведён в вид рабочего дня:** было «открытых 26, просрочено 26, самый
+старый ждёт 592 ч» и 2 претензии возрастом 21 день — стало **3 заказа в работе, просрочен 1,
+претензий 0**; историю доводит до конца `prepare-demo-stand.ts` ТОЛЬКО доменным путём, с причиной
+в логе каждого заказа (резервы после этого сходятся). **Распознавание речи проверено корпусом:**
+13 фраз из 14 без потери смысла, язык определён верно (ru/kk/en), числа приходят цифрами
+(«три и пять на двадцать пять» → `3.5 на 25`); единственная ошибка — казахское числительное.
+**Списки панели перестали врать:** упавший запрос рисовал «Ничего не найдено» — теперь общий
+компонент `DataTableListError` с кнопкой «Повторить», и он добавлен трём экранам, где состояния
+ошибки не было вовсе. **Сценарий показа переписан** под стенд 2026-09-06 — старый вёл в стену:
+его центральный пример «бетонная площадка» больше не проходит (песок и щебень сняты с публикации
+01.09). Гейты: **К✅** (eslint 0 ошибок, tsc 0 оба конфига, unit 582/582, всё проверено на живом
+стенде) и **U✅** (13 кадров: `docs/qa/screens/T12.4` и `docs/qa/screens/T12.6`).
 
-## Бэклог — Фаза 1: Каркас (по порядку)
-- [x] Прогнать миграции ядра, создать первого admin-пользователя, задокументировать команды запуска в `CLAUDE.md` (раздел «Команды»).
-- [x] Скаффолд веб-витрины покупателя: официальный Medusa Next.js Starter Storefront → `storefront/`, подключить к бэкенду, страница каталога открывается.
-- [x] Скаффолд mobile: `flutter create` для `apps/buyer`, `apps/partner`, `apps/driver` и пакетов `core`, `ui_kit`, `api_client`; собрать Pub Workspace (корневой `mobile/pubspec.yaml`); пустые приложения запускаются.
-- [x] Конвейер контракта, часть 1: генерация `contracts/openapi.json` (база — официальная спека Medusa v2 Store API + мердж фрагментов кастомных роутов `backend/src/api/**/*.oas.json`); команда в `backend` + корневой `CLAUDE.md`.
-- [x] Конвейер контракта, часть 2: Dart-кодоген `contracts/openapi.json` → `mobile/packages/api_client`; команды задокументировать в `CLAUDE.md`.
-- [x] CI-скелет (lint + тесты обеих половин) — локальные скрипты, GitHub Actions позже.
+**Предыдущее обновление:** 2026-09-05 — **T5.6b: доставку стало можно подвинуть.** Слот перестал
+быть приговором: продавец двигает окно приезда по звонку покупателя прямо из карточки заказа
+(кнопка в шапке блока «Доставка» и пункт «...»-меню на странице заказа), причина обязательна и
+ложится в лог заказа — «Доставка перенесена на 8 сент. 2026 г., 13:00–17:00 · с 10 сент.,
+17:00–21:00 · автор: admin · покупатель просит вторник, день». Перенос НЕ переход стейт-машины
+(статус не меняется), поэтому у него свой путь: `rescheduleDeliverySlot` в сервисе, workflow
+`reschedule-order-delivery`, роут `GET/POST /admin/orders/:id/lifecycle/reschedule`. **Лог заказа
+научился двум родам записей** (`kind` = `status` | `slot` + слот до/после,
+`Migration20260906100000`). Двигать можно, пока заказ не уехал (new…assembled); доступность нового
+окна проверяет ТОТ ЖЕ домен слота, что предлагает окна покупателю в чате — окно, которого
+покупателю уже не предложат, продавец поставить не может. Заказу без слота (оформлен до T5.6) окно
+тем же диалогом НАЗНАЧАЕТСЯ. Гейты **К✅** (eslint 0, tsc 0 оба конфига, unit 582/582, http
+order-lifecycle-workflows 14/14 + order-routes 20/20, модульные 21/21, миграция на стенде,
+live-smoke расширен переносом — заказ №63, роут проверен живьём под админом: 400 без причины,
+200 с причиной; контракт + Dart api_client перегенерированы, mobile: analyze 0, buyer 132/132,
+ui_kit 54/54, build web ок) и **U✅** (19 кадров `docs/qa/screens/T5.6b`, отчёт
+`docs/qa/2026-09-05-T5.6b-ui.md`; кадры поймали три дефекта — danger-красная кнопка «Перенести»,
+«покупатель ждёт машину в текущее» у заказа без окна, «Текущее окно —» на ошибке — все исправлены).
+**Уведомления покупателю нет** (провайдера нет): эмитится `order_lifecycle.slot_changed`,
+подписчик-заглушка логирует, а диалог прямо говорит продавцу, что о новом окне сообщает он сам;
+попросить перенос сам покупатель в чате не может. На показе перенос теперь обещать МОЖНО —
+уведомление нет.
 
-## Бэклог — Фаза 2: Ядро домена (черновик, уточняется после Фазы 1)
-- [x] Модуль `company` (юрлица, сотрудники, лимиты) + модерация в админке — ГОТОВ (модели, links, workflows, API, админ-UI; детали в «Что сделано» и `docs/modules/company.md`).
-- [ ] Каталог: сегменты (эконом/комфорт/бизнес), модерация карточек, мульти-склад (город → склад → остаток). Дизайн — `docs/modules/catalog.md`; подзадачи:
-  - [x] Дизайн + модуль `catalog` (модель ProductCard, сервис, link, миграция, тесты).
-  - [x] Workflows модерации карточек (`create-product-card`, `submit-product-for-moderation`, `approve`/`reject`, `remoderate`) + subscriber повторной модерации на `product.updated`.
-  - [x] Store/admin API (фильтр по сегменту, остатки по городу/складу, очередь модерации) + OAS-фрагменты + перегенерация контракта и Dart-клиента.
-  - [x] Админ-UI: очередь модерации карточек (в стиле `routes/companies`) + widget сегмента/ед.изм./сертификатов на странице товара ядра.
-  - [x] Ограничение ≤5 складов/город (middleware на `POST /admin/stock-locations`) + сид региона KZ (KZT, Астана, склады, демо-каталог) + переключить `storefront/.env` на регион KZ.
-- [x] Заказ: статусная модель + `placeOrder` + переходы жизненного цикла + админ-UI — ГОТОВ (4/4 подзадачи; детали в «Что сделано» и `docs/modules/order.md`). Дизайн — `docs/modules/order.md`; подзадачи:
-  - [x] Дизайн + модуль `order-lifecycle` (модели `OrderLifecycle`/`OrderLifecycleEvent`, сервис с инвариантом переходов, link 1:1 к order ядра, миграция, тесты).
-  - [x] `placeOrder` (обёртка `completeCartWorkflow` + резерв) + переходы (confirm/assemble/ship/deliver/close/cancel над ядровыми workflow) + subscriber уведомлений (заглушка) + событие `order_lifecycle.status_changed` (свои `order.*` не эмитим — ядро уже шлёт placed/completed/canceled).
-  - [x] Store/admin API (store: оформление, свой статус; admin: очередь заказов, переходы) + OAS-фрагменты + перегенерация контракта и Dart-клиента.
-  - [x] Админ-UI: очередь заказов (`routes/order-queue`, стиль `routes/companies`) + переходы статуса + виджет статуса (`order.details.after`) на странице заказа ядра.
-  - [x] **Новое (2026-07-15, вскрыто при ревью дизайна мобилки):** способы получения `delivery|pickup|counter` + приёмка (код получения для доставки; накладная/скан для самовывоза) + свёрнутый workflow `place-counter-order` (продажа у окна) — ГОТОВО 2026-07-16 (см. «Что сделано»).
-  - [ ] **Новое (2026-07-15):** продажа у окна склада (POS, partner-app) — экраны продавца поверх готового `POST /admin/counter-orders` + выдача онлайн-заказов у окна. Дизайн-раунд: бриф готов 2026-07-18 (`mobile/design/partner/BRIEF.md`), ждёт прогона через claude.ai/design. Гэпы бэкенда 1/2/4/8 закрыты 2026-07-19 (`/admin/counter-carts` + оплата + поиск очереди + admin-контракт) — остались экраны Flutter после handoff'а (+ открытые гэпы 3/5/6/7 сверки по мере надобности).
-- [ ] Модуль `payment-kaspi` (за платёжным шлюзом Medusa). Дизайн — `docs/modules/payment-kaspi.md`; подзадачи:
-  - [x] Дизайн модуля (провайдер за ядровым `@medusajs/payment` + адаптер `KaspiClient` + мок; объём MVP — 100% предоплата).
-  - [x] Провайдер (мок) + регистрация под шлюзом ядра: класс `KaspiPaymentProvider` (все методы API), `KaspiClient`/`KaspiMockClient`, регистрация в `medusa-config.ts`, 16 unit-тестов, `pp_kaspi_kaspi` в БД.
-  - [x] Оплата в оформлении заказа: store-роуты init (collection+сессия Kaspi+QR) и статус/polling `/store/carts/:id/payment/kaspi`, предусловие предоплаты в `placeOrder`; OAS-фрагмент, контракт+Dart перегенерированы; 12 http-тестов.
-  - [x] Живой транспорт `KaspiHttpClient` (порт QR-флоу tapter-dev за адаптером) + webhook с обязательной HMAC-подписью + возвраты; 21 unit-тест на инжектируемом fetch без сети. Реальные ключи — от клиента.
-  - [ ] Отложенные сценарии: частичная предоплата, постоплата юрлиц (`scoring`+`SpendLimit`), оплата бонусами (`bonus`), пересчёт при частичном исполнении.
-- [x] Модуль `bonus` (лотовый леджер бонусов) — ГОТОВ 2026-07-17 (4/4 подзадачи; детали в «Что сделано» и `docs/modules/bonus.md`). Дизайн — `docs/modules/bonus.md`; подзадачи:
-  - [x] Дизайн + модуль: модели `BonusAccount`/`BonusTransaction`/`BonusConfig`, сервис (лоты FIFO, credit/spend/revert/expire, чистые функции начисления и потолка), links к customer и order, миграция, 10 тестов модуля.
-  - [x] Начисление: джоба + workflow `accrue-order-bonus` (условие closed + окно возврата от delivered; идемпотентность по link'у; сегментные проценты из product_card; событие `bonus.accrued` + subscriber-заглушка) — ГОТОВО 2026-07-16 (см. «Что сделано»).
-  - [x] Списание в оформлении: store API применения бонусов (`POST/DELETE /store/carts/:id/bonus`) + кредитные линии корзины ядра + согласование с предоплатой Kaspi (refresh collection, сброс сессий) + `GET /store/bonus` + OAS/контракт/Dart — ГОТОВО 2026-07-17 (см. «Что сделано»).
-  - [x] Сгорание: джоба `expire-bonuses` + события `bonus.expiring_soon`/`bonus.expired` + admin API конфига (`GET/POST /admin/bonus-config`, `GET /admin/customers/:id/bonus`) + админ-UI (Settings → Bonus Program + widget баланса на странице customer ядра) — ГОТОВО 2026-07-17 (см. «Что сделано»).
-- [x] Модуль `documents` — ГОТОВ 2026-07-21 (4/4 подзадачи: модель, рендер PDF/автовыпуск, store/admin API+экспорт 1С, админ-UI; детали в «Что сделано» и `docs/modules/documents.md`).
-- [x] Модуль `scoring` (рейтинг юрлица + лимит отсрочки) — MVP ГОТОВ 2026-07-21 (1+2a+2b+3: модуль, admin API, пересчёт из истории, админ-UI; подзадача 2c — применение к постоплате — отложена вместе с постоплатой). Детали в «Что сделано» и `docs/modules/scoring.md`.
-- [x] Модуль `estimator` — MVP ГОТОВ 2026-07-21 (1 дизайн+модуль, 2a store API+подборка, 2b admin CRUD нормативов+UI); ИИ-подзадача 3 (распознавание файлов/голос) отложена (ключи/бюджет, отдельный этап). Детали — `docs/modules/estimator.md`.
-- [ ] Модуль `logistics` — ДИЗАЙН-ПРОЕКТ готов 2026-07-21 (`docs/modules/logistics.md`, предложены MVP-границы); реализация (подзадачи 1–3) ждёт ОК владельца по объёму и ответов на открытые вопросы.
-- [x] Модуль `reviews` (рейтинг поставщика + доставки раздельно + диспут «проблема с заказом») — ГОТОВ 2026-07-21 (4/4 подзадачи: модуль, store API, admin API, админ-UI; детали в «Что сделано» и `docs/modules/reviews.md`).
+**Предыдущее обновление:** 2026-09-04 — **T5.6a: слот стало ВИДНО покупателю.** Окно приезда
+доехало до всех трёх мест, где его ищут: вставка «статус заказа» в ленте чата, карточка заказа и
+строка списка заказов кабинета — и на витрине, и в buyer. Бэкенд отдаёт слот КОДАМИ (во вставку
+`order_status` добавлены `delivery_date`/`delivery_window`; контракт и Dart-клиент перегенерированы),
+а подпись «6 сент., 13:00–17:00» собирает клиент: короткие месяцы — из словаря локали (ru/kk/en),
+часы окон — таблицей-зеркалом домена. Готовую фразу с бэкенда не берём: она пришла бы по-русски.
+**Кадр гейта U поймал дефект:** в списке buyer слот лежал второй строкой меты и обрезался на
+«13:00–…» (ширину меты отнимает бейдж статуса) — у `AppOrderListItem` появился проп `slotLabel`,
+строка идёт под блоком «номер + мета + бейдж» на всю ширину карточки. Гейты **К✅** (backend:
+eslint 0, tsc 0 оба конфига, unit 578/578, http 57/57, live-smoke расширен проверкой вставки —
+заказ №60; storefront: lint 0, prettier чист, build ок; mobile: analyze 0, buyer 132/132,
+ui_kit 54/54, build web ок) и **U✅** (22 кадра `docs/qa/screens/T5.6a`, отчёт
+`docs/qa/2026-09-04-T5.6a-ui.md`; кадры чата витрины — на живой модели). Не вошло: вставки
+«оформлено на такое-то окно» сразу после оплаты нет (слот в ленте появляется на вопрос про заказ),
+перенос слота — T5.6b.
+
+**Срез 2026-09-04:** **T5.6: у доставки появился слот — дата и окно приезда.**
+Покупатель больше не платит вслепую: `set_delivery` без слота возвращает список доступных окон и не
+пускает к счёту, выбранное окно едет в метаданных корзины и оседает в заказе
+(`delivery_date`/`delivery_window` у OrderLifecycle, `Migration20260905090000`). Домен слота — один
+на всех (`src/lib/logistics/delivery-slots.ts`): три окна (09–13 / 13–17 / 17–21), запас на сборку
+3 часа, горизонт неделя, время считается сдвигом UTC+5, а не `Intl` с таймзоной. Слот снимается с
+корзины ШАГОМ ВНУТРИ `placeOrderWorkflow` — поэтому доезжает одинаково и из чата, и из
+`POST /store/orders`; доступность окна на этом шаге не перепроверяется (покупатель уже заплатил).
+Продавец видит слот колонкой «Доставка» в очереди и строкой в карточке заказа; **колонка встала на
+место «Оформлен»** — двенадцатая колонка уводила «Действие» за край экрана, а «сколько заказ стоит»
+отвечает соседняя «В статусе». Гейты **К✅** (eslint 0, tsc 0, unit 576/576, http 67/67, модули
+26/26, миграция и live-smoke на стенде — заказы №57–59, контракт + Dart перегенерированы,
+`flutter analyze` 0) и **U✅** (14 кадров `docs/qa/screens/T5.6`). Не вошло: слот на экранах
+покупателя (T5.6a), перенос слота (T5.6b), слот у водителя (с E5).
+
+Срез до него: 2026-09-04 — **подготовка показа 7 сентября: документы физлицу и имя
+кнопки отгрузки.** Ассистент больше не обещает, что документы «не понадобятся»: по каждому заказу
+физлица есть счёт и накладная, фискального чека ККМ нет (правила, пример и пункт чеклиста в
+`src/lib/assistant/system-prompt.ts`; решение владельца «развилка Б» 2026-09-04). Кнопка экрана
+отгрузки — «Отгрузить» вместо «Передать водителю»: на показе доставка диспетчерская. Гейт К:
+lint 0 ошибок, tsc 0, unit 563/563; живой прогон фразы про чек — на репетиции 07.09.
+
+Предыдущий срез (E5 заморожен до показа) — **T5.2b: водитель везёт заказ сам — от погрузки до выдачи.**
+Взятый заказ теперь ведётся в приложении: `GET /driver/trips` отдаёт мои рейсы с точками и номером
+заказа, `/driver/trips/:id/status` двигает рейс (`loading → en_route → completed`),
+`/driver/trips/:id/stops/:stop_id/status` ведёт точку (`arrived` → `done` или `failed`),
+`/driver/trips/:id/gps` принимает пинги (позицию по-прежнему читает диспетчер polling'ом). Правило
+владения одно на все роуты (`lib/logistics/driver-trips.ts`), чужой рейс — 404, точка ищется только
+внутри своего рейса. **Главное по домену: у заказа появился актор `driver`** — вручение отмечает
+водитель, и в логе панели стоит его имя («водитель Азамат Жумабеков»), а не «администратор» без
+имени; для этого расширен `STATUS_ACTOR_TYPES` и проверочное ограничение
+(`Migration20260904121500`). Отметка `done` на delivery-точке ТРИГГЕРИТ `deliver-order` — отдельной
+кнопки «вручить» у водителя нет; `fulfillment_id` резолвит сервер, водитель про fulfillment'ы не
+знает. Для выдачи нужны три вещи: заказ отгружен складом, верный код покупателя и доказательство
+(фото или подпись) — код доказывает приёмку, фото доказывает состояние товара в споре. Причины
+отказа приходят кодом (`order_not_shipped` / `invalid_delivery_code` / `stops_open`), потому что
+водителю на объекте нужно знать, что делать. Водителю нельзя отменить рейс (это передача заказа —
+решение продавца, T5.2c) и нельзя завершить рейс с незакрытой точкой. Гейт **К✅** (eslint 0, tsc 0,
+unit 555/555, модули 26/26, http driver-trips 15/15 + регресс 58/58, миграция на стенде, live-smoke
+до `delivered` на заказе №28).
+
+**Предыдущее обновление:** 2026-09-04 — **T5.2a: у водителя появился пул заказов и кнопка «взять».**
+T5.2 разбит на три подзадачи (a — пул и claim, b — свои рейсы и точки, c — admin-слой под gig);
+закрыта первая. Заказы водителю больше не назначает диспетчер: `GET /driver/orders` показывает
+свободные заказы, `POST /driver/orders/:id/claim` заводит рейс на себя с точкой выдачи. Правило
+пула одно на список и на claim (`lib/orders/driver-pool.ts`) — иначе водитель видел бы в списке
+заказ, который на claim'е отвергается. В пул попадает ТОЛЬКО полностью собранный delivery-заказ с
+живым fulfillment'ом (из него же берётся склад загрузки рейса): частично собранный — решение
+продавца, а не водителя. Главное по данным: **гонку двух водителей ловит БД** — уникальный
+частичный индекс `trip_stop (order_id, type)`; проверки перед вставкой недостаточно, обе прошли бы
+одновременно, и заказ уехал бы дважды. Второй claim откатывает рейс-пустышку компенсацией workflow
+и получает 409 `already_taken`. **Контакты получателя видит только взявший:** в пуле улица, город и
+объём груза, а имя с телефоном уезжают снапшотом в точку рейса. Отгрузку (`assembled → in_delivery`)
+claim не трогает — товар передаёт человек на складе. Допуск к работе проверяет отдельный гейт
+(`require-active-driver`): токен выдаётся при любом статусе заявки, поэтому у `pending` — 403 с
+причиной. Гейт **К✅** (eslint 0, tsc 0, unit 555/555, модуль logistics 9/9, http driver-orders 8/8
++ регресс driver-auth 19/19 и logistics-routes 6/6, live-smoke на стенде до 409 второму водителю).
+
+**Предыдущее обновление:** 2026-09-04 — **T5.1a: продавец видит водителей и решает по заявкам.**
+Backend водителя (T5.1) получил рабочее место: раздел «Водители» в панели — очередь заявок
+(`routes/drivers/page.tsx`) и карточка (`routes/drivers/[id]/page.tsx`) по идиоме списков ядра.
+Экран открывается сразу очередью на проверку — предустановленным чипом «Ожидает проверки»: работа
+продавца здесь это разбор новых заявок, а допущенные и заблокированные — справочник. Сортировки на
+экране НЕТ осознанно: список отдаёт FIFO (кто подал раньше — тот выше), и контрол, которого сервер
+не принимает, хуже отсутствующего. «Допустить» у незаполненного профиля не показывается вовсе
+(сервер такую заявку отклонит), а карточка объясняет, чего не хватает. Главное по данным: «кто
+решил» уходит наружу ИМЕНЕМ сотрудника — admin-роуты отдают свой `AdminDriverView`
+(`api/admin/drivers/driver-admin-view.ts`) с `status_changed_by_name`, а `status_changed_by`
+(`usr_01H…`) не покидает сервер ни в панель, ни водителю (закреплено тестом). Попутно выделен
+`admin/lib/phone.ts`: номер всюду человекочитаемый, и поиск принимает его в том же виде — иначе
+продавец, скопировав номер со СВОЕГО экрана, ничего бы не нашёл. Гейты **К✅** (eslint 0, tsc 0,
+unit 555/555, http driver-auth 19/19) и **U✅** (16 кадров `docs/qa/screens/T5.1a`, стенд, учётка
+продавца).
+
+## Где мы
+
+- **Пивот 2026-07-22 реализован** (один магазин, покупатель = чат-ассистент): путь покупателя закрыт
+  end-to-end на backend + buyer (Flutter) + storefront (Next.js) — подбор → корзина → доставка →
+  Kaspi → заказ → трекинг → АВР. Ассистент на **Gemini** (решение владельца), tool-use loop,
+  attachments (карточка товара / Kaspi / статус заказа) в ответе `/store/assistant/chat`.
+- **Ассортимент — четыре категории** (решение владельца 2026-09-01): отделочные материалы,
+  электрика, сантехника, крепёж-метизы; у товара ровно одна категория. Общестрой (песок, щебень,
+  кирпич, арматура, блоки, пиломатериал, кровля, утеплитель) снят с публикации. В демо-каталоге
+  22 published-товара (8/5/5/4).
+- **Procurement** (закуп: поставщики/приходы/партии FIFO/себестоимость) + **ИИ-приёмка накладной**
+  (Gemini Flash Lite) работают; POS и самовывоз удалены.
+- **Дизайн:** все 3 макета владельца получены (standalone-HTML в корне: «Ассистент», «Курьер»,
+  «Продавец»), единая система (ink `1B2128` / accent `2563C4` / IBM Plex Sans). `ui_kit` ГОТОВ:
+  точные токены + компоненты + тёмная тема (E1 закрыт); цвета — только `AppColorTokens.of(context)`;
+  шрифт бандлится ассетами (офлайн). Скриншот-генератор галереи — `ui_kit/test/screenshots/`.
+- **Витрина (E3) готова:** чат-паритет с mobile (вставки: карточки товара, Kaspi QR с автополлингом,
+  статус заказа), локальная история диалогов, документы заказа (счёт с PDF), аккаунт/заказы на токенах.
+  Дизайн-система зеркалена в Tailwind (T3.1) — токены каналами в
+  `storefront/src/styles/tokens.css`, переменные `@medusajs/ui-preset` переопределены брендовыми
+  (поэтому непереведённые экраны стартера уже в бренде и в тьме), шрифт IBM Plex Sans бандлится
+  (`next/font/local`), тема — cookie `_sm_theme` + скрипт первого кадра, переключатель в футере.
+  Скриншотер гейта U для веба — `storefront/scripts/screenshots.mjs` (headless Chrome по CDP).
+- **Панель продавца (E4) начата:** админка Medusa несёт бренд — `backend/src/admin/styles/brand.css`
+  переопределяет переменные `@medusajs/ui-preset` (свет `html:root`, тьма `html.dark:root` — берём
+  специфичностью, ядровый CSS в бандле идёт позже) и бандлит IBM Plex Sans; один импорт красит и
+  ядровые экраны. Свои метрики — классами `sm-*` (утилиты Tailwind в собранном CSS дашборда
+  недоступны). Экран «Дашборд» тянет сводку дня из `GET /admin/dashboard` (счёт и пороги — на
+  бэкенде). Скриншоты гейта U для админки — `backend/scripts/admin-screenshots.mjs` + спеки в
+  `scripts/shots/`. **Оболочка (T4.1a):** роль пользователя — `user.metadata.role`
+  (`seller` / отсутствие = владелец); `lib/shell-mode.ts` ставит `data-sm-shell` на `<html>`, а
+  `styles/shell.css` задаёт порядок пунктов сайдбара всем ролям и прячет от продавца владельческие
+  разделы (акции, прайс-листы, все настройки кроме «Профиля»). Учётка продавца —
+  `src/scripts/create-seller-user.ts`. Это ВИД, а не права: admin-API одинаково доступно всем
+  admin-пользователям. Счётчики-бейджи у пунктов и своя верхняя панель по-прежнему за ядром —
+  остаток развилки №4.
+- **Водитель (E5) начат:** T5.1, T5.1a, T5.2a и T5.2b закрыты — модуль `driver`, actor_type
+  `driver`, вход по телефону на общей с покупателем учётной сущности, профиль о себе и допуск
+  решением продавца из раздела «Водители» в панели (`docs/modules/driver.md`), пул заказов и «взять
+  заказ», свои рейсы и ведение точек до `delivered` (`docs/modules/logistics.md`, разделы
+  «Gig-модель» и «Рейс водителя»). Серверная вертикаль водителя закрыта; чего нет: панель не
+  показывает, КТО взял заказ (T5.2c), контракта `/driver/*` в `openapi.json` (T5.3) и самого
+  приложения `apps/driver` (T5.4).
+- **Слот доставки (T5.6) есть в домене:** заказ знает дату и окно приезда, покупатель выбирает их в
+  чате до оплаты, продавец видит в очереди и в карточке. Чего нет: строки слота на экранах
+  покупателя (T5.6a), переноса слота после оформления (T5.6b), слота у водителя и в рейсе (с E5).
+- **Следующий шаг (2026-09-14, T10.19): владелец смотрит чат на стенде** (T10.19 развёрнут на
+  `https://stand.kenenai.com`); гейт U — кадрами со стенда (подбор на 10+ позиций, полоса корзины
+  свёрнута/раскрыта). Затем T10.19b (buyer + снятие `StoreAssistantProductCard` из контракта).
+  Локальный стенд ещё на старом коде — backend и витрину перезапустить после `npm run build`.
+- **Следующий шаг (2026-09-14): владелец смотрит новый вид покупателя на стенде.** Правка
+  T10.1e лежит в исходнике и проверена кадрами локально; на стенде её ещё НЕТ — нужен
+  `bash scripts/deploy.sh` (витрина вшивает шрифт и `NEXT_PUBLIC_*` в бандл на сборке). После
+  приёмки вида — **T10.1f**: та же гарнитура и масштаб в mobile buyer (`ui_kit`).
+- **Следующий шаг (после закрытия E12, 2026-09-06): ПОКАЗ 7 СЕНТЯБРЯ — осталось только то, что
+  требует человека.** Всё машинное сделано: стенд вычищен и приведён в вид рабочего дня, путь
+  показа зелёный (36/36), сценарий и регламент переписаны (`docs/qa/demo-script-client.md`).
+  **Что должен сделать человек до показа:** (1) **Д1 — живой микрофон**: запись с реального
+  микрофона в браузере и на телефоне, и вместе с ней ЕДИНСТВЕННЫЙ незакрытый вопрос голоса —
+  переварит ли модель контейнер `audio/webm`, который пишет Chrome (на машине нет ffmpeg, корпус
+  T12.3 прогнан только в wav; mobile пишет WAV и этого вопроса не имеет); (2) **Д2 — `apps/partner`
+  APK на реальном Android**; (3) **Д3 — репетиция голосом и глазами** по новому сценарию, включая
+  фразы ассистента про чек и про слот на живой модели. **Регламент подготовки стенда делается УТРОМ
+  показа, не накануне** — заказ, оставленный «в работе» вчера, к утру сам становится просроченным.
+  Порядок: Docker → БД → бэкенд с проверкой `GET /health` → витрина СБОРКОЙ (`build` + `start`,
+  не `npm run dev`) → `cleanup-demo-data` + `prepare-demo-stand` → три свежих заказа через
+  `STOP_AFTER` → полный `npm run demo:rehearse` («36 проверок, 0 дефектов» — иначе показ не
+  начинать). **После старта бэкенда НИЧЕГО не править в `backend/`:** watcher `medusa develop`
+  перезапускает сервер на любую правку файла, и минуту всё отвечает `ECONNREFUSED` (дважды оборвало
+  репетицию).
+  **Что осталось не сделанным вне показа** (на случай смены приоритета владельцем): E5 (водитель)
+  заморожен — T5.2c, T5.3, T5.4, T5.5; группа 3 очереди — таски ассистента T2.16, T2.17, T2.18,
+  T2.19, T2.21 (T2.15 и T2.20 заморожены вместе с юрлицами); в E4 — T4.3/T4.4 (перевод разделов на
+  макет), T4.5 (ревизия + гейты Ф и В), T4.15 (ИИ-приёмка: код готов, кадры не сняты), T4.18
+  (единица измерения — справочник домена); полный T10.5 (20 фраз × 4 языка, развилка «нужен ли
+  отдельный STT-провайдер») — T12.3 закрыл только сценарий показа.
+  **Долг E12:** ревью вторым агентом (`/code-review`) не запускалось — агентные вызовы в сессии
+  выключены; проверка сделана диффом, линтом, тестами, живым прогоном и кадрами.
+  **Правка от 08.09 (T12.23):** оплату на показе больше не подтверждают терминалом — панель →
+  Настройки → «Оплата Kaspi» → «Оплатить последний счёт». Раздел появляется только после
+  перезапуска бэкенда (новый роут регистрируется на старте).
+
+- **Справочно (действовало до 06.09): ДЕМО 7 СЕНТЯБРЯ, корректировка владельца 2026-09-04.** E5 (водитель)
+  заморожен целиком — T5.2c, T5.3 и T5.4 не трогаем до после показа. Активны девять пунктов
+  разворота (E10) плюс десятый: **доставка на показе диспетчерская** — приложения водителя нет,
+  продавец закрывает вручение кодом покупателя из панели (это уже работает:
+  `POST /admin/orders/:id/lifecycle/deliver` + `deliver-order-prompt.tsx`, код обязателен,
+  покупатель видит его в кабинете). План трёх дней и три развилки на владельца — `docs/PLAN.md`,
+  раздел «Демо 7 сентября». Порядок: **Д1 (05.09)** живой микрофон в браузере и на телефоне +
+  сокращённый T10.5 (единственная непроверенная вживую часть голоса); **Д2 (06.09)** — документы
+  физлицу и переименование кнопки СДЕЛАНЫ 04.09, остались partner APK на реальном Android и
+  чистка стенда (тестовая «ТОО Т214 Строй», демо-мусор); **Д3 (07.09)** репетиция сценария целиком
+  и регламент перезапуска — на ней же проверяем фразу ассистента про чек на живой модели. Группа 2 очереди добивки
+  (`docs/PLAN.md`, «Очередь добивки до E5») закрыта целиком; T4.13, T4.14 и T4.9a закрыты.
+  **Что осталось не сделанным вне E5** (на случай смены приоритета владельцем): группа 3 очереди —
+  таски ассистента T2.16, T2.17, T2.18, T2.19, T2.21 (T2.15 и T2.20 заморожены вместе с юрлицами);
+  в E4 — T4.3/T4.4 (перевод разделов на макет), T4.5 (ревизия + контрольный прогон, гейты Ф и В),
+  T4.15 (ИИ-приёмка: код готов, гейт U — кадры не сняты) и новый T4.18 (единица измерения —
+  справочник домена, выделен из T4.13 при закрытии).
+  В E10 не осталось тасков, которые делаются без человека и без решения владельца; свободное время
+  ушло на слот доставки: **T5.6 (закрыт 04.09)** — блокер №1 Ф-прогона 02.09, **T5.6a (закрыт
+  04.09)** — окно приезда видно покупателю в ленте чата, карточке заказа и списке кабинета, и
+  **T5.6b (закрыт 05.09)** — продавец двигает окно из панели, причина пишется в лог заказа.
+  На репетиции Д3 к списку проверок добавились фразы ассистента про слот. Перенос на показе
+  обещать можно; чего нельзя — автоматического уведомления о переносе (провайдера нет, о новом
+  окне покупателю звонит продавец) и переноса «по просьбе в чате» (инструмента у ассистента нет).
+  **Стенд перезапущен 05.09** под кадры T5.6b (бэкенд `npm run dev` после миграции лога заказа;
+  витрина осталась поднятой с 04.09). Ранее — **перезапуск 04.09** под кадры T5.6a: бэкенд поднят как `npm run dev` (было
+  `medusa start --types` — оно не подхватывало правки), витрина — `npm start` на свежей сборке.
+  Оба процесса оставлены поднятыми; сид кадров кабинета (`storefront/scripts/seed-cabinet-buyer.mjs`)
+  теперь кладёт слот в первый заказ, поэтому у стенда есть и заказ с окном, и заказ без него.
+  **Долг T5.1, T5.1a, T5.2a, T5.2b, T5.6, T5.6a и T5.6b:** ревью вторым агентом (`/code-review`, гейт К) не запускалось —
+  агентные вызовы в сессиях выключены; проверка сделана диффом, тестами, live-smoke и кадрами.
+  **Открыто владельцу (T5.2b):** фото/подпись на выдаче сделаны ОБЯЗАТЕЛЬНЫМИ — если это лишнее,
+  правка в одну строку валидатора.
+  ~~**Общий долг всех списков панели (найден в T5.1a)**~~ — закрыт T12.4 (06.09): общий компонент
+  `DataTableListError` + кнопка «Повторить» на всех наших списках. Историческая формулировка:
+  ошибка загрузки рисуется как «Ничего не
+  найдено» — у ядрового `DataTable` нет состояния ошибки; лечить одним таском на все экраны, а не
+  по одному.
+  **Долг T4.14a и T4.14b:** ревью вторым агентом (`/code-review`, гейт К для тасков про деньги и
+  статусы) не запускалось — агентные вызовы в этих сессиях были выключены; проверка сделана руками
+  (диффом, тестами и live-smoke). T4.14c — правка браузерного слоя панели, серверный код и контракт
+  не тронуты.
+  **T4.13 частично сдвинут T4.14c:** «панель всегда открывать на Дашборде» теперь держит общее
+  правило подмены адресов (корень `/app` и ядровый список заказов, а не только момент входа);
+  «Метаданные» и «JSON — N keys» на странице заказа остаются за T4.13.
+  **Долг T4.12:** видимая правка вида очереди (снята колонка «Доставка» с адресом, отступы ячеек
+  12 px) — на подпись владельцу вместе с гейтом В эпика; развилка №12 (нужен ли продавцу внешний
+  канал уведомлений или панели достаточно).
+  **Долг T4.9a:** ревью вторым агентом (`/code-review`, гейт К для тасков про деньги) не
+  запускалось — агентные вызовы выключены; проверка сделана диффом, тестами и live-smoke. Сводный
+  отчёт маржи по всему каталогу (дашборд-срез) не делался: таск закрыл вопрос «по этой позиции».
+  История ЦЕНЫ ПРОДАЖИ рядом с себестоимостью — T11.6.
+  **Долг T4.11:** Ф-прогон Асель по рабочему месту претензий (нужен персона-прогон) и
+  доказательства доставки — курьер, фото выгрузки, подпись получателя — приходят с E5.
+  Остаток E10 весь на людях и развилках: **T10.5** (прогон STT на языках) требует человека с
+  микрофоном; **третий пункт T10.17** — дыры ассортимента (фитинги D20 и тройники, водорозетки,
+  клавишные выключатели, корпус щитка, подвесы/лента/шпаклёвка) — решение владельца по закупу,
+  лежит в T7.2. **T10.16** закрывается перепрогоном обеих персон после T5.6 (слот доставки) и
+  решения по развилке №10 (документ физлицу). После них E10 закрывается.
+  **Ждёт владельца (гейт В) — T10.14 целиком:** экран «Цены и остатки» (правка в клетке, массовая
+  правка, обмен файлом, журнал) плюс три вопроса: обмен файлом только CSV, а не .xlsx; массовой
+  правки «поднять на N %» нет; складская позиция без карточки товара (`KZ-SAND-BB1`) не считается
+  нигде, кроме ядрового «Склада» (запрет в приёмке или отдельный показатель). Все остальные гейты
+  таска пройдены — К, U, Ф.
+  **Долг T10.14 (a и c):** Dart-клиент не перегенерирован — пути admin-only, мобильные их не
+  читают; вместе со следующим мобильным таском.
+  **Долг T10.12:** Ф-прогон персоной-сборщиком (задание с телефона, ни разу не открыв веб) и запуск
+  на реальном Android — кадры сняты рендером, на устройстве приложение не гоняли.
+  **Долг T10.13:** Ф-прогон персоной Мадины по пути «оплачен → собрали по категориям → передали
+  водителю» — на нём же проверяется, хватает ли отгрузке одного экрана.
+  **Долги гейтов, для которых нужен человек у устройства:** Ф по T10.4 (фото РУКОПИСНОГО списка с
+  телефона → корзина — код и конвейер готовы, нужен снимок), U по T10.15 и T10.3 (кадры карточек со
+  счётчиками, полосы корзины и записи с микрофона — нужен поднятый стенд), Ф по T10.6 в buyer.
+  **Долг Ф по T10.7–T10.9 закрыт 2026-09-02** прогоном T10.16 одним заходом по пути «подбор →
+  вход → оформление → документы» на новом ассортименте: T10.7 и T10.8 — Ф✅, у T10.9 прогон
+  вскрыл блокер про документ физлицу (развилка №10).
+  Из развилок владельца открытыми остаются №6 (STT-провайдер), №8 (судьба юрлиц после MVP) и
+  новая №10 (документ покупателю-физлицу: «счёт», «чек» или фискальный чек через ККМ);
+  №7 и №9 закрыты.
+- **Очередь добивок (детали к следующему шагу):** T4.14b синхронизация статусов, T4.14c ядровые
+  кнопки, T4.9a себестоимость, T4.13 язык (T4.10 склад заморожен — пересобран в T10.14).
+  **Для показа:** стенд на :9000 перезапущен 2026-09-03 после T4.14a и держит текущую сборку
+  (деньги всех оплаченных заказов списаны — «остатка к оплате» на ядровой странице больше нет); демо-данные претензий ставит
+  `npx medusa exec ./src/scripts/seed-demo-claims.ts`, кадры — `node scripts/admin-screenshots.mjs
+  --spec scripts/shots/t4-11.mjs --email seller@stroymarket.kz --password seller123456`.
+  Далее — **E5 водитель** — подтверждено двумя Ф-прогонами 2026-08-18: доставки как
+  домена нет, и это самая большая доля блокеров обеих сторон сразу (6 у покупателя, 2 у продавца).
+  T4.11a закрыт — «Споры» работают, можно идти в водителя. Ранее сюда упёрлись сразу две персоны. T4.2c закрыт по К и U, ждёт Ф-прогона Мадины и подписи владельца.
+  T2.11 закрыт по К — остаток в нём ждёт T5.6 (слот доставки) и решения владельца (предоплатный
+  счёт юрлицу); Ф-прогон персонами по T2.11 и T3.8 (Айгуль) не проводился. Параллельно у
+  владельца на руках **приёмка T2.4 и T2.9** (чек-листы в `docs/qa/2026-08-11-T2.*-owner.md`) и
+  подпись **T4.9 на реальных реквизитах**.
+  Затем: далее T4.10 склад, T4.11 споры,
+  T4.12 сводки управляющего, T4.13 чистка языка, T4.9a себестоимость и наценка. Между делом —
+  T8.5 (единицы цены в описании контракта). Owner-гейты (SMS-провайдер, нормы T7.1, bundle-id,
+  оболочка панели продавца) ждут; боевой каталог T7.2 ждёт данных владельца.
+
+## Активные решения владельца (полные — DECISIONS.md)
+
+- Ассистент и ИИ-фичи — на **Gemini**, не Claude.
+- Покупатель — ТОЛЬКО чат; классические каталог/чекаут buyer/storefront — вне активного пути.
+- Гостевой checkout ОТМЕНЁН 2026-08-26 (T10.8): подбор и корзина — без входа, оформление, оплата и
+  заказ — только для вошедшего по номеру; `cart_id`/`order_id` по-прежнему держит клиент.
+- Водитель — gig-actor, отдельные `/driver/*` и `apps/driver`; один магазин, один склад.
+- UI seller-first: минимум кликов, ноль технических id/JSON/metadata на экранах.
+- **Разворот 2026-08-25:** юрлица вне MVP (только физлица, флаг возвращает их после MVP);
+  вход покупателя — по номеру телефона, при оформлении просим авторизацию, а не анкету
+  (телефон + ФИО + адрес); интерфейс клиента — копия Gemini, голос и вложения штатны;
+  каталог — ровно 4 категории; заказ собирают группы по категориям, отгрузка ждёт «собран»;
+  на складе простота важнее полноты (вплоть до ухода от Medusa в этой части).
+
+## Журнал (новейшее сверху)
+
+- 2026-09-14: **вид покупателя приведён к эталону Gemini по типографике и масштабу** (правка
+  владельца по живому стенду: «вид и особенно шрифт — как у Gemini, масштаб странный, подсказки
+  снизу тоже»). **T10.1e**: витрина переехала с IBM Plex Sans на **Roboto** — гарнитуру, которую
+  сам Gemini подставляет вместо закрытого Google Sans (один переменный файл 488 КБ вместо четырёх
+  статических 820 КБ, казахская кириллица проверена по `cmap`). Отдельно вскрылось: **в Roboto нет
+  знака ₸** — цены рисовались шрифтом системы; добавлена вырезка одного глифа из Roboto Flex (1 КБ,
+  ось веса сохранена), и чтобы она доставалась браузеру, у обеих гарнитур выключен
+  `adjustFontFallback` (next дописывает подстановочное начертание внутрь `var(--font-roboto)`, и ₸
+  забирало оно). По масштабу: **шапка витрины на маршрутах `(chat)` снята** — она дублировала
+  оболочку чата (на телефоне две полосы подряд, на десктопе лишние 64px), марка переехала в рельс;
+  приветствие стало обычного веса и крупнее (28/40px), метка «СМ» и абзац-пояснение с пустого
+  экрана убраны; текст ленты и композера 16/26. Подсказки по решению владельца оставлены, но
+  компактные (36px) и НАД полем ввода. Заодно исполнено давнее правило брифа: микрофон и отправка
+  делят одно место — в пустом поле кнопки отправки нет, и композер на телефоне вернулся в ОДИН ряд.
+  Гейты **К✅** (lint 0, tsc затронутых 0, `npm run build` зелёный) и **U✅**
+  (`docs/qa/2026-09-14-T10.1e-ui.md`, 9 кадров). Решение — DECISIONS 2026-09-14, бриф эталона
+  обновлён. **Не сделано намеренно:** мобильный buyer остаётся на IBM Plex — паритет вынесен в
+  **T10.1f** и ждёт, пока владелец примет вид на стенде (гейт В).
+
+- 2026-09-14: **оплата с телефона больше не предлагает сканировать собственный экран** (вопрос
+  владельца). Выяснилось, что альтернативного способа оплаты не нужно: `qr_payload` и
+  `payment_url` — одна и та же ссылка `pay.kaspi.kz`, QR был способом перенести счёт на ДРУГОЕ
+  устройство. **T12.24**: на узком экране и в приложениях первична кнопка «Оплатить в Kaspi»
+  (универсальная ссылка поднимает приложение), QR — под «Оплатить с другого устройства»; на
+  широком экране витрины всё как было. Рядом — «Отправить/скопировать ссылку» (заказывает прораб,
+  платит бухгалтер) — она и заменяет ушедший QR. Возврат из Kaspi ловится сразу
+  (`visibilitychange` / `AppLifecycleState.resumed`), а не через тик поллинга. Раскладка общая для
+  чата и чекаута на обеих платформах; заодно убрана заглушка мобильного чекаута, где ссылка и
+  QR-payload печатались сырым текстом. Бэкенд и контракт не тронуты. Гейт **К✅** (витрина: eslint
+  0, build зелёный; mobile: analyze 0 новых, buyer 132/132, ui_kit 54/54). **Вскрыто и заведено
+  (T12.25):** мок отдаёт `payment_url` на настоящий kaspi.kz — с телефона это 404, поэтому на
+  стенде оплату всё ещё подтверждают кнопкой в панели.
+
+- 2026-09-06: **E12 «Демо 7 сентября» закрыт целиком — стенд и сценарий готовы к показу.** Шесть
+  тасков за сессию. **T12.1** — чистка стенда: маски `cleanup-demo-data.ts` расширены сидами кадров
+  кабинета, смоуками T3.9/T3.11 и доменом `@stroymarket.test`, заявки компаний удаляются по явным
+  маркерам названия; снесено 8 заказов, 12 покупателей, 14 документов, 11 резервов. **T12.2** —
+  репетиция: новый `scripts/demo-rehearsal.mjs` проходит пять актов показа по живым HTTP-роутам,
+  **36 проверок, 0 дефектов** (отчёт `docs/qa/2026-09-05-T12.2-rehearsal.md`); поймала, что
+  dev-бэкенд перезапускается на любую правку файла и минуту отвечает `ECONNREFUSED`, и что
+  node-клиенты обязаны ходить на `127.0.0.1` (localhost резолвится в `::1`). **T12.3** — корпус
+  распознавания речи (`smoke-stt-corpus.ts`, 14 фраз, синтез SAPI): 13 из 14 без потери смысла,
+  язык верный везде, числа приходят цифрами; ошиблось казахское числительное — **на показе вести
+  диалог по-русски** (отчёт `docs/qa/2026-09-05-T12.3-stt.md`). **T12.4** — списки панели: блок
+  ошибки вынесен в общий `DataTableListError` и ДОБАВЛЕН трём экранам, где его не было (модерация
+  товаров, водители, компании); подпись кнопки стала общей `common.retry`. **T12.6** — стенд как
+  рабочий день: `prepare-demo-stand.ts` доводит историю до конца доменным путём (у каждого заказа
+  причина в логе), закрывает залежавшиеся претензии и оставляет свежие в работе — было «открытых 26,
+  просрочено 26, старейший 592 ч» и 2 претензии по 21 дню, стало «3 в работе, просрочен 1, претензий
+  0»; по дороге найдены и вылечены два расхождения старых фикстур (ядро отгрузило и вручило, наш
+  статус стоял на «Собран»). **T12.5** — сценарий показа переписан под стенд 06.09: старый вёл в
+  стену (его центральный пример «бетонная площадка» больше не проходит — песок и щебень сняты
+  01.09), убран акт про юрлицо, добавлены вход по телефону, окно доставки и перенос, сборка по
+  категориям, экран сборщика, отгрузка, «Цены и остатки», и написан регламент подготовки стенда.
+  Гейты: К✅ (eslint 0 ошибок, tsc 0 оба конфига, unit 582/582) U✅ (13 кадров, отчёты
+  `2026-09-05-T12.4-ui.md` и `2026-09-05-T12.6-ui.md`).
+  **Внештатно:** в середине сессии упал Docker Desktop и утащил Postgres — бэкенд ушёл в
+  бесконечное `Pg connection failed`, витрина легла следом. Docker поднят, БД и Redis вернулись,
+  бэкенд перезапущен, витрина пересобрана и поднята `npm start`. Симптом и лечение — в «Плане Б»
+  сценария показа.
+
+- 2026-09-04: **T5.6a — слот доставки на экранах покупателя.** Окно приезда стало видно там, где
+  его ищут: строка «Доставка: 6 сент., 13:00–17:00» во вставке «статус заказа» ленты чата, в
+  карточке заказа и в строке списка заказов кабинета — витрина и buyer одинаково. Бэкенд отдаёт
+  слот кодами (в `order_status` добавлены `delivery_date`/`delivery_window`, OAS + контракт + Dart
+  перегенерированы), подпись собирает клиент: месяцы — из словаря локали (ru/kk/en), часы окон —
+  таблицей-зеркалом домена. Кадр гейта U поймал обрезанное окно в списке buyer («13:00–…») —
+  строка вынесена из меты в отдельный проп `slotLabel` компонента `AppOrderListItem`, на всю
+  ширину карточки. Гейты К✅ / U✅ (22 кадра, отчёт `docs/qa/2026-09-04-T5.6a-ui.md`).
+
+- 2026-09-04: **Два пункта дня 2 сделаны досрочно: документы физлицу и имя кнопки отгрузки.**
+  Блокер 2 Ф-прогона T10.16 закрыт по решению «развилка Б» — ассистент больше не может сказать,
+  что документы «не понадобятся»: в каноне три положительных правила (документы выпускаются
+  ВСЕГДА и физлицу тоже; счёт — по УЖЕ оплаченному заказу, поэтому «счёт по вашему заказу», а не
+  «счёт к оплате»; фискального чека ККМ нет — чек об операции покупатель видит в Kaspi), плюс
+  пример 7 «покупатель-физлицо спрашивает про чек» и пункт 7 чеклиста. Типы документов не тронуты
+  (`invoice`/`waybill`). Кнопка экрана отгрузки — «Отгрузить» вместо «Передать водителю» (ru + en,
+  ключ `shipping.ship`); водителя в текстах экрана больше нет. Гейт К: lint 0 ошибок (44 warning,
+  прежние), tsc 0, unit 563/563 (+8). **Живого прогона против Gemini не было** — стенд на :9000
+  погашен и ключ в шелле недоступен, фраза про чек проверяется на репетиции 07.09.
+  Ревью вторым агентом не запускалось (агентные вызовы в сессии выключены) — правка текстовая:
+  инструкция, локали и комментарии, серверной логики и контракта не касается.
+
+- 2026-09-04: **Корректировка владельца — демо 7 сентября, водитель вне фокуса.** Фокус сужен до
+  девяти пунктов разворота (E10) плюс диспетчерская доставка: приложения курьера нет, вручение
+  закрывает продавец кодом покупателя из панели (существующий путь `deliver-order`, писать нечего —
+  только переименовать кнопку «Передать водителю»). E5 заморожен: T5.2c, T5.3, T5.4 не берём.
+  Три развилки закрыты владельцем в дешёвую сторону: категория остаётся «Отделочные материалы»,
+  документ физлицу — счёт и накладная (развилка №10 закрыта), обмен файлом на складе — только CSV.
+  План трёх дней — `docs/PLAN.md`, раздел «Демо 7 сентября»; решения — DECISIONS 2026-09-04.
+  Единственная непроверенная вживую часть девяти пунктов — запись с микрофона (распознавание
+  проверено, сама запись в браузере и на телефоне — нет); с неё начинается день 1.
+- 2026-09-04: **T5.2a — пул заказов водителя и «взять заказ»**. T5.2 разбит на a/b/c, закрыта
+  первая подзадача. `GET /driver/orders` — свободные заказы FIFO, `POST /driver/orders/:id/claim` —
+  рейс на себя с точкой выдачи (workflow `claim-order-for-driver`: createTrip+addStop с
+  компенсацией, событие `trip.claimed`). Правило пула одно на список и на claim
+  (`lib/orders/driver-pool.ts`): только `assembled` delivery-заказ с живым fulfillment'ом (из него
+  берётся склад загрузки). Гонку двух водителей ловит уникальный частичный индекс
+  `trip_stop (order_id, type)` (`Migration20260904074116`); нарушение переводится в код
+  `ORDER_STOP_TAKEN` → 409 `already_taken`. Контакты получателя в пуле не светятся — уезжают
+  снапшотом в `trip_stop.address_snapshot` при claim'е. Допуск к работе — отдельный middleware
+  `api/utils/require-active-driver.ts` (403 с причиной продавца у `pending`/`blocked`). Гейт К✅
+  (eslint 0, tsc 0, unit 555/555, модуль logistics 9/9, http driver-orders 8/8 + регресс
+  driver-auth 19/19 и logistics-routes 6/6, live-smoke на стенде).
+- 2026-09-04: **T5.1a — раздел «Водители» в панели**. Очередь заявок и карточка водителя
+  (`admin/routes/drivers/*`) по идиоме списков ядра: чип допуска (предустановлен «Ожидает
+  проверки»), поиск по номеру/ФИО, статус точкой в строке, решения в «…»-меню строки и шапки
+  карточки; диалог «Закрыть доступ» требует причину — водитель видит её в приложении. Admin-роуты
+  переведены на свой `AdminDriverView`: наружу идёт `status_changed_by_name` (имя решившего),
+  `status_changed_by` не отдаётся вовсе. Выделен `admin/lib/phone.ts` (форматтер переехал из
+  `lib/login-codes.ts`, добавлено приведение строки поиска к канону номера). Пункт сайдбара — после
+  «Модерации товаров» (`styles/shell.css`), i18n `drivers.*` (en-канон + ru). Гейты К✅ (eslint 0,
+  tsc 0, unit 555/555, http driver-auth 19/19) и U✅ (16 кадров `docs/qa/screens/T5.1a`).
+- 2026-09-04: **T5.1 — actor `driver`: вход и профиль водителя**. Новый модуль `driver` (модель
+  `Driver` с уникальным телефоном, миграция `Migration20260904063339`), вход по телефону поверх
+  общего провайдера `phone` (шаги `verify-driver-otp` → `register-driver` →
+  `issue-driver-session`, workflow `verify-driver-otp`), профиль о себе (`GET|POST /driver/me`),
+  очередь заявок и решение в панели (`GET /admin/drivers`, `GET /admin/drivers/:id`,
+  `POST /admin/drivers/:id/status`, workflow `set-driver-status` + событие
+  `driver.status_changed`), свой CORS-middleware для префикса `/driver/*`. Одна учётная сущность
+  на человека (customer_id и driver_id рядом), допуск решает продавец, заблокированный водитель
+  входит и видит причину. Гейт К✅ (unit 7/7, модуль 11/11, http 18/18, регресс входа покупателя
+  12/12, live-smoke). Решения — DECISIONS 2026-09-04; доки — `docs/modules/driver.md`.
+  Контракт и Dart-клиент — следующим таском T5.3. Экран «Водители» в панели — новый таск T5.1a.
+- 2026-09-04: **T4.13 — язык и техмусор в панели**. Словарь панели добит ключами ядра (+206) и
+  множественными формами русского (`_few`/`_many` — их отсутствие и было главной причиной
+  английского на экране при переведённом ключе); зашитые в код ядра надписи подменяет
+  `lib/shell-text.ts` (точное совпадение узла, только в русской панели; дата — через `lib/date.ts`);
+  карточки «Метаданные» и «JSON» и строки «MID/HS код» убраны `styles/core-noise.css`. Подписи
+  пагинации сведены в `common.pagination` и выровнены с ядром, пустые списки «Модерации» и
+  «Компаний» заговорили, плательщик без имени стал телефоном, а не `…@phone.invalid` (правило
+  в `order-lifecycles/rows.ts` и `orders/[id]/lifecycle/card/card.ts`, описание в контракте
+  обновлено). Гейты К✅ U✅. Единица измерения в приходе вынесена в T4.18 (справочник домена).
+  Разбор «откуда берётся английский» — DECISIONS 2026-09-04.
+- 2026-09-03: **T4.14b — догон статуса за ядром**. Пять подписчиков `sync-lifecycle-on-*` на
+  ядровые события сборки/отгрузки/вручения/отмены/завершения двигают наш цикл через workflow
+  `sync-order-lifecycle` (шаг `steps/sync-lifecycle-status.ts` + планировщик кратчайшего пути
+  `modules/order-lifecycle/sync-path.ts`). Один шаг на весь путь — число хопов заранее неизвестно,
+  а workflow-sdk не умеет динамическое число шагов; каждый хоп эмитит тот же
+  `order_lifecycle.status_changed` (`emitEventStep` принимает массив). Эхо своих же workflow гасится
+  сравнением состояний, недостижимая цель — предупреждением, а не выдуманным переходом. Инвариант
+  кода получения при догоне снят осознанно (DECISIONS 2026-09-03). Общие правила вынесены в
+  `lib/orders/{assembly-status,order-of-fulfillment}.ts`. Гейт К✅ (unit 508/508, http
+  order-lifecycle-workflows 8/8, регресс order/assembly/bonus/kaspi/documents/dashboard/logistics/
+  scoring/reviews 109/109, модули order-lifecycle 17/17). Live-smoke: №32 отгружен ядровым
+  эндпоинтом → сам стал «В доставке»; №29 (уже разъехавшийся) догнан двумя хопами до «Доставлен».
+
+- 2026-09-03: **T4.14a — автосписание Kaspi**. `placeOrder` после создания заказа гоняет ядровый
+  `capturePaymentWorkflow` по несписанным платежам (шаг `steps/capture-order-payment.ts`, выборка
+  `lib/payments/pending-captures.ts`, отчёт-починка `scripts/check-order-captures.ts`). Шаг не
+  компенсируется и не роняет оформление — деньги уже у эквайера. Грабля: у `Payment` нет
+  `authorized_at`, запись создаётся уже по факту авторизации (первая версия фильтра молча не
+  находила ничего). На стенде списаны 32 старых платежа: у №24 `captured_amount = total = 242 000`,
+  коллекция `completed`. Гейт К✅ (unit 500/500, kaspi 21/21, order 22/22, bonus+dashboard 19/19,
+  documents 10/10). T4.14 разбит: b — синхронизация статусов, c — ядровые кнопки и второй «Заказы».
+
+- 2026-09-03: **T4.11 — гейт U по рабочему месту претензий** (отчёт
+  `docs/qa/2026-09-03-T4.11-ui.md`, 27 кадров `docs/qa/screens/T4.11/`). Набор снят заново одной
+  сборкой вместо прерванного прогона 2026-08-18, добавлены «загрузка» и «ошибка», убраны кадры
+  `*-kk` (у админ-ресурсов казахского нет). Пять новых дефектов закрыто: ожидание в человеческих
+  единицах (`admin/lib/waiting.ts`, «18 дн» вместо «443 ч», + юнит-тест, тот же помощник на плитке
+  модерации), молчащий счётчик у закрытых претензий, метка «просрочено» в своей колонке, целые
+  подписи статуса и последствия, «Ничего не найдено» под пустым чипом (и в «Отзывах»). Правлены
+  спека съёмки (ввод в drawer адресный) и демо-данные: жалоба берётся из состава своего заказа.
+  Гейты К✅ U✅; остаток таска — Ф-прогон Асель и proof доставки с E5. Находки для соседей: дубль
+  «Плательщик»/«Почта» в карточке заказа → T4.13, автор перехода «администратор» → T4.12,
+  демо-заказы под новый ассортимент → T7.2.
+
+- 2026-09-03: **T10.18 — подсказки входа под четыре категории** (отчёт
+  `docs/qa/2026-09-03-T10.18-ui.md`, кадры `docs/qa/screens/T10.18/`). Три чипа пустого чата —
+  обшивка ГКЛ, электрика в комнате, разводка воды в санузле — одни и те же на витрине (ru/kk/en) и
+  в mobile buyer (ru/kk); формулировка задачей, а не товаром. Взяты не с потолка: это легенды
+  Ф-прогонов T10.16/T10.17, уже прошедшие подбор. Тесты и генератор кадров buyer, тапавшие по
+  снятому чипу «Где мой заказ?», переведены на новый третий чип, голдены T2.2 перегенерированы.
+  Гейты К✅ U✅. E10 исчерпал таски, которые делаются без человека и без решения владельца.
+
+- 2026-09-02: **T10.6d — одна точка входа в навигацию на мобильном** (отчёт
+  `docs/qa/2026-09-02-T10.6d-ui.md`, кадры `docs/qa/screens/T10.6d/`). Шапка витрины на
+  `(chat)`-маршрутах (чат и кабинет) больше не показывает кнопку бокового меню — навигацию открывает
+  только «☰» панели диалогов, в которой все прежние пункты и так есть. Вариант «панель открывается
+  кнопкой шапки» отклонён: состояние панели клиентское, серверной шапке пришлось бы тянуть контекст
+  ради кнопки, ненужной на десктопе. Кадры бокового меню прежних тасков (`t3-10`, `t3-11`) сняты
+  с `/chat` на `/account`. Гейты К✅ U✅. Побочная находка кадров — подсказки входа зовут за товарами
+  вне четырёх категорий, заведён T10.18.
+
+- 2026-09-02: **T10.17 — комплектность подбора по категориям и пометка запаса; гейт Ф ПРОЙДЕН**
+  (отчёт `docs/qa/2026-09-02-T10.17-focus.md`, стенограмма `docs/qa/2026-09-02-T10.17/elec.md`).
+  В инструкцию ассистента добавлена секция `<комплектность_набора>` — явный список сопутствующего
+  ПО КАТЕГОРИЯМ (электрика, сантехника, ГКЛ, стяжка, крепёж), проход по нему целиком перед показом
+  набора, диаметр как часть комплектности (труба D20 + фитинги D25 не собираются); правило запаса
+  усилено (количество больше расчётного — со словом «запас» рядом с расчётной цифрой). Оба правила
+  в чеклисте и в примере 6; живой контроль — `src/scripts/smoke-assistant-kit.ts`. Перепрогон Д3
+  «электрика в двушке»: 4 хода, 0 блокеров, 4,8/5 (было 4,0) — розетки и выключатели названы
+  ПЕРВЫМ ответом, дыры ассортимента честно тоже, корзина сошлась с базой позиция в позицию.
+  Гейты К✅ Ф✅. Пункт 3 таска (дыры ассортимента) — у владельца, записан в T7.2.
+
+- 2026-09-02: **T10.14e + перепрогон кладовщика — гейт Ф T10.14 ПРОЙДЕН** (отчёт
+  `docs/qa/2026-09-02-T10.14de-focus.md`; решения — DECISIONS 2026-09-02, последняя запись).
+  Пять «мешает» и косметика закрыты: склад у правки остатка в журнале, подпись автора правилом на
+  чтении (`api/admin/actor-label.ts` — почта учётки превращается в логин, и у уже записанных
+  строк), ядровый «Склад» скрыт у продавца, мешок «Вне ассортимента» со счётчиками у всех чипов
+  категорий, плитка дашборда считает ТОТ ЖЕ срез, что экран, и ведёт на него с чипом «на исходе»,
+  ядровый блок `layout.*` переведён. Перепрогон персоны Данияра: 6 задач из 6 без подсказок,
+  0 блокеров, 4/5 (было 3/5); стенд возвращён в исходные числа. Гейты К✅ Ф✅ — у T10.14 остался
+  только гейт В (владелец) и три вопроса к нему.
+
+- 2026-09-02: **T10.14b — экран «Цены и остатки»** (`docs/modules/catalog.md`, раздел «Экран “Цены
+  и остатки”»; отчёт гейта U — `docs/qa/2026-09-02-T10.14b-ui.md`). Правка цены и остатка прямо в
+  клетке, массовая правка выделенных и журнал «кто, когда, было → стало»; набранное остаётся
+  черновиком экрана до «Применить» (партия применяется целиком либо не применяется вовсе), склад
+  выбирается сверху и его смена отменяет набранные остатки. Отказ партии показываем списком позиций
+  под таблицей — для этого запись идёт голым `fetch` (js-sdk теряет `issues` из тела 400). Гейт U
+  вскрыл пять дефектов раскладки, все закрыты; главный — ядровые sticky-колонки `DataTable` при
+  `table-layout: fixed` накрывают соседнюю колонку. Гейты К✅ U✅.
+
+- 2026-09-02: **T10.14a — цены и остатки одним ресурсом** (`/admin/price-stock` + журнал
+  `PriceChange`; развилка №9 по дефолту «а» — источник правды остаётся ядро). Партия правок пишется
+  целиком либо не пишется вовсе, остаток уходит в ядро дельтой от снимка, срез принимает разрез по
+  складу. Гейт К✅.
+
+- 2026-09-02: **T10.12 — приложение сборщика ролью в `apps/partner`** (DECISIONS 2026-09-02;
+  `docs/modules/assembly.md`, раздел «Приложение сборщика»). Развилка №7 закрыта владельцем.
+  Поднято приложение персонала: вход сотрудника (актор `user`, слой `staff_*` в core со своим
+  ключом сессии), очередь заданий своей категории, задание с отметками по позициям и одной главной
+  кнопкой внизу. Отметки переживают потерю сети: очередь на устройстве + наложение на задание,
+  закрытие задания без сети запрещено. Гейт U нашёл содержательный дефект: очередь FIFO поднимала
+  собранные задания прошлых смен НАД сегодняшней работой — фильтром по умолчанию стал «В работе».
+  Dart-клиент перегенерирован (+`AssemblyClient`). Гейты К✅ U✅, живой прогон пройден; Ф — долг.
+
+- 2026-09-01: **T10.11 — сборка заказа по категориям** (DECISIONS 2026-09-01, пятая запись дня;
+  `docs/modules/assembly.md`). Модуль `assembly`: оплаченный заказ распадается на задания по
+  категориям (группа = категория), сборщик отмечает позиции с телефона, закрытие последнего задания
+  само доводит цикл заказа и передаёт набранное в ядровый fulfillment. Нехватка — рабочее состояние
+  с флагом отгрузке, а не блокировка. Роль `picker` и группа живут в `user.metadata` (прав в
+  OSS-ядре нет). Грабля, пойманная тестом: проверки идемпотентности в коде мало — два почти
+  одновременных `order.placed` дали по два задания на категорию, спасает уникальный индекс в БД.
+  Гейт К✅, живой прогон на стенде пройден. Долг: Dart-клиент — вместе с T10.12.
+
+- 2026-09-01: **T10.10 — четыре категории каталога** (DECISIONS 2026-09-01, четвёртая запись дня;
+  `docs/modules/catalog.md`). Ядровые `product_category`, у товара ровно одна; источник правды —
+  `src/lib/catalog/categories.ts`, связывание по `handle`. Владелец решил: категорий ровно четыре,
+  ассортимент сузился до них — общестрой (8 позиций) снят с публикации скриптом
+  `apply-catalog-categories.ts`, демо-каталог наполнен электрикой, сантехникой и метизами
+  (22 published-товара, 8/5/5/4). Панель получила колонку и фильтр по категории, ассистент —
+  параметр `category` и правило группировать список. Грабли ядра: `listProductCategories` без
+  `select` отдаёт строки БЕЗ `handle`, карта handle → id молча пустеет. Гейты К✅, В — ждёт
+  владельца. Побочный долг: легенды Ф-прогонов про фундамент устарели (T10.16).
+
+
+- 2026-09-01: **T10.4b — скрепка в композере витрины** (DECISIONS 2026-09-01, вторая запись дня).
+  Чипы с превью НАД полем внутри пилюли, отказ называет причину, превью отправленного — в памяти
+  вкладки. Ход без потока переехал на route handler `app/api/assistant/chat`: у server action'ов
+  Next тело ограничено 1 МБ против 12 МБ вложений. Попутно снят дефект T10.4a — пустая прошлая
+  реплика покупателя больше не отбивается валидатором. Гейты К✅ U✅ (13 кадров).
+
+- 2026-09-01: **T10.4a — покупатель может прислать список файлом** (`docs/modules/assistant.md`,
+  DECISIONS 2026-09-01). `files[]` в теле хода: фото (jpeg/png/webp/heic) и PDF в base64, вложение
+  идёт ХОДОМ (а не отдельным роутом-разборщиком) и живёт РОВНО один ход — отсюда правило промпта
+  «разобранное ВЫПИСАТЬ словами в ответ», иначе на следующем ходе на фото не сослаться. Таблицы
+  (XLSX/CSV/DOCX) отклоняются ОТДЕЛЬНОЙ ошибкой: цифры сметы берёт парсер T11.1, а не картинка.
+  Пределы 8 МБ на файл / 12 МБ на ход / 3 файла (инлайн-запрос Gemini ограничен 20 МБ); файл нигде
+  не сохраняется; в промпте прямо сказано, что текст внутри вложения — данные, а не команды.
+  Гейт К✅ (unit 294, http ассистента 27/27, контракт 130 путей + Dart; живьём — PDF со списком из
+  5 позиций → 5 карточек и цены).
+
+- 2026-09-01: **T10.4c — скрепка в композере mobile buyer** (`docs/modules/assistant.md`,
+  DECISIONS 2026-09-01). Скрепка спрашивает источник (камера / галерея / файл) листом в приложении —
+  в `ui_kit` его не место, у витрины такого выбора нет. `image_picker` для камеры и галереи (сжатие
+  до 2048 px), уже имевшийся `file_picker` для файла; системный выбор вынесен за границу
+  `ChatFilePicker`, поэтому путь «скрепка → чип → отправка» и все отказы прогоняются виджет-тестами.
+  Правила приёма зеркалят серверные (`chat_file.dart` + `chat_file_selection.dart`), добавлена
+  мобильная причина `denied` — отказ в доступе к камере, которого у витрины быть не может.
+  В `ui_kit` — `AppAttachmentThumb`/`AppAttachmentChip` и слоты `above`/`allowEmpty` у `AppInputBar`.
+  Гейты К✅ U✅ (18 кадров, `docs/qa/2026-09-01-T10.4c-ui.md`); Ф остался долгом — нужен настоящий
+  снимок с телефона. Гейт U нашёл и снял три дефекта, главный — отсутствие iOS-разрешений на камеру
+  и фото (приложение убивалось бы при первом обращении).
+
+- 2026-08-26: **T10.8 — оформление просит вход, а не анкету** (`docs/modules/assistant.md`,
+  DECISIONS 2026-08-26). Гейт входа стоит на трёх инструментах оформления
+  (`set_delivery`/`checkout_kaspi`/`place_order`) и на профиле: гость получает `login_required` и
+  вставку `auth_prompt` — карточку с кнопкой входа (единственная вставка ленты с действием; вход
+  живёт на отдельном экране, репликой его не сделать). Общий слой — `tools/buyer-identity.ts`:
+  чтение профиля, список недостающих полей, запись названного обратно (ФИО в учётку, адрес — в
+  адресную книгу как адрес по умолчанию) и служебный `cart.email` из номера
+  (`<цифры>@phone.invalid`, RFC 2606) — так закрыт хвост T10.7 без правки ядра. Корзина гостя
+  переезжает на вошедшего в оркестраторе (`cart-ownership.ts`, ядровый
+  `transferCartCustomerWorkflow`). Клиенты: карточка входа в buyer и на витрине, обе возвращают в
+  чат и сами продолжают диалог. 238 unit, http-спека ассистента 6/6, контракт + Dart-клиент
+  перегенерированы; живой прогон против Gemini: до входа адрес не собирается, после — заказ №50
+  оформлен на покупателя, повторный заказ спрашивает только подтверждение адреса. Ф не проводился.
+
+- 2026-08-26: **T10.7 — вход по номеру телефона** (`docs/modules/auth-phone.md`). Бэкенд: провайдер
+  `auth-phone` под ядровым auth-модулем рядом с `emailpass`; выдача кода — workflow
+  `request-phone-otp` (у провайдера ядровые роуты `/auth/customer/phone[/register]` закрыты, иначе
+  токен выдавался бы по одному номеру), проверка и сессия — `verify-phone-otp`. Учётка создаётся
+  ядровым `createCustomersStep` + `setAuthAppMetadataStep`: `createCustomerAccountWorkflow` требует
+  email, а в профиле MVP его нет. 24 unit + 12 http-тестов, живой смоук на стенде прошёл.
+  Клиенты: экран входа по номеру в buyer и на витрине (два шага, таймер «выслать снова», подсказка
+  кода стенда), номер показывается человекообразно, канон `+7XXXXXXXXXX` остаётся ключом API.
+  Панель: Settings → «Коды входа» (dev-канал). Контракт и Dart-клиент перегенерированы.
+  **Хвост:** ядровое оформление требует `cart.email` — решается в T10.8 (сейчас ассистент всё ещё
+  спрашивает email, а классический чекаут buyer без email уводит в чат).
+  Попутно: полный http-прогон (теперь 22 спеки) упирался в heap OOM на 21-й — в
+  `test:integration:http`/`:modules` поднят `--max-old-space-size=8192`.
+- 2026-08-25: **разворот MVP — десять пунктов владельца разложены в эпик E10** (`docs/PLAN.md`),
+  решения целиком — DECISIONS 2026-08-25. Кратко: вход по номеру телефона вместо email/пароля
+  (T10.7) и авторизация вместо анкеты при оформлении (T10.8); юрлица заморожены за флагом (T10.9) —
+  T2.15 и T2.20 сняты с очереди, решение 2026-08-18 про предоплатный счёт юрлицу приостановлено;
+  интерфейс клиента переделывается в копию Gemini (T10.1) с кабинетом-«проектами» (T10.6), голосом
+  (T10.2/T10.3, прогон на смешанной речи — T10.5) и вложениями фото/файл (T10.4); каталог делится на
+  четыре категории — отделка, электрика, сантехника, крепёж/метизы (T10.10); заказ распадается на
+  задания сборки по категориям (T10.11), сборщики работают с телефона (T10.12), отгрузка видит
+  «Заказ собран» (T10.13); склад получает один простой экран цен и остатков (T10.14, пересобирает
+  T4.10). Порядок работ изменён: **E10 раньше E5**. Новые развилки владельцу — №6–№9.
+
+- 2026-08-25: **разобран чужой демо-стенд по той же задаче ABS LAB / Astana Hub**
+  (`web-production-1f608.up.railway.app`, дал владелец). Что это: Django + серверный рендер, деплой
+  Railway (edge Амстердам, не РК), `/api` → 404 — **ни контракта, ни мобильных**; PWA-манифест пустой
+  (`icons: []`). Внутри — вертикальный срез двух идей: (1) **«расчёт по чертежу»** — загрузка
+  XLSX/CSV/DOCX/PDF/картинки, табличные форматы разбирает детерминированный парсер, сканы без
+  текстового слоя уходят зрительной модели (на стенде ключ не задан → предлагают ручной ввод),
+  ручной ввод помещений, голос ru/kk через браузерный STT, 7 видов работ, на выходе **три корзины
+  эконом/комфорт/бизнес** с построчным расчётом; (2) **честные остатки** — «свободное количество
+  учитывает товар в чужих корзинах и подтверждённых заказах», 2 склада, статус наличия виден прямо
+  в списке. Ещё: карточка с фасовкой/кратностью/весом и историей цен, регистрация физлицо/юрлицо с
+  БИН и модерацией, 4 роли, Kaspi в тестовом контуре. Слабое: демо-логины и пароли опубликованы на
+  странице входа, фото KNAUF взяты с сайта производителя (сами оговаривают в футере), главная
+  AI-фича на стенде не работает, логистики/документов/отзывов/бонусов нет вовсе.
+  **Вывод:** у них яркий срез двух идей без платформы, у нас платформа с модулями и контрактом без
+  этих двух идей. Что стоит забрать — разложено в новый эпик **E11** `docs/PLAN.md` (T11.1–T11.6),
+  каждый таск переформулирован под наш путь (чат вместо форм, логика в модулях, вложения вместо
+  HTML-таблиц); T11.1 и T11.4 не отдельная работа, а требования внутрь E10-тасков (файл → T10.3,
+  голос → T10.2/T10.5). Код не трогали.
+- 2026-08-18: **T4.11 «Рабочее место претензий» — код закрыт (К✅), гейт U не добит** (прервано по
+  просьбе владельца: нужен показ системы). Закрыты 4 блокера Асель, кроме доказательств доставки
+  (они с E5): (1) очередь «Претензии» вместо «Диспутов» — строка несёт номер заказа, покупателя,
+  сумму, суть жалобы, возраст и метку «просрочено» (срок ответа 24 ч, `DISPUTE_SLA_HOURS`), чипы со
+  счётчиками, поиск по номеру/почте/тексту; (2) рабочее место претензии одним роутом
+  `GET /admin/disputes/:id/card` — жалоба, заказ ГОТОВОЙ карточкой заказа (`buildOrderCard`, чтобы
+  спор о претензии не стал спором о данных), отгрузка из лога переходов, документы, история
+  обращений покупателя, отзывы; (3) претензия по звонку `POST /admin/disputes` (покупателя берём из
+  заказа, источник помечается `operator`); (4) **последствие решения** — новое поле `outcome`
+  (возврат/довоз/замена/бонусы/без компенсации), обязательное при удовлетворении, отказ всегда
+  «без компенсации»; покупатель узнаёт его в чате (`track_order`), и панель прямо говорит, что
+  канала уведомлений нет. Плюс раздел «Отзывы» с модерацией, плитка «Претензии» на дашборде,
+  предупреждение о претензии в карточке заказа. **Грабли:** (а) точка статуса во flex сжимается до
+  нуля у длинной подписи — нужен `shrink-0`; (б) в heredoc через Bash-инструмент ломается апостроф
+  (`drawer'ом`) — большие файлы писать Write; (в) остановить чужой `npm run dev` на 9000 не дали
+  правами, второй стенд поднимался на `PORT=9001`; (г) у админ-ресурсов НЕТ казахской локали
+  (i18n — только en+ru), kk-кадр = копия русского.
+
+
+- 2026-08-18: **T4.17 по приёмке владельца: кнопки и иконки сайдбара — ядровые (К✅ U✅).**
+  Замечания: «дизайн кнопок отличается от стандартного медузы» и «в сайдбаре где-то иконки с
+  контуром, где-то без». (1) Слой бренда больше не переопределяет `--button-inverted*` —
+  primary-кнопка снова #27272A. **Корень, который стоит помнить:** ядро рисует кнопку не одной
+  заливкой, а заливкой + своими `shadow-buttons-inverted` и градиентом `:after`, и эти значения
+  зашиты в собранный CSS дашборда — любая брендовая заливка под ними читается как чужой элемент.
+  (2) Побочно вылезла тёмная тема: `--contrast-*` объявлены на `html:root` через `--sm-ink`, а он в
+  тёмной теме СВЕТЛЫЙ, поэтому при ядровой тёмной заливке текст кнопки становился тёмным —
+  контрастные поверхности (тултипы, primary) теперь тёмные в обеих темах, как у ядра. (3) иконки наших пунктов —
+  только контурные: `StarSolid` → `Star` («Отзывы») и `ShoppingCart` → `ShoppingBag` («Заказы» —
+  пункт НАШ, ядровый `/app/orders` скрыт `shell.css`, так что иконка наша). Это были единственные
+  две с `fill="currentColor"`. Ядровые пункты не подменяем: у «Товаров» (`Tag`) заливка с вырезом —
+  читается контуром. **Способ проверки** (глазомер на 15 px врёт в обе стороны): отрендерить иконку
+  `react-dom/server` и искать `fill="currentColor"`; для кадра — увеличить сайдбар `nav.style.zoom`
+  и вырезать полосу иконок. **Правило записано в DECISIONS:** брендируем фон, текст, обводки
+  и бейджи; заливки кнопок ядра, его тени/градиенты и иконки его набора — нет.
+  Кадры — `docs/qa/screens/T4.17/`. Рядом замечено (владельцу на решение): «Склад» и «Компании»
+  делят одну иконку `Buildings`.
+
+- 2026-08-18: **Волна 1 добивки закрыта: T4.16 (отрицательный резерв) и T7.2c (нечитаемые названия
+  компаний).** (1) **T4.16:** живой поток НЕ течёт — заказ №44 проведён по стадиям, и на сборке
+  уровень остатка с суммой резерваций падали синхронно (цемент 106→77 при 149→120), на отгрузке не
+  менялись; расхождение оставалось постоянным. Значит `reserved_quantity` — это КЭШ суммы живых
+  `reservation_item`, и ломают его МАССОВЫЕ операции в обход пути: чистка демо-данных удаляла
+  резервации уже отгруженных заказов, и ядро вычитало количество второй раз (38 − 8 отгружено − 38
+  удалено = −8). Сделаны `lib/inventory/reconcile-reserves.ts` (поиск + починка), скрипт
+  `check-inventory-reserves.ts` (`FIX_RESERVES=1`) и сверка ВНУТРИ чистки демо-данных. На стенде
+  выправлены 4 уровня. **Грабля ядра:** `updateInventoryLevels` принимает `reserved_quantity` в
+  типах, отвечает успехом и молча ничего не меняет — публичного сеттера у кэша нет, чиним запросом
+  в БД. (2) **T7.2c:** имя юрлица с символом замены (U+FFFD) или управляющими символами больше не
+  принимается ни при подаче, ни при правке заявки; три битые заявки со стенда удалены (сотрудники →
+  компания, через workflow — иначе каскад падает). **Грабля стенда, стоившая ложной проверки:**
+  остановка `npm run dev` убивает родителя, а дочерний `medusa start` держит порт 9000 — новый
+  сервер падает с `EADDRINUSE`, отвечает СТАРЫЙ код, и смоук «показывает», что правка не работает.
+  После рестарта смотреть PID и время старта процесса на порту.
+
+- 2026-08-18: **T4.11a «Клик по строке наших таблиц» закрыт (К✅ U✅)** — снят блокер Ф-прогона
+  панели (Асель 1/5, Тимур: экран «Споры» падал белым экраном). Распаковка строки вынесена в общий
+  `admin/lib/data-table-row.ts`, локальная копия `rowItem` из очереди заказов убрана. **Аудит всех
+  пяти наших таблиц дал второй живой дефект того же класса:** в реестре документов клик по строке
+  МОЛЧАЛ (`row.order` был undefined) — тот же тупик, что T4.2b; в `companies` и
+  `product-moderation` клик работал ПО СЛУЧАЙНОСТИ — там `getRowId` возвращает id сущности, поэтому
+  `row.id` обёртки совпадал со строкой и дефект не проявлялся до обращения к любому другому полю.
+  Это и есть причина, почему класс дожил до второго появления: он виден только там, где после
+  клика читают НЕ `id`. Тест закрепляет ровно эту ловушку (обёртка с совпадающим `id`).
+  Гейт К: eslint 0 / tsc 0 на обоих tsconfig / unit 182/182 (+4), контракт не менялся.
+  **Live-smoke через UI:** претензия проведена `open` → «Взять в работу» → `in_review` → «Решить»
+  с резолюцией → `resolved`, текст сохранён в БД. 10 кадров `docs/qa/screens/T4.11a/`, отчёт
+  `docs/qa/2026-08-18-T4.11a-ui.md`.
+
+- 2026-08-18: **два Ф-прогона перед E5 (покупатель + продавец), оба гейта не пройдены, оба уперлись
+  в доставку.** (1) **Покупатель — качество ответов, 5 персон, 54 хода, модель поднята до
+  `gemini-3.6-flash`** (решение владельца — flash только на время прогона, после возвращена lite):
+  **3,3/5, 17 блокеров**. Природа претензий сменилась целиком против прогона 2026-08-13 (3,52/5,
+  8 блокеров): выдуманные цены, код получения, email и обещания почтовой рассылки УШЛИ — прямые
+  ловушки отработаны честно («записать дату некуда, в системе нет такого поля», пять отказов
+  выдумать площадь пачки, неподтверждённый ложный «я оплатил»), арифметика геометрии и все суммы
+  сошлись с БД до тенге. Вместо них 13 блокеров отсутствующей функции: даты/окна доставки в
+  `order_lifecycle` нет (только `status`/`delivery_method`/`delivery_code`), комментарий к заказу
+  записать негде, `notification` пуста (0 строк) — код получения и документы покупателю не
+  приходят, `material_norm` пуста (0 строк) — расход материала модель берёт из промпта, счёт
+  юрлицу выпускается ТОЛЬКО после оплаты и на физлицо (`buyer.bin: null` на заказе 1,18 млн ₸),
+  безнала нет. Остался второй класс галлюцинаций: **уверенный пересказ непрочитанного** — про
+  собственный счёт сказано «банковских реквизитов нет» (в PDF есть БИК и IBAN), про бонусы «системы
+  нет» при активном `bonus_config`, фасовка «Упаковка 4 плиты» из описания не читается (недобор
+  утеплителя ~40 %). (2) **Панель продавца — удобство и понятность, 5 персон, 174 кадра**:
+  **2,4/5, 16 блокеров** (T4.6 было 2,2/5 и 21). Ни одного блокера на переработанных экранах —
+  очередь заказов, карточку заказа, проведение по стадиям, форму прихода и ИИ-приёмку персоны
+  хвалили (разбор накладной попал в 100 % цифр, сумма прихода сошлась до тенге); все 16 блокеров
+  в нетронутом: споры (Асель 1/5, день не состоялся), склад без названий товаров (Данияр 2/5),
+  деньги и сводки (Тимур), доставка (Мадина). (3) **Найдено новое:** экран «Споры» ПАДАЕТ при
+  клике по претензии — `routes/disputes/page.tsx:128` передаёт в drawer обёртку TanStack вместо
+  строки данных, `DISPUTE_STATUS_META[undefined].color` роняет рендер; **это тот же класс, что
+  дефект `useDataTable` из T4.2b/T4.2c — повторился второй раз**, нужен аудит всех наших таблиц
+  (T4.11a). Плюс `reserved_quantity = −8` на складе (T4.16) и системное расхождение денег: у ВСЕХ
+  оплаченных заказов `captured_amount = 0` при `status = authorized` — очередь пишет «Оплачен»,
+  ядровая страница «Остаток к оплате», покупателю ассистент говорит «оплата подтверждена» (корень
+  известен — T4.14). (4) Заведены таски **T2.15–T2.19** (юрлицо распознаётся до счёта; читать
+  данные вместо пересказа; возврат и эскалация; кровля/стяжка/мокрые зоны; доставка за город и
+  самовывоз), **T4.11a**, **T4.16**, **T7.2c** (битые названия компаний — мусор стенда от
+  live-smoke прошлых сессий, не дефект панели). Вывод для порядка работ: **E5 закрывает самую
+  большую долю блокеров обеих сторон сразу** — 6 у покупателя и 2 у продавца.
+
+- 2026-08-17: **T4.2c «Drawer карточки заказа (1c)» закрыт по К и U (Ф⏳ Мадина, В⏳ владелец)** —
+  закрыт блокер 1 Мадины (Ф-прогон T4.6: «очередь заказов — тупик»). (1) **Карточка одним запросом**:
+  роут `GET /admin/orders/:id/lifecycle/card` отдаёт всё, что рисует drawer — статус и лог переходов,
+  покупателя (компания → ФИО → почта, БИН, признак юрлица) с **лимитом отсрочки** из модуля
+  `scoring`, позиции с ценами, итоги, оплату, доставку, актуальные версии документов и **цели
+  переходов** (позиции к сборке + fulfillment под отгрузку и под вручение). Выбор fulfillment'а
+  переехал из браузера на бэкенд: в виджете страницы заказа его считал клиент по ядровым данным
+  страницы, drawer'у их не видно, а две копии правила разошлись бы. Сборка — в `card.ts`, роут
+  тонкий; выборка статуса вынесена в общий `lifecycle-detail.ts` (её читает и виджет), и лог
+  переходов теперь сериализуется в поля контракта — служебные `order_lifecycle_id`/`updated_at`/
+  `deleted_at` наружу не уходят. Деньги — выборкой сервиса модуля `order`, разбивка добирается из
+  позиций и доставки: на экране «Товары» + «Доставка» = «Итого» (четвёртый случай класса после
+  T4.2a, T4.9 и T3.11 — на итоги ядра нельзя смотреть по имени поля). (2) **Drawer 560 px**:
+  таймлайн прямого пути с датами из лога (частичная сборка стоит на стадии «Собран», отмена и
+  возврат обрывают путь последней стадией; у «Нового» даты нет — создание заказа переходом не
+  логируется), покупатель, состав, доставка с честной подписью «слот пока не выбирается» (слота в
+  домене нет, T5.6), документы со ссылками PDF, кнопки переходов (вручение и отмена — прежними
+  диалогами `DeliverOrderPrompt`/`CancelOrderPrompt`), ссылка на полную страницу заказа — в шапке
+  (четвёртая кнопка ломала подвал в две строки). Выпуск документов остался на странице заказа
+  (DECISIONS 2026-08-17). (3) **Найден дефект T4.2b: клик по строке очереди не работал ВОВСЕ** — не
+  открывал и ядровую страницу заказа, как было заявлено в отчёте: ядровый `useDataTable` отдаёт в
+  `onRowClick` обёртку TanStack (`{ original }`), а не строку данных, поэтому `row.order` был
+  `undefined` и обработчик молчал. Читаем оба варианта; проверять такой клик можно только НАСТОЯЩЕЙ
+  мышью — синтетический `el.click()` до обработчика ядра не доходит, поэтому у скриншотера появилось
+  действие `clickAt` (CDP `Input.dispatchMouseEvent`). (4) Сложные переходы из строки очереди
+  (сборка, отгрузка, вручение) теперь открывают карточку, а не уводят на ядровую страницу.
+  Гейт К: eslint 0 ошибок / 40 warning'ов сида, tsc 0 на обоих tsconfig, unit 178/178 (+20),
+  http order 11/11 (+3) и documents 13/13, контракт регенерирован (119 путей, 717 схем;
+  Dart-клиент admin-путей не использует). **Live-smoke через UI карточки:** заказ №35 проведён
+  Новый → Подтверждён → В сборке → Собран → В доставке, карточка и чипы очереди обновлялись после
+  каждого перехода. 11 кадров `docs/qa/screens/T4.2c/`, отчёт `docs/qa/2026-08-17-T4.2c-ui.md`.
+
+- 2026-08-17: **T2.11 «Остаток качества ответов ассистента» закрыт по К (Ф⏳)** — добиты находки
+  Ф-прогона 2026-08-13. (1) **Претензия из чата**: инструмент `open_dispute` — модуль споров и роут
+  `POST /store/orders/:id/disputes` в системе были, а экрана претензии нет ни на витрине, ни в
+  мобилке, и на «привезли бой» ассистент отвечал «не знаю, куда обращаться» (М5). Теперь претензию
+  принимает он сам: тонкая обёртка над `openDisputeWorkflow`, инварианты остаются в модуле
+  `reviews`, заявка падает в раздел «Споры» панели. Право действовать даёт `lastOrderId` (тот же
+  капабилити-токен, что у трекинга), покупатель берётся ИЗ ЗАКАЗА — гость логина не имеет вовсе;
+  вторая жалоба по заказу возвращает ПЕРВУЮ с её статусом, а не ошибку. Статус претензии приносит
+  `track_order` новым полем `dispute` — отдельный read-инструмент не заводили. Экран претензии
+  покупателю сознательно НЕ строим (DECISIONS 2026-08-17). (2) **Промпт**: упаковки, поддоны и листы
+  считаются ТОЛЬКО по размеру упаковки из данных товара, иначе — назвать покрытие и спросить цифру с
+  пачки (блокер Б7: выдуманные «около 6 м²» дали 7 упаковок вместо ~15); заполнители бетона — от
+  ОБЪЁМА (`м³ × 0,8` т песка, `м³ × 1,35` т щебня), а не долей от массы цемента (недобор на пятую
+  часть); самопроверка идёт МОЛЧА — живой прогон вынес в ответ «стоп, я написал 32, а надо 16»;
+  канон «если с заказом что-то не так»; речь: «слот пока не выбирается» вместо «подтвердят при
+  доставке» (никто не подтверждает), человеческая формулировка про юрлицо вместо «аккаунт не
+  авторизован как сотрудник одобренной компании», «ваш заказ №24», очистку корзины ассистент сам не
+  предлагает. (3) **Подпись единицы**: «за {unit}» давало «за тонна» и «за упаковка» — во всех
+  локалях витрины и в mobile buyer подпись строится слэшем; склонять на клиенте нельзя (грамматика
+  ×2 платформы), слать готовую фразу с бэкенда тоже (kk/en получили бы русский предлог).
+  Гейт К: бэкенд eslint 0 / tsc 0 на обоих tsconfig / unit 158/158 (+7), mobile analyze 0 и
+  buyer 71/71, витрина lint 0 / tsc в затронутых 0 / prettier чист; контракт не менялся —
+  инструмент внутренний. **Live-smoke:** претензия по заказу №39 (`damaged`/`open`, описание словами
+  покупателя в БД) → повторная жалоба вернула первую → трекинг отдал стадию заказа И стадию
+  претензии → утеплитель посчитан без выдуманных упаковок → фундамент 8×4×0,5 посчитан по новым
+  нормам. Грабли стенда: dev-сервер Medusa не подхватывает правки `src/lib`, а убитый дочерний
+  процесс `medusa start` родителем `develop` НЕ перезапускается — стенд пришлось поднимать заново
+  (`npm run dev`, ~90 с до `/health`). В T7.2 дописаны находки данных: спецификация в названии
+  товара противоречит варианту («Щебень гранитный фр. 5–20 мм — 20–40 мм») и нужна характеристика
+  упаковки. Осталось в таске: слот доставки (ждёт T5.6) и предоплатный счёт юрлицу (решение владельца).
+
+- 2026-08-17: **T2.14 «Правка заявки компании в mobile buyer» закрыт (К✅ U✅)** — паритет с
+  витриной по T3.8a. (1) **`company_update_form`** под карточкой статуса, ТОЛЬКО у админа компании
+  (правило контракта; сотруднику остаётся диалог с ассистентом): у отклонённой заявки —
+  «Исправить и подать снова» с подставленными реквизитами, у ожидающей — «Догрузить документы» со
+  счётчиком свободных мест; лимит 4 документа ОБЩИЙ на компанию, уже загруженные считаются, и при
+  исчерпанном лимите вместо кнопки выбора стоит объяснение — кнопка, которая заведомо получит отказ,
+  на экране не нужна. У одобренной компании формы нет вовсе (реквизиты закрыты, документы приняты) —
+  то же решение, что на витрине. (2) **Пустая правка не отправляется**: контракт отвечает на неё 400,
+  поэтому клиент объясняет это сам (`nothingToUpdate`), а в запрос уходят ТОЛЬКО изменённые
+  реквизиты. Отказ бэкенда переводится КЛАССОМ ошибки (`updateRejected`) — сообщения роутов не
+  локализованы (то же правило, что в T2.12). (3) **`resubmitted_at`** поднят в домен: в карточке
+  появилась строка «Подана повторно», а причина отказа по-прежнему видна только у `rejected`.
+  (4) Текст статуса «Отклонена» переписан — покупатель чинит заявку сам, а не «пишет ассистенту»;
+  для сотрудника без прав администратора — отдельная честная строка. (5) Попутно две копии сведены:
+  отсев файлов — в `company_file_selection.dart` (параметр `capacity`), строка выбранного файла — в
+  `company_picked_file_tile.dart`. Гейт К: `dart format` чист, `flutter analyze` 0 по всему
+  workspace, ui_kit 35/35, buyer 71/71 (+6), `flutter build web` ок; бэкенд не трогали — контракт и
+  Dart-клиент не менялись. **Live-smoke тем же телом запроса, что формирует Dart-клиент:** заявка с
+  файлом → догрузка `files`-only (pending, 2 документа, `resubmitted_at: null`) → пустая правка 400
+  → отказ модератора → повторная подача (pending + `resubmitted_at` + сохранённая причина) → три
+  файла поверх двух 400 «A company keeps at most 4 documents». 11 кадров
+  `docs/qa/screens/T2.14/`, отчёт `docs/qa/2026-08-17-T2.14-ui.md`. Грабля тестов: карточка вместе с
+  формой не влезает в 800×600 тестового вьюпорта — тапы по кнопкам формы уходят за дерево рендера,
+  прогоны поднимают высоту через `setSurfaceSize`.
+
+- 2026-08-14: **T3.8a «Догрузка документов и повторная подача заявки» закрыт (К✅ U✅)** — закрыты
+  границы T3.8. (1) **Роут `POST /store/companies/me`** (только админ компании): `name`, `bin`,
+  `files` — все поля необязательны, но пустое тело отвечает 400 (иначе «успех» без изменений врал бы
+  покупателю). Файлы грузит тот же шаг workflow, что и первая подача, а **лимит 4 документа стал
+  общим на компанию**, а не на запрос — иначе догрузкой можно набить модератору любое число файлов.
+  (2) **Повторная подача**: правка отклонённой заявки возвращает её в `pending` и ставит новое поле
+  модели `resubmitted_at` (миграция `Migration20260814111326`); **причина отказа не стирается** —
+  она напоминает модератору, что он просил исправить, а покупателю её показывают только в статусе
+  `rejected`. Реквизиты одобренной компании неизменяемы (другой БИН = другое юрлицо), догрузка
+  документов остаётся. Инварианты — ВНУТРИ шага `update-company-application`, не отдельным
+  guard-шагом (грабля 2026-08-13: шаг без связи по данным движок выполняет параллельно, и его отказ
+  не останавливает workflow). (3) **Витрина**: в карточке компании появилась форма — у отклонённой
+  «Исправить и подать снова» (реквизиты подставлены, файлы опциональны), у ожидающей «Догрузить
+  документы» со счётчиком свободных мест, при исчерпанном лимите — объяснение вместо выбора файла;
+  строка «Подана повторно», а `rejectedNote` больше не отправляет «связаться с нами» — покупатель
+  чинит заявку сам. Сообщения роутов не локализованы, поэтому server action переводит их в коды
+  словаря по КЛАССУ ошибки (порядок важен: текст про формат БИН тоже содержит «BIN»). (4) **Панель
+  модератора**: строка «Подана повторно … после отказа» и блок «Прежняя причина отклонения».
+  Гейт К: бэкенд eslint 0 / tsc 0 на обоих tsconfig / unit 151/151 (+3) / http company 23/23 (+6),
+  контракт 118 путей, 709 схем и Dart-клиент перегенерированы (analyze 0, buyer 65/65), витрина
+  lint 0 / tsc в затронутых 0 / prettier чист. **Live-smoke:** заявка → догрузка на pending
+  (2 документа, статус не изменился) → отказ → повторная подача (pending + `resubmitted_at` +
+  сохранённая причина) → пустая правка 400, пятый документ 400. 14 кадров `docs/qa/screens/T3.8a/`
+  (11 витрины + 3 панели), отчёт `docs/qa/2026-08-14-T3.8a-ui.md`. **Сборки витрины не гнал** —
+  ломает поднятый dev-стенд под owner-приёмку. Грабли: создание файла в `backend/scripts/`
+  перезапускает dev-сервер Medusa — стенд отвечает 000 около полутора минут, это не падение.
+  Паритет mobile buyer заведён таском T2.14.
+
+- 2026-08-14: **T2.12 «Компания в mobile buyer» закрыт (К✅ U✅)** — паритет с витриной (T3.8).
+  (1) **Раздел `/company`** (защищённый маршрут рядом с `/orders` и `/bonuses`), входы — пункт
+  «Компания» в аккаунте и строка в боковой панели чата (как ссылка из шапки чата витрины); гостя
+  роутер уводит на вход и возвращает обратно. (2) **Форма заявки**: название, БИН с подсказкой
+  «12 цифр», учредительные документы ФАЙЛАМИ (`file_picker`, `withData: true` — заявка уходит
+  base64, путь к файлу в web-сборке недоступен вовсе). Ограничения контракта (4 файла × 3 МБ,
+  PDF/JPEG/PNG) проверяются до отправки: непринятый файл даёт сообщение, а уже принятые остаются —
+  выбирать заново не надо; при отказе бэкенда введённые название и БИН не теряются. Причина отказа
+  показывается КЛАССОМ ошибки, а не текстом ответа: сообщения роутов не локализованы (kk-интерфейс
+  получил бы русский текст). (3) **Карточка статуса**: бейдж (`pending`/`approved`/`rejected` —
+  warning/success/error), что статус значит для заказов, причина отказа модератора отдельным блоком,
+  дата, роль словами, ссылки на документы; у одобренной CTA «Оформить заказ в чате», у отклонённой —
+  «Написать ассистенту» (догрузки и повторной подачи нет — T3.8a; единственный канал покупателя —
+  диалог). (4) Попутно: `AppTextField` получил `helperText`, формат даты сведён в
+  `shared/date_label.dart` (в строке бонусов жила своя ISO-копия — «2026-07-20» в русском
+  интерфейсе). Гейт К: `dart format` чист, `flutter analyze` 0 по всему workspace, ui_kit 35/35 (+2),
+  buyer 65/65 (+10), `flutter build web` ок; бэкенд не трогали — контракт и Dart-клиент не менялись.
+  **Live-smoke на стенде:** новый покупатель → `GET /store/companies/me` 404 → `POST
+  /store/companies` с файлом 201 → повторный `GET` отдал `status: pending`, `documents[0].url` на
+  `/static`, `employee.role: "admin"` — ровно те поля, что разбирает репозиторий. 11 кадров
+  `docs/qa/screens/T2.12/`, отчёт `docs/qa/2026-08-14-T2.12-ui.md`.
+
+- 2026-08-14: **T2.13 «Открыть заказ + степпер стадий в ленте mobile buyer» закрыт (К✅ U✅)** —
+  паритет с витриной по T3.9 и T3.11. (1) **Степпер рисуется с самого оформления**: вставка
+  «статус заказа» передаёт `deliveryStage` (КОД жизненного цикла, приехал с T3.11) в общую сборку
+  стадий — раньше стояло `stages: const []`, и покупатель не видел ни прогресса, ни осмысленного
+  цвета бейджа (был константный акцент). (2) **Ссылка «Открыть заказ»**: `AppOrderStatusBlock`
+  получил опциональные `onOpen`/`openLabel` — тап-цель вся карточка (InkWell на Material, как у
+  `AppProductCard`), строка со стрелкой делает нажатие заметным; переход по токену `order_id`
+  диалога и ТОЛЬКО вошедшему — `/orders/:id` защищён роутером, гостя увело бы на форму входа (то же
+  правило, что на витрине). (3) **Три копии сведены**: `_stages` и `_statusColor` жили копиями в
+  `order_detail_screen` и `orders_screen` — теперь `shared/order_stages.dart` и
+  `shared/order_status_color.dart`; заодно в терминальные без доставки добавлен `returned`
+  (код есть в контракте, в мобилке не обрабатывался). (4) Строки `attachmentOrderOpen` ru/kk.
+  Гейт К: `dart format` чист, `flutter analyze` 0 по всему workspace, ui_kit 33/33 (+2),
+  buyer 55/55 (+3), `flutter build web` ок. Бэкенд не трогали — контракт и Dart-клиент не менялись.
+  7 кадров `docs/qa/screens/T2.13/`, отчёт `docs/qa/2026-08-14-T2.13-ui.md`.
+
+- 2026-08-14: **T3.11 «Мелочи витрины из прогона» закрыт (К✅ U✅)** — восемь пунктов «мешает»
+  Ф-прогона 2026-08-13 плюс находка гейта U T3.9. (1) **Списки ассистента** рисуются маркерами и
+  нумерацией с отступом: `lib/util/assistant-markdown.ts` режет ответ на блоки, маркер требует
+  пробела после себя, поэтому `**жирный**` в начале строки списком не становится. (2) **Тап-таргеты
+  48 px**: кнопка отправки и удаление диалога `h-12 w-12`, переключатели темы/языка, пункты меню и
+  крестик — `min-h/min-w-[48px]`. (3) **Боковое меню**: селектор страны доставки удалён вместе с
+  компонентом `layout/country-select` (регион один, строка «Shipping to: Kazakhstan» висела
+  по-английски — тот же класс, что корзина-призрак), добавлен пункт **«Заказы»**. (4) **Возврат на
+  `/chat` не сбрасывает ленту**: последняя запись локальной истории поднимается сама вместе с
+  токенами `cart_id`/`order_id` — один раз и только в пустом диалоге. (5) **Деньги заказа сходятся**:
+  ядровый `subtotal` включает доставку (заказ №43: 266 000 = `item_total` 264 000 + `shipping_total`
+  2 000), поэтому первая строка теперь `item_total` под подписью «Товары», а нулевые строки (скидка,
+  бонусы, налоги) не печатаются вовсе — пустое «Налоги» читалось как потерянная цифра. Третий случай
+  того же класса после T4.2a и T4.9: **на итоги ядра нельзя смотреть по имени поля**. (6) **Адрес**:
+  индекс и город собираются без висячей запятой (заказы из чата идут без индекса), код страны не
+  печатается, email переносится. (7) **Блок «Доставка»** раскрывается в три колонки только с
+  `small:` — на 400 px больше не наезжает. (8) **Степпер вставки «статус заказа»**: `track_order`
+  отдаёт `delivery_stage` КОДОМ жизненного цикла, прогресс курьера переехал в новое поле
+  `courier_note` (DECISIONS); контракт (118 путей, 707 схем) и Dart-клиент перегенерированы, mobile
+  buyer читает заметку курьера из нового поля, в словарь стадий витрины добавлены `closed`/`returned`.
+  Гейт К: бэкенд eslint 0 / tsc 0 / unit 148/148 (+2 теста), analyze 0, buyer 52/52,
+  витрина lint 0 / tsc в затронутых 0 / prettier чист; live-smoke: вставка заказа №43 отдала
+  `delivery_stage: "new"`, `courier_note: null`. 14 кадров `docs/qa/screens/T3.11/`, отчёт
+  `docs/qa/2026-08-14-T3.11-ui.md`. **Сборку витрины не гнал** — ломает поднятый dev-стенд под
+  owner-приёмку. Грабли: dev-сервер Medusa не подхватывает правки `src/lib` — для live-проверки
+  бэкенд перезапущен (заодно ушёл 14-часовой процесс).
+
+- 2026-08-14: **T3.10 «Корзина-призрак в шапке» закрыт (К✅ U✅)** — блокер Б4 Ф-прогона. Корень
+  оказался не в счётчике: шапка читала **cookie-корзину стартера** (`_medusa_cart_id`), а корзину
+  покупателя после пивота ведёт ассистент (`cart_id` держит клиент), поэтому при корзине на
+  540 500 ₸ в шапке честно стоял «(0)». Развилка таска решена в пользу «убрать, а не чинить»:
+  (1) пункт корзины ушёл из шапки и бокового меню, компоненты `cart-button`/`cart-dropdown`
+  удалены, строка `nav.cart` вычищена из ru/kk/en; (2) ссылка «Аккаунт» показывается на любой
+  ширине — на 400 px её место раньше занимала корзина, а сам аккаунт прятался под `small:`;
+  (3) **`/cart` уводится в чат** (добавлен в `CHAT_ONLY_PREFIXES` middleware рядом с каталогом) —
+  тупик «пусто → кнопка в каталог → редирект в чат» закрыт; (4) из раскладки `(main)` убраны
+  баннеры стартера про cookie-корзину («чужая корзина», «доберите до бесплатной доставки») вместе с
+  запросами `retrieveCart`/`listCartOptions`, которые каждая страница делала впустую с пивота.
+  Второй вход в состав заказа сознательно НЕ строим: цену, лоты и предупреждения считает ассистент
+  инструментами, а страница корзины стартера правит строки напрямую и ведёт в убранный с пути
+  чекаут (DECISIONS 2026-08-14; `/cart` и `/checkout` из репозитория не удалены — только
+  недостижимы). Паритет платформ соблюдён без правок в mobile: корзинная иконка там висит лишь на
+  классических экранах каталога/товара, активный путь на них не ведёт. lint 0, tsc 0 в затронутых,
+  live `GET /kz/cart` → 307 → `/kz/chat`, 11 кадров `docs/qa/screens/T3.10/`, отчёт
+  `docs/qa/2026-08-14-T3.10-ui.md`. Грабли стенда: dev-сервер витрины отдавал 500 на все страницы
+  (`Jest worker encountered 2 child process exceptions`) — лечится перезапуском `npm run dev`.
+
+- 2026-08-14: **T3.9 «Заказ из чата виден в аккаунте и открывается из ленты» закрыт (К✅ U✅)** —
+  блокер Б3 Ф-прогона. (1) **Заказы читаются без кэша**: стартер держал `retrieveOrder`/`listOrders`
+  с `cache: "force-cache"` по тегу `orders`, а инвалидировал тег только свой чекаут-экшен — после
+  пивота заказ оформляет БЭКЕНД, и «Аккаунт → Заказы» показывали «пусто» даже после жёсткой
+  перезагрузки. (2) **Ссылка «Открыть заказ»** во вставке статуса заказа — по токену `order_id`,
+  который диалог и так держит между ходами (контракт не менялся, mobile не тронут); только
+  залогиненному, гостю страница заказа в «Аккаунте» недоступна. (3) **Блок «Перенос заказов» убран**
+  вместе с компонентом, строками ru/kk/en и экшеном `createTransferRequest` — покупателю предлагали
+  привязать к себе собственный заказ; приём/отказ переноса по ссылке из письма ядра остались.
+  (4) Попутно карточка заказа в списке: дата по локали (была `Fri Aug 14 2026` в русском
+  интерфейсе; третья копия таблицы локалей — сведены в `lib/i18n/format-date.ts`), миниатюра
+  `square` вместо стартерового `full` (aspect 9/16 растягивал мешок цемента на пол-экрана), починен
+  счётчик «+N ещё» (порог `> 4` при срезе в 3 позиции, вычиталось из общего количества мешков).
+  (5) У скриншотера витрины появилось действие `eval` — диалог с оформленным заказом теперь
+  восстанавливается из localStorage, а не проигрывается моделью на каждый кадр. Live: покупатель с
+  заказом №42 (оформлен путём ассистента: корзина → адрес → доставка → Kaspi mock → `POST
+  /store/orders`) видит его в «Заказах», из списка открывает заказ со счётом `INV-2026-000019` и PDF,
+  из ленты ссылка ведёт туда же. lint 0, tsc 0 в затронутых, 11 кадров `docs/qa/screens/T3.9/`,
+  отчёт `docs/qa/2026-08-14-T3.9-ui.md`. **Сборку `npm run build` не гнал** — ломает поднятый
+  dev-стенд (владелец остановил команду). Находки в бэклог: пустой степпер вставки статуса у свежего
+  заказа (`delivery_stage` берётся из назначения курьера, а не из жизненного цикла) → T3.11; паритет
+  ссылки в mobile buyer → T2.13.
+
+- 2026-08-13: **T3.8 «Юрлицо на витрине» закрыт по К и U** (гейт Ф — за прогоном персоны). Закрыт
+  блокер Б2 Ф-прогона: снабженцу ТОО было негде заявить себя юрлицом, и ассистент отправлял «в личный
+  кабинет на сайте», которого нет. Появился раздел **«Аккаунт → Компания»**: нет заявки — форма
+  (название, БИН, учредительные документы ФАЙЛАМИ), есть — карточка со статусом модерации, причиной
+  отказа, датой, ролью и ссылками на документы; плитка компании на «Обзоре», пункт в сайдбаре, шапка
+  чата ведёт туда же (ссылка «Войти как компания» убрана — висела и у залогиненного). Бэкенд:
+  `POST /store/companies` принимает `files: [{name, mime_type, content_base64}]` (4 × 3 МБ,
+  PDF/JPEG/PNG), грузит их в File Module шаг `upload-company-documents`; приём ГОТОВОЙ ССЫЛКИ из
+  store-входа убран — проверить её нечем, а модератор открывает как документ компании (DECISIONS).
+  Промпт и `get_buyer_profile` называют раздел прямо и не обещают сроков модерации. Сквозной прогон:
+  заявка → отказ с причиной → одобрение → заказ ТОО → счёт `INV-2026-000018` **и акт
+  `AVR-2026-000001`**. Гейт К: eslint 0, tsc 0, unit 146/146, http company 27/27, контракт 703 схемы
+  + Dart-клиент перегенерированы (analyze 0, buyer 52/52), витрина lint 0 / build ок; U — 15 кадров
+  `docs/qa/screens/T3.8/`, отчёт `docs/qa/2026-08-13-T3.8-ui.md`. Границы вынесены в T3.8a (догрузка
+  документов, повторная подача после отказа) и T2.12 (паритет в mobile buyer).
+
+- 2026-08-13: **документы в чат + два Ф-прогона агентами** (по просьбе владельца). Сделано:
+  инструмент `get_order_documents` и вставка `documents` со ссылками на PDF на обеих платформах
+  (карточка `AppDocumentsCard` в mobile, `documents-attachment` на витрине), накладная выдаётся и
+  физлицу; контракт и Dart-клиент перегенерированы (ушёл `suggestions`, закрыт T8.5 — единицы цены).
+  **Прогон качества ответов** (5 персон, 56 ходов, 3,52/5, 8 блокеров): ассистент ВЫДУМЫВАЛ код
+  получения («4052» при пустом коде) и даже его происхождение, СОЧИНИЛ email покупателя и оформил
+  на него заказ на 930 000 ₸, обещал отправку документов «на почту, проверьте Спам» (почтового
+  канала нет вовсе) и обещал накладную сразу при оформлении (её выпускают при отгрузке — ошибка
+  была в самом промпте). Всё перечисленное закрыто: правила промпта + предохранители в
+  инструментах (`track_order` прямо говорит «кода ещё нет», `set_delivery` отклоняет служебные
+  домены вроде `@example.com`), ассистент теперь отвечает на языке покупателя и собирает email до
+  выставления счёта. **Прогон витрины** (Ерлан 3/5, Айгуль 2/5, 4 блокера, 59 кадров): найдено,
+  что авто-продолжение после оплаты на вебе было МЁРТВЫМ кодом (`onPaid` не пробрасывался) — заказ
+  не оформлялся после списания денег; починено. Остальные блокеры разведены в таски T3.8–T3.11 и
+  T2.11: юрлицо на витрине зарегистрировать негде, заказ из чата не виден в «Заказах», корзина в
+  шапке всегда «(0)». Гейт К: eslint 0, tsc 0, unit 135/135, analyze 0, buyer 52/52, ui_kit 31/31,
+  сборки backend и storefront ок.
+
+- 2026-08-13: **T4.9 «Документы юрлицам» закрыт по К и U** (гейт В — на реальных реквизитах).
+  Закрыты блокеры 19–20 фокус-группы T4.6: появился **ручной выпуск** счёта/накладной/акта кнопкой
+  на заказе (переиздание = новая версия того же номера; акт — только юрлицам), **реквизиты
+  продавца стали обязательными** (без БИН/адреса/банка документ не выпускается вовсе — ни строки,
+  ни PDF; мок-значения заполняет `seed-kz.ts` по решению владельца), **реестр документов**
+  (`/app/documents`: чипы по типам со счётчиками, фильтр «не отправлены», поиск по номеру
+  документа и заказа) и **отметка «отправлен клиенту»** (канала отправки нет — развилка №0,
+  ставит человек). В документ добавлен покупатель (название и БИН юрлица / имя физлица) — раньше
+  стоял только email. **Найден и исправлен дефект денег:** `retrieveOrder` с явными relations
+  считает `total` БЕЗ доставки — счёт №24 занижался на 2 000 ₸; итог теперь берётся выборкой
+  сервиса, доставка печатается отдельной строкой. **Грабли Medusa (в DECISIONS):** шаг-guard без
+  связи по данным движок выполняет параллельно, и его отказ НЕ останавливает workflow — проверка
+  перенесена внутрь шага снапшота. eslint 0, tsc 0, unit 130/130, http documents 23/23, build ок;
+  10 кадров `docs/qa/screens/T4.9/`, отчёт `docs/qa/2026-08-13-T4.9-ui.md`.
+
+- 2026-08-12: **ИИ-приёмка: поставщик из накладной заводится сам (T4.15, К✅)** — по замечанию
+  владельца «зачем лишний раз напрягать пользователя»: разбор накладной теперь читает поставщика
+  и БИН из шапки, роут `parse-invoice` ищет его по БИН/названию и создаёт, если такого нет,
+  а форма подставляет и сообщает об этом. Выключенная кнопка «Сохранить и провести» больше не
+  молчит — под ней причина («сопоставьте ещё N позиций», «выберите склад»). Для ручных проверок
+  ИИ добавлен генератор примера накладной (`make-sample-invoice.ts` → `/media/sample-nakladnaya.pdf`,
+  кириллица шрифтом PT Sans из `documents`) и режим `INVOICE_FILE=…` у smoke-скрипта. unit 118/118.
+
+- 2026-08-12: **приёмка владельца пошла — 6 правок чата сделано, остальное разведено в таски**
+  (T2.10 в PLAN). Владелец прогнал buyer web и панель руками. Сделано: **чипы быстрых ответов
+  убраны полностью** (отмена решения 2026-08-03 — «опции почти всегда не к месту»), **QR не висит
+  после оплаты** и платёжная вставка исчезает после оформления заказа, **диалог сам продолжается
+  после оплаты** (клиент отправляет «Я оплатил» один раз на корзину — до этого поллинг только
+  читал статус), **фото товаров грузятся в web-сборке buyer** (свой роут `GET /media/:file` с
+  CORS — ядровый `/static` отдаётся express.static'ом раньше кастомных middleware),
+  **карточка статуса заказа не рассыпается** на 400 px (`Wrap` + перенос метки бейджа в `ui_kit`).
+  Разведено в таски: документы в чат (инструмент + вставка со ссылками, накладная и физлицу) —
+  T2.10; **два независимых статуса заказа** (ядровые fulfillment/capture против нашего цикла),
+  автосписание Kaspi, синхронизация с ядровыми событиями, дубль ядровой страницы «Заказы» — T4.14;
+  «Метаданные/JSON» на экранах — T4.13; пустой список фасовок и английские ошибки в ядровых формах
+  товара — T4.3; закупочная цена на карточке — T4.9a; **канал уведомлений** (push/email/SMS) —
+  новая развилка №0 владельцу. Гейт К: eslint 0, tsc 0, unit 115/115 (бэкенд), analyze 0,
+  тесты mobile 82/82. Грабли: старый dev-процесс держал порт 9000 (EADDRINUSE) — правки не
+  подхватывались, а «/media 404» и «EPIPE в vite» были следствием; при странном поведении стенда
+  сначала проверять, что отвечает свежий процесс.
+
+- 2026-08-11: **T7.2a чистка стенда + T8.6 dev-оплата Kaspi закрыты (К✅), стенд готов к приёмке
+  владельца.** (1) `cleanup-demo-data.ts` вычистил демо-мусор, который сотрудники читали как рабочие
+  данные (T4.6): 23 тестовых заказа с резервами/документами/циклами, 33 покупателя с бонусными
+  кошельками, 4 товара «(demo)», склад **«European Warehouse»**, регион **«Europe» (eur)**, опции
+  **самовывоза** (отпускали заказ за 0 ₸), БИН из единиц, битые имена. (2) Починен ИСТОЧНИК:
+  `seed-demo-order.ts` больше не создаёт свой регион/склад/товар/«Demo Buyer», работает на реальном
+  каталоге — стенд получил заказы №24–33 в тенге с людьми и адресами Астаны во всех статусах цикла.
+  Заказ №24 живого прогона со счётом `INV-2026-000001` сохранён намеренно. Граблю зафиксировал в
+  DECISIONS: общая маска email снесла документы №24 (восстановил из дампа, снятого перед прогоном) —
+  маски заказов и покупателей теперь разные + защита «за покупателем остался заказ»; удаление
+  `order_lifecycle` требует сначала удалить события. (3) T8.6: у mock-клиента появилась карта
+  назначенных исходов + роут `POST /store/carts/:id/payment/kaspi/mock-pay` (вне `KASPI_MODE=mock` —
+  404) и утилита `npm run kaspi:pay`; в контракт роут не выносится. **Найден и исправлен дефект пути
+  покупателя:** `place_order` отдавал `display_id: null` (в результате `completeCartWorkflow` этого
+  поля нет), и модель ВЫДУМЫВАЛА номер заказа («№ 24» на заказ №32) — теперь номер читается из
+  заказа, проверено live (№33). eslint 0 / 36 warning'ов сида (на 1 меньше), tsc 0, unit 124/124,
+  http kaspi 20/20 (+4). (4) Гейт В: подняты бэкенд :9000, витрина :8000 и web-сборка buyer :3000
+  (порт уже был dev-origin'ом мобилки в `medusa-config.ts`), чек-листы —
+  `docs/qa/2026-08-11-T2.4-owner.md` и `docs/qa/2026-08-11-T2.9-owner.md`.
+
+- 2026-08-07: **T4.2b «Экран „Заказы“ (1b)» закрыт (К✅ U✅)** — `routes/order-queue/page.tsx`
+  переписан по макету: строки 44 px, чипы-фильтры со счётчиками (группируется только «Сборка»,
+  решение T4.2a), поиск DataTable.Search → бэкендовый `q` (поиск «#24» работает — блокер 3 T4.6
+  закрыт), пагинация с переведёнными подписями, **действие перехода в строке** (подтвердить /
+  начать сборку / закрыть — на месте; сборка/отгрузка/вручение — на страницу заказа до drawer'а
+  T4.2c). Ядровый пункт «Заказы» скрыт из сайдбара всем ролям, наш экран переименован в «Заказы».
+  Грабли ядрового DataTable задокументированы (docs/modules/order.md п. 8): id колонки `action`
+  зарезервирован, ширины колонок работают только с `table-layout: fixed`. Ревью вторым агентом:
+  0 блокеров, 3 minor + 4 nit — все устранены (кнопка держится pending до конца инвалидации,
+  страховка pageIndex при усадке count, truncate адреса). eslint 0, tsc 0, unit 124/124, build ок;
+  9 кадров `docs/qa/screens/T4.2b/` учёткой продавца, отчёт `docs/qa/2026-08-07-T4.2b-ui.md`.
+
+- 2026-08-04: **T4.2 разбит на a/b/c, T4.2a «Данные строки очереди» закрыт (К✅)**:
+  `GET /admin/order-lifecycles` отдаёт заказ готовой строкой экрана «Заказы» (плательщик
+  человекочитаемо, признак юрлица + `company_id`, число позиций, итог с валютой, состояние оплаты
+  `paid/awaiting/canceled`, адрес) и `counts` по всем статусам для чипов-фильтров; фильтр `status`
+  принимает список (чип «Сборка» = `assembling` + `partially_assembled`). Сборка — в
+  `api/admin/order-lifecycles/rows.ts`, роут тонкий. **Найден дефект денег:** `query.graph` по
+  `order.total` отдаёт неверную сумму (заказ №24: 2 000 ₸ вместо 242 000 ₸ — это стоимость доставки),
+  итоги ядро считает при выборке; теперь берём сервисом модуля `order`, попутно исправлены неверные
+  суммы в **сводке дашборда T4.1**. Отклонение от макета: слота доставки в домене нет — колонка
+  «Доставка» покажет адрес, слот заведён в бэклог (T5.6). eslint 0, tsc 0, unit 117/117,
+  http order-routes 8/8, контракт регенерирован (117 путей).
+  По правке владельца добавлены **5 персон панели продавца** (`docs/QUALITY.md`: Мадина — заказы и
+  доставка, Данияр — склад, Жанна — закуп, Асель — споры, Тимур — контроль) и таск **T4.6** —
+  Ф-прогон текущей панели всеми пятью.
+
+- 2026-08-04: **T4.8 «Валюта и формат денег» закрыт (К✅ U✅)** — второй фикс по T4.6. Магазин
+  переведён на **тенге как валюту по умолчанию** (было «EUR Euro» в настройках, отсюда евро на
+  экранах панели); `seed-kz.ts` теперь ставит дефолт, а не только добавляет KZT в поддерживаемые.
+  Три исторические копии форматтера денег сведены в `lib/money.ts` (долг T4.1): скоринг показывал
+  суммы вообще без валюты («Лимит на балл 5000»), закуп — со своим. Денежные поля скоринга и ручного
+  лимита получили «₸» в подписи. unit 121/121 (+4 теста формата), tsc 0, lint 0 ошибок; 4 кадра
+  `docs/qa/screens/T4.8/`. Осталось: ядровые экраны («₸ 8 000,00 KZT») заменяются нашими в T4.2b/c,
+  демо-заказы в евро — данные (T7.2).
+
+- 2026-08-04: **T4.7 «Проводка прихода» закрыт (К✅ U✅)** — первый фикс по итогам T4.6 (владелец
+  выбрал начать с блокеров денег). Приход больше не падает: шаг workflow `ensure-inventory-levels`
+  создаёт нулевой уровень остатка там, где позиция на складе ещё не заводилась (ядро умело только
+  менять существующий), а форма прихода **спрашивает склад приёмки** вместо молчаливого «первого из
+  списка» (им был «European Warehouse» демо-сида — там учёта нет, отсюда `Inventory level … not
+  found`). Ошибка проводки теперь держится на экране («Провести заново» / «черновик сохранён, второй
+  раз создавать не нужно»), черновик можно удалить (`DELETE …/receipts/:id`, проведённый — нельзя),
+  а **реестр поставщиков переехал из настроек на экран «Закуп»**: продавцу настройки не видны
+  оболочкой T4.1a, и завести поставщика было негде. В шапке «Закупа» — «Не проведено: N на сумму X ₸».
+  Модуль 14/14, http procurement 8/8, tsc 0, lint 0 ошибок; live: Промзона 380 → 420, зависший
+  черновик закупщика на 160 500 ₸ провёлся. 9 кадров `docs/qa/screens/T4.7/`. Себестоимость и наценка
+  на товаре вынесены в T4.9a.
+
+- 2026-08-04: **T4.6 Ф-прогон панели пятью персонами — гейт Ф НЕ ПРОЙДЕН** (отчёт
+  `docs/qa/2026-08-04-T4.6-focus.md`, персональные — `docs/qa/2026-08-04-T4.6/`, 191 кадр в
+  `docs/qa/screens/T4.6/`): **21 блокер**, средняя оценка 2,2/5 (Мадина 2, Данияр 2, Жанна 2,
+  Асель 2, Тимур 3), рабочий день не закрыла ни одна роль. Работает: цепочка статусов заказа,
+  модерация с обязательной причиной, форма прихода и деньги закупа (сошлись до тенге), ИИ-приёмка
+  накладной (лучшее по мнению закупщика), ручная приёмка остатка, одобрение юрлиц и ручной лимит.
+  Главное из блокеров: **проводка прихода падает вовсе** (`Inventory level … not found` — приход
+  создаётся на склад «European Warehouse» из сида стартера, где у наших позиций нет уровня остатка;
+  корень найден при разборе), **претензию нельзя даже зарегистрировать** из панели, **по оплаченному
+  заказу счёт не выпускается** и реквизиты продавца пустые, **валюта магазина EUR** (на экранах евро
+  рядом с тенге), «Очередь заказов» не открывает заказ, про доставку (водитель/время/трекинг) на
+  экранах нет ничего, в «Складе» нет названий товаров и поиска по-русски, у управляющего нет ни одной
+  денежной сводки и отчёта за день. Разведено в фикс-таски **T4.7–T4.13** (+ T5.6 слот доставки,
+  T7.2 демо-мусор); требования оператора к экрану заказов — вход в T4.2b/c. Прогон повторить после
+  фиксов (контрольный — в T4.5).
+
+- 2026-08-04: **Фото в карточке чата открывается на просмотр** (правка владельца, обе платформы).
+  Тап по миниатюре товара в ленте ассистента больше не выбирает товар — открывает модалку с
+  изображением (зум щипком/двойным тапом на mobile), тап по остальной карточке остаётся репликой
+  «Беру …». Mobile: новый компонент `ui_kit/app_image_viewer.dart` + параметры `onImageTap`/
+  `imageTapLabel` у `AppProductCard` (метка-лупа в углу миниатюры), строки `attachmentPhotoOpen`/
+  `commonClose` в ru/kk. Storefront: `modules/common/components/image-lightbox` на общем `Modal`
+  стартера; выбор товара переехал на кнопку-подложку `absolute inset-0` (иначе вложенные `button`),
+  `data-testid=assistant-product-card` остался на ней — спеки кадров T3.6/T3.7 не тронуты, у фото
+  свой `assistant-product-photo`. Гейт К: `flutter analyze` + тесты ui_kit (+2), `tsc`/`next lint`
+  чисто; кадры гейта U не снимал — витрина на стенде не поднята.
+
+- 2026-08-04: **T4.1a «Прод-оболочка панели» закрыт (К✅ U✅)** — по замечанию владельца «в
+  интерфейсе продавца слишком много лишнего, или это то, что я завожу с админки». (1) Появилась
+  **роль**: `user.metadata.role` = `seller` (обычный продавец) либо отсутствие/`owner` (владелец —
+  существующие учётки админа видят всё как раньше); учётку создаёт
+  `src/scripts/create-seller-user.ts`, креды в `.env.example` (`seller@stroymarket.kz` /
+  `seller123456`). (2) **Обрезка оболочки** — `lib/shell-mode.ts` (атрибут `data-sm-shell` на
+  `<html>`, первый кадр из кэша localStorage) + `styles/shell.css`: продавцу не видны акции,
+  прайс-листы, черновики заказов, коллекции/категории/опции, группы клиентов, резервы и ВСЕ
+  настройки кроме «Профиля» (было: регионы, налоги, каналы продаж, публичные и секретные ключи API,
+  рабочие процессы, пользователи + наши владельческие настройки). (3) **Порядок пунктов сайдбара**
+  стал детерминированным (ядро между сборками меняло его местами, «Дашборд» был седьмым): дашборд →
+  очередь → заказы → товары → склад → закуп → модерация → разделитель → компании/клиенты/споры.
+  (4) Панель **открывается на «Дашборде»**, а не на ядровом списке заказов (перехват
+  `history.replaceState('/app/orders')` со страницы входа). (5) **Починено падение**: `/app/order-queue`
+  падал целиком, а виджет ронял ядровую страницу заказа — в базе остались `delivery_method`
+  `pickup` (6 заказов) и `counter` (1), снятые пивотом 2026-07-22; словари статусов и способов
+  теперь читаются через `orderStatusMeta`/`orderDeliveryMethodMeta`/`orderTransitions` с прочерком
+  вместо undefined (+6 юнит-тестов). (6) **Даты панели** сведены в `lib/date.ts` + общий детектор
+  локали `lib/locale.ts`: было восемь экранов на `en-US`, два на `ru-RU` — русская панель показывала
+  «Jul 15, 2026» рядом с «15 июл. 2026 г.». (7) Магазин переименован в «СтройМаркет» (ядровое
+  «Default Store» висело в шапке оболочки на каждой странице), название закреплено в `seed-kz.ts`.
+  eslint 0 ошибок, tsc 0, unit 105/105, `npm run build` ок (слой доезжает во входной чанк и общий
+  CSS — проверено в `.medusa/server/public/admin/assets/`); 10 кадров `docs/qa/screens/T4.1a/`.
+  Границы решения — в DECISIONS: это прод-ВИД, а не права доступа.
+
+- 2026-08-04: **ЭПИК E4 НАЧАТ, T4.1 «Каркас» закрыт (К✅ U✅)**: (1) слой токенов бренда для всей
+  админки — переменные `@medusajs/ui-preset` переопределены брендовыми с бóльшей специфичностью,
+  IBM Plex Sans бандлится теми же TTF, что в `ui_kit`; экраны ЯДРА (заказы, склад) сразу в бренде
+  и в тёмной теме, разметку не трогали; (2) `GET /admin/dashboard` — сводку дня считает бэкенд
+  (открытые статусы, очередь из 5 старейших, часы ожидания модерации, порог остатка
+  `DASHBOARD_LOW_STOCK_THRESHOLD=10`, непроведённые приходы), +6 юнит-тестов; (3) экран «Дашборд»
+  по макету 1a — 4 KPI-карточки, очередь заказов, панели остатков и приходов, состояния
+  загрузка/пусто/ошибка, i18n en/ru; (4) подписи разделов сайдбара локализованы (`lib/route-label.ts`)
+  — смешанного «Заказы / Order Queue» больше нет; (5) генератор скриншотов админки
+  `scripts/admin-screenshots.mjs` (вход, язык, тема, `block`/`pause` для кадров ошибки и загрузки).
+  lint 0, tsc 0 на обоих tsconfig, unit 99/99, `npm run build` ок; 9 кадров `docs/qa/screens/T4.1/`.
+  **Найдено ограничение:** порядок пунктов сайдбара, счётчики-бейджи и верхняя панель за ядром
+  `@medusajs/dashboard` — развилка владельцу №4 (оставить / форк / отдельное приложение продавца).
+
+- 2026-08-04: T3.6a закрыт (К✅ U✅) — **E3 закрыт полностью, паритет платформ по чату достигнут**:
+  в mobile buyer тап по карточке подбора отправляет реплику «Беру …» (kk — «… аламын»), под
+  карточками свежего хода — подсказка про тап, под ответом — чипы быстрых ответов из `suggestions`
+  (состав считает бэкенд; на новом ходе чипы снимаются, в историю не сохраняются). `AppProductCard`
+  получил опциональный `onTap` (без него карточка read-only). Dart `api_client` перегенерирован из
+  контракта: кроме `suggestions` подтянулось накопленное расхождение — ушли POS-клиенты
+  (`counter_carts`), добавились admin-логистика и assistant. analyze 0, ui_kit 28/28, buyer 55/55,
+  build web ок; 6 кадров `docs/qa/screens/T3.6a/`, голдены T2.3 перегенерированы (0,09 % — карточка
+  переехала на Material ради отклика InkWell).
+
+- 2026-08-03: **КАЧЕСТВО ОТВЕТОВ АССИСТЕНТА — перестройка** по замечанию владельца «ответы всё ещё
+  так себе». Прогон 10 QA-агентов на живом стенде (по персоне и рубрике 1–5 на каждого, 12–16 ходов,
+  корзина сверялась с БД) + ресёрч эталонных промптов и методик оценки — **средний балл 3,57/5**,
+  разбор в `docs/qa/2026-08-03-assistant-quality-10-agents.md`. Диагноз: механика (корзина,
+  арифметика денег, геометрия, воронка) 4–5, честность 1–2 у всех прогонов — «железное правило»
+  промпта покрывало только ЦЕНУ ТОВАРА, поэтому сроки, услуги, документы, телефон и наличие
+  выдумывались (~40 утверждений на 10 диалогов), а ложный отказ («не работаем с ТОО», «песка нет»
+  на товар `in_stock`) стоил двух сделок по 1,5 млн ₸. Сделано: (1) промпт переписан по эталонному
+  скелету вендоров — 13 секций, положительные формулировки с причиной, правила приоритета, процедура
+  ответа, канон магазина (сверен по коду, симметричен), 4 few-shot, чеклист; (2) рантайм —
+  `thinkingLevel: "medium"` (дефолтный `minimal` у flash-lite и был причиной обрыва tool-loop),
+  `maxOutputTokens`, `thoughtSignature` в типах, комментарий про устаревшие temperature/topP/topK;
+  (3) **ложные отказы шли из инструмента, а не от модели** — `search_products` искал `title ILIKE` с
+  AND по словам, «минвата» не находило «минеральная вата» при остатке 1950 → разбор запроса
+  переделан (стоп-слова, синонимы, OR-фолбэк), +5 юнит-тестов. Контрольные пробы: расчёт фундамента
+  864 000 → 276 000 ₸ (верно), стяжки 40 → 26 мешков, четыре выдумки → четыре честных «не знаю»,
+  арматура и минвата продаются, кейс ТОО корректен по всем пунктам. Лint 0 ошибок, юнит 89/89.
+  **Решение владельца по модели:** рабочая остаётся `gemini-3.5-flash-lite` (стоимость), а
+  `gemini-3.6-flash` включаем точечно НА ПОКАЗАХ — A/B показал, что flash не роняет правила промпта,
+  но отвечает в 2,5–3 раза медленнее; переключение переменной `GEMINI_MODEL`, памятка в
+  `backend/.env.example`. Остаточный дефект lite (заявлял «опалубки нет», не выполнив поиск) добит
+  правилом промпта «сначала поиск, потом слова есть/нет — включая сопутствующие»: 3 из 3 прогонов
+  теперь предлагают доску с ценой.
+
+- 2026-08-03: T3.7 (К✅ U✅) по ручному прогону владельца: после изменения корзины карточки подбора
+  больше не повторяются в ленте, и появились **быстрые ответы** — `suggestions[]` в ответе ассистента
+  (детерминированно по состоянию хода: корзина → «Перейти к оформлению», счёт → «Я оплатил», заказ →
+  «Где мой заказ?»), на витрине чипы `quick-replies`. Контракт регенерирован (`suggestions` в
+  `StoreAssistantChatRes`) — Dart-клиент перегенерировать в T3.6a вместе с UI мобилки. Бэкенд 84/84.
+
+- 2026-08-03: T3.6 (К✅ U✅) по ручному прогону владельца: свёртка дублей вставок (за ход модель
+  искала дважды → в ленте было 4 карточки вместо 2; `lib/assistant/attachments.ts`, +4 unit-теста) и
+  **тап по карточке подбора = реплика «Беру …»** — уточнение решения 2026-07-24 (протокол остаётся
+  текстовым, кнопок корзины в ленте нет); промпт: количество в единицах товара, а не «3 позиции».
+  Паритет для mobile buyer — T3.6a.
+
+- 2026-08-03: правки по ручному прогону владельца. T3.5 (К✅ U✅): чат — единственная точка входа
+  витрины (каталожные адреса и корень региона редиректятся в `/chat`), экран чата в своей группе
+  маршрутов без футера, на 400×824 прокрутки страницы нет (0 px), переключатели темы/языка переехали
+  в панель диалогов. T3.4a (К✅, закрыл и T3.2a): семь правок промпта консультанта — не спрашивать
+  город (магазин по Астане, `set_delivery` без обязательного `city`), считать количество и для
+  материалов, которых нет в наличии, показывать промежуточный расчёт, брать обычный вариант с явным
+  допущением вместо переспрашиваний, не печатать ссылку оплаты, номер заказа только человекочитаемый,
+  не добавлять в корзину без просьбы; сравнение «до/после» — `docs/qa/2026-08-03-T3.4a-prompt.md`.
+  Находка в T7.2: профиля, саморезов, ленты и шпаклёвки в каталоге нет вовсе.
+
+- 2026-08-03: **ЭПИК E3 ЗАКРЫТ.** T3.4 (Ф✅): Айгуль прошла путь целиком на витрине — регистрация →
+  подбор в чате → доставка → оплата Kaspi → заказ №24 → счёт INV-2026-000001 с PDF → трекинг;
+  0 блокеров, 4/5. Попутно доделано: блок «Документы» на странице заказа, статусы ядра переведены
+  словарём, дата по локали, убрано служебное «Variant:». Находки → T3.4a (промпт: человекочитаемый
+  номер заказа; не добавлять в корзину без просьбы) и T8.6 (нет dev-способа подтвердить мок-оплату
+  Kaspi — блокирует честный e2e T9.1).
+
+- 2026-08-03: T3.3 закрыт (К✅ U✅): локальная история диалогов витрины (localStorage
+  `sm_chat_history`, панель 1d, сохранение с токенами, возобновление, удаление — проверено live по
+  CDP), «Войти как компания» в шапке чата (довесок Ф T3.2), экраны аккаунта/заказов (25 файлов)
+  переведены на прямые токены. В T3.4 уходит находка: документы заказа (счёт/АВР) витрина не
+  показывает, хотя на mobile есть.
+
+- 2026-08-03: T3.2 закрыт (К✅ U✅ Ф✅): веб-чат догнал mobile 1a–1c — вставки (карточка товара,
+  Kaspi QR с автополлингом, статус заказа), пустой экран с чипами, «печатает…» точками, инлайн-жирный,
+  композер-пилюля; деньги «1 500 ₸» вместо «KZT 1,500.00» (общий форматтер), локализованы главная и
+  боковое меню. Исправлен баг раскладки: автопрокрутка уводила чат под шапку (жил и до таска).
+  Ф-прогон Айгуль (ТОО, десктоп): 0 блокеров, 4/5; «мешает» → T3.2a (ассистент печатает сырую
+  ссылку Kaspi в тексте) и T3.3 (юрлицу негде нажать «войти»). Найдено расхождение контракта:
+  `product_card.price` описан как минорные единицы, а приходит в тенге → T8.5.
+
+- 2026-08-03: E3 начат, T3.1 закрыт (К✅ U✅): токены бренда витрины каналами (`--sm-*`, свет/тьма
+  на `<html>`) + переопределение переменных `@medusajs/ui-preset` — 71 файл стартера стал
+  брендовым без правки разметки; палитра стартера зачищена (~150 утилит в 55 файлах — иначе тьма
+  ломалась белыми карточками); IBM Plex Sans через `next/font/local` (те же TTF, что в ui_kit);
+  тема — cookie `_sm_theme` + инлайн-скрипт первого кадра + переключатель в футере (ru/kk/en);
+  свой скриншотер витрины на CDP (16 кадров). Попутно: сборка витрины падала из-за висящего
+  5-дневного dev-процесса бэкенда — перезапущен.
+
+- 2026-07-29: BUYER-МОБИЛКА ПРОДАКШН-ГОТОВА. T8.1 персистентная сессия (SecureSessionStore на
+  flutter_secure_storage; ревью-фиксы: устойчивое чтение токена, iOS first_unlock_this_device),
+  T8.4-buyer (release apk 52.6 MB + web собираются). T2.9a: ККМ-совет юрлицу убран из промпта.
+  Луп «мобилка клиента» завершён; остаток — другие платформы/owner-гейты.
+- 2026-07-29: ЭПИК E2 закрыт. T2.9 сквозной прогон buyer (Ф✅): 3 персоны 5/4/4, 0 клиентских
+  блокеров, все 6 регрессий T2.3a/T2.3b чисты (сверено по API). Мешает→T7.1(нормы цемента)/
+  T7.2(лоты арматуры)/T2.9a(ККМ-совет, исправлен). T2.8 закрыт (К✅U✅Ф✅: +статусы assembling/
+  partially_assembled). Ждут ОК владельца: T2.4, T2.9.
+- 2026-07-29: T2.7 экран 1f заказы-список закрыт (К✅ U✅): чипы Активные/Все, AppOrderListItem
+  (номер, N позиций·сумма ₸, статус-бейдж), статус параллельно (Future.wait), склонение позиций,
+  общий shared/tenge.dart (убрал дублирование _tenge в чате), OrderCard удалён.
+- 2026-07-29: T2.6 экран 1e аккаунт/вход (К✅ U✅ Ф✅, вариант (а)): login перестроен по
+  макету — карточка гостя + вход email/пароль + блок «для юрлиц»; l10n ru/kk; голдены свет/тьма.
+  SMS-развилка владельца открыта → таск `[~]` до решения по провайдеру.
+- 2026-07-29: T2.5 экран 1d история закрыт (К✅ U✅ Ф✅): локальное хранение диалогов на
+  shared_preferences (покордовый разбор — битая запись не рушит историю), ChatHistoryController
+  (upsert/remove с await future от гонки build↔upsert), сохранение на каждом ходе + возобновление
+  с токенами сессии, drawer со списком/удалением; ревью 0 блокеров (LOW-устойчивость исправлена).
+- 2026-07-28: T2.4 экран 1c оплата (К✅ U✅ Ф✅, В ждёт владельца): гостевой GET-поллинг Kaspi
+  (requireCartPaymentAccess, fail-closed has_account), сумма в payment-attachment, mobile
+  PaymentAttachmentView с авто-поллингом (StreamProvider 4с) + ошибка/повтор; контракт +amount/
+  currency; http 16/16; ревью — 0 блокеров (3 low: 2 фикс, инвариант «1 корзина/диалог» задок.);
+  Ф Ерлан 4/5, статус честный, QR-подсказка добавлена в промпт.
+- 2026-07-28: T2.3 закрыт целиком (Ф✅): контрольный перепрогон Ерлана после T2.3a/T2.3b —
+  задвоения нет, сводка = API до тенге, арматура спрошена до добавления, отказ уважён,
+  галлюцинаций нет; оценка 5-. Остаток: демо-сид путает фракции щебня → заметка в T7.2.
+- 2026-07-28: T2.3b grounding закрыт (К✅): железное правило «товар/цена только из
+  search_products», N/2 для перепадов, запас явно, временные нормы расхода в промпте до T7.1;
+  live-ловушки пройдены (маяки/плёнка без выдуманных цен, пескобетон 15 мешков вместо 32).
+- 2026-07-28: T2.3a корзина ассистента закрыт (К✅): update/remove/clear-инструменты, правила
+  количества в cart-quantity.ts (невалидное → error; сильное округление → подтверждение с
+  пер-ходовым блоком повтора), remove сносит дубли варианта, {applied,warning} после мутации,
+  честный фолбэк; ревью (1 blocker+3 major) устранено; live-smoke стабилен. Находка: dev-сервер
+  не перезагружает src/lib — нужен рестарт.
+- 2026-07-28: T2.3 экран 1b «подбор» реализован (К✅ U✅): l10n меток вставок ru/kk,
+  AppTypingBubble (3 точки каскадом, в ui_kit), инлайн-жирный и хвост пузыря по 1b, лента
+  снизу; голдены T2.3 + перегенерация T2.2/T1.1. Ф-прогон (Ерлан+Дмитрий, live): клиент чист,
+  в бэкенд-ассистенте 4 блокера (корзина задваивается и не читается из состояния, мин-лот
+  молча, галлюцинации ассортимента) → T2.3a/T2.3b; нормы расхода завышены → аргумент к T7.1.
+- 2026-07-28: T2.2a типографика закрыт (гейт К): весовые варианты в AppTypography (google_fonts
+  не меняет вес через copyWith — конвенция задокументирована), labelLarge темы переопределён,
+  semantics-label отправки в AppInputBar, голдены T1.1/T2.2 перегенерированы.
+- 2026-07-28: T2.2 экран 1a закрыт (гейты К+U): шапка по макету (панель истории, чип «Қаз↔Рус»),
+  пустой экран 1a, ChatDrawer-заготовка (1d), l10n ru/kk, голден-скриншоты в docs/qa/screens/T2.2;
+  из ревью заведён фикс-таск T2.2a (веса google_fonts через copyWith не работают — системно).
+- 2026-07-27: T2.1 контракт закрыт (гейт К): openapi.json регенерирован (−POS-пути, +admin-логистика,
+  +assistant), Dart api_client перегенерирован, разбор attachments — через контрактные модели
+  (payload-классы; oneOf-обёртка кодогеном не поддержана) + юнит-тесты разбора.
+- 2026-07-27: T1.1 тёмная тема ui_kit закрыт (гейты К+U): AppColorTokens (ThemeExtension) свет/тьма,
+  все компоненты и buyer на токенах из контекста, TTF IBM Plex — ассетами ui_kit (DECISIONS);
+  скриншоты света/тьмы в docs/qa/screens/T1.1.
+- 2026-07-27: план MVP + гейты качества введены (PLAN.md/QUALITY.md), STATE.md сжат в архив.
+- 2026-07-27: компоненты ui_kit по макету готовы (9 шт., 19/19 тестов) — g2 без тёмной темы.
+- 2026-07-24: attachments в ответе ассистента (g1); фиксы качества ответа по прогону 10 QA-агентов
+  (округление вверх, все варианты товара, оговорки по арматуре); токены ui_kit заменены на точные.
+- 2026-07-23: путь покупателя закрыт на buyer и storefront (тонкие чат-клиенты); контракт 117 путей.
 
 ## Известные проблемы / риски
-- ~~БЛОКЕР mobile-трека — `api_client` не компилируется (коллизия имени метода).~~ **УСТРАНЁН 2026-07-21.** Причина была: admin+store эндпоинты order-documents делили `operationId: "GetOrdersIdDocuments"` → swagger_parser генерировал два одноимённых метода в `OrdersClient`. Фикс: store-роуту `/store/orders/{id}/documents` дан `operationId: "StoreGetOrderDocuments"` (`backend/src/api/store/orders/orders.oas.json`) → `npm run contract:generate` → `dart run swagger_parser` + `build_runner`. Теперь `OrdersClient.getOrdersIdDocuments` (admin) и `OrdersClient.storeGetOrderDocuments` (store) — разные методы; api_client компилируется, `core` тесты зелёные. Урок на будущее: кастомные store-OAS-фрагменты НЕ должны переиспользовать operationId Medusa-конвенции (`Get<Tag>Id<Sub>`), если admin-версия уже такой есть — давать префикс `Store...`.
-- Kaspi Pay: нет публичной песочницы — интеграцию проектировать через адаптер, тестировать на моках, реальные ключи запросить у клиента заранее. Найден референс флоу (неофициальный API) — см. `docs/modules/payment-kaspi.md` → Референсы.
-- Локальный конфликт порта 5432: на машине был установлен нативный PostgreSQL 16 (служба `postgresql-x64-16`), занимавший 5432 и мешавший контейнеру. Служба остановлена и переведена в ручной запуск (`StartupType=Manual`). Если снова понадобится нативный Postgres — не поднимать его одновременно с docker-контейнером. Вернуть автозапуск: `Set-Service postgresql-x64-16 -StartupType Automatic`.
-- Redis-контейнер поднят, но `medusa-config.ts` пока не сконфигурирован на него (использует in-memory event bus/cache/locking — предупреждение «fake redis»). Достаточно для локальной разработки; подключить Redis-модули, когда появятся фоновые задачи/подписчики.
-- Скаффолд Medusa v2 (create-medusa-app) теперь делает turborepo-обёртку (`apps/backend`, `turbo.json`); мы вынимаем из неё `apps/backend/*` в наш `backend/` (без turbo). Учитывать при будущих апгрейдах стартера.
-- Org/bundle id мобильных приложений — placeholder `kz.marketplace` (например, `kz.marketplace.marketplace_buyer`): до публикации в сторы согласовать с владельцем реальный домен и переименовать (пока не опубликованы — переименование дешёвое).
-- Витрина на регионе KZ работает end-to-end (каталог → чекаут с Manual/Kaspi QR/бонусами → заказ, 2026-07-18). Остаточный долг: ru/kz-локализация витрины; поведение Kaspi-панели при `canceled|error` показывает текст «вернитесь на шаг Payment», но повторная инициализация создаст ТУ ЖЕ сессию (идемпотентный POST) — сценарий «пересоздать инвойс после отмены» не реализован ни в API, ни в UI (актуально к live-интеграции). После пересида товаров при пустом каталоге чистить дисковый кэш `storefront/.next` (force-cache переживает рестарт).
-- Долгоживущий backend dev-процесс (сутки+) деградирует: store-роуты виснут (60с+ без ответа) при живом `/health`, витрина «висит» вслед за ним с растущими таймингами — лечится перезапуском `cd backend && npm run dev`. Замечено 2026-07-18; причина не искалась (dev-only, in-memory event bus/локи под подозрением).
-- Полный `npm run test:integration:http` за один прогон долгий (~140 тестов × поднятие приложения; подписчики documents рендерят PDF на каждом заказе) — если машина УСНЁТ во время прогона, часть тестов флейкует (наблюдался `Time 92645s`, «Connection ended unexpectedly», 9 ложных падений). Чистые перезапуски батчами (`--testPathPattern`) — зелёные. Для CI держать машину активной или гнать батчами.
-- Модуль `logistics` (следующий по бэклогу) — реализация ЗАБЛОКИРОВАНА решением владельца по MVP-объёму: домен крупный (рейсы/тарифы/GPS-трек/фото-подпись/возвраты), пересекается с driver-app, есть инфра-выборы (realtime-канал SSE/WebSocket для GPS, провайдер карт) — см. открытые вопросы в `docs/modules/logistics.md`. Дизайн-стаб есть, но границы MVP до реализации нужно подтвердить (что в Фазе 2 обязательно, что можно отложить). До ответа владельца цикл берёт неблокированные задачи.
-- `documents`: `medusa build` НЕ копирует TTF-ассеты (`src/modules/documents/assets/fonts/*.ttf`) в `.medusa/server` — в dev/тестах путь резолвится от `src`, но при прод-развёртывании (`.medusa/server`) шрифты надо доставить рядом с рантаймом (или встроить base64/скопировать в build-шаг). File Module в проде тоже пока локальный (`static/`) — для VPS/прод настроить S3-совместимый провайдер.
 
-**Локализация витрины — продолжать экраны (подзадача 2):** основной путь (каталог→товар→корзина→чекаут) локализован. Следующие слайсы: аккаунт (`modules/account` — вход/регистрация/профиль/заказы; много форм), nav/footer-ссылки. Паттерн: клиент — `useMessages()`, server — `await getServerMessages()`. Паттерн: строки в `messages/en.ts` (канон) + ru.ts/kk.ts; клиентский компонент — `useMessages()`, серверный — `await getServerMessages()` (сделать async) — `lib/i18n/server.ts`. Верификация: `next lint` + tsc изменённых; периодически e2e headless-Edge (нужен бэкенд+dev). ПРИМЕЧАНИЕ: локализация — длинный хвост однотипных слайсов; при желании владельца свернуть — оставить как «инкрементальный долг» и переключиться на его приоритеты.
-Прочее неблокированное: headless-прокликивание админ-UI (flaky — сон машины). Блок/owner-gated: `logistics` реализация (ОК владельца по объёму), гэпы 6 (пуши)/7 (роли), `estimator` 3 (ИИ), постоплата `scoring` 2c.
-Модуль `logistics` — реализация ждёт решения владельца по MVP-объёму (домен крупный, GPS/realtime/карты; см. «Известные проблемы»). Прочие модули по бэклогу: `scoring`, `estimator`.
-Прочие свободные направления (пока дизайн partner-app у владельца): ru/kz-локализация витрины; гэп 3 сверки (привязка покупателя к POS-заказу по телефону — без неё POS-заказ гостевой, для MVP допустимо); прокликать headless-браузером админ-UI reviews (подзадача 3), документов (подзадача 4) и способов получения (покрыты tsc+build+http, вживую не прокликаны).
-Владельцу параллельно: прогнать `mobile/design/partner/BRIEF.md` через claude.ai/design, handoff вернуть в `mobile/design/partner/`.
+- ~~Лишний склад «European Warehouse»~~ — удалён в T7.2a (2026-08-11) вместе с регионом «Europe».
+- ~~Демо-заказы №1–№6 в евро~~ — удалены в T7.2a; вся история стенда (№24–33) в тенге. Формат денег
+  ядровых экранов («₸ 8 000,00 KZT») правится заменой этих экранов в T4.2c/T4.3.
+- ~~По оплаченному заказу документы не выпускаются, реквизиты продавца пустые~~ — закрыто T4.9
+  (2026-08-13): выпуск кнопкой с экрана заказа, обязательные реквизиты (мок-значения в сиде),
+  реестр документов, отметка «отправлен». **Гейт В остаётся** — подписывать на РЕАЛЬНЫХ реквизитах
+  (сейчас в подвале PDF стоит пометка «демонстрационные»).
+- ~~Заказ из чата не виден в «Аккаунт → Заказы»~~ — закрыто T3.9 (2026-08-14): заказы читаются без
+  кэша, из ленты чата есть ссылка на заказ. Осталось: **в mobile buyer из ленты в заказ не перейти**
+  (T2.13, правило паритета платформ).
+- ~~Степпер вставки «статус заказа» пуст у свежего заказа~~ — закрыто T3.11 (2026-08-14):
+  `delivery_stage` отдаёт код стадии жизненного цикла, прогресс курьера — в `courier_note`. Осталось:
+  **в ленте mobile buyer степпер не рисуется** (`stages: const []`) — T2.13.
+- ~~Корзина в шапке витрины всегда «(0)», `/kz/cart` пуст и ведёт в тупик~~ — закрыто T3.10
+  (2026-08-14): корзины в интерфейсе витрины больше нет вовсе, состав заказа ведёт диалог,
+  `/cart` уводится в чат.
+- ~~Юрлицу негде зарегистрировать компанию на витрине~~ — закрыто T3.8 (2026-08-13): раздел
+  «Аккаунт → Компания» с заявкой и статусом модерации; догрузка документов и повторная подача после
+  отказа — T3.8a (2026-08-14), паритет в mobile buyer — T2.12 и T2.14 (2026-08-17). Путь юрлица
+  закрыт на обеих платформах.
+- ~~**На стенде осталась тестовая компания «ТОО Т214 Строй»**~~ — закрыто T12.1 (06.09): сама
+  компания была снесена ещё прошлой чисткой, покупатель `t214-…@stroymarket.test` с нечитаемым
+  именем удалён теперь; в `cleanup-demo-data.ts` заведены маска домена `@stroymarket.test` и
+  явные маркеры названия компании (`TEST_COMPANY_NAME_MARKERS`), чтобы такой мусор снимался
+  впредь без ручного разбора.
 
-Для ручной проверки POS-флоу (полностью через admin API, нужен `seed-kz.ts` — у складов есть pickup-опции): логин admin → `POST /admin/counter-carts {"location_id": "<склад из Settings → Locations>"}` → `POST /admin/counter-carts/:id/line-items {"variant_id": "...", "quantity": 2}` → оплата: `POST .../payment/cash` (наличные) ИЛИ `POST .../payment/kaspi {"scenario":"paid"}` + `GET .../payment/kaspi` до `authorized` → `POST /admin/counter-orders {"cart_id": "...", "location_id": "..."}` → заказ counter/delivered виден в Order Queue (фильтр `?delivery_method=counter`, поиск `?q=<номер|email>`). Тесты: `npm run test:integration:http -- --testPathPattern=counter-carts`.
+- **Отменённый заказ показывает «Итого 0 ₸» при живых ценах позиций и бейдж «Оплачен»** (найдено
+  в T12.6). Поведение ядра: отмена обнуляет итоги и не делает возврата денег. На показе отменённые
+  заказы не открываем; чинить — отдельным решением владельца.
+- **Заказ «в работе» стареет сам:** SLA стадии 24 часа, поэтому очередь, набитая накануне, к утру
+  вся просрочена. Подготовку стенда (`prepare-demo-stand.ts` + свежие заказы через `STOP_AFTER`)
+  делать УТРОМ показа.
+- **Dev-бэкенд перезапускается на ЛЮБУЮ правку файла в `backend/`** и минуту отвечает
+  `ECONNREFUSED`, а иногда не поднимается вовсе. Правило: последняя правка → дождаться
+  `GET /health` = 200 → не трогать репозиторий до конца показа.
+- **Падение Docker Desktop утаскивает весь стенд** (06.09): бэкенд уходит в бесконечное
+  `Pg connection failed to connect to the database`, и перезапуском бэкенда это не лечится —
+  сначала Docker, потом БД в статусе `healthy`, потом бэкенд.
 
-Для ручной проверки Kaspi QR + бонусов в витрине: добавить в `storefront/.env` строку `KASPI_MOCK_SCENARIO=paid` (см. `.env.template`; без неё мок вечно pending) → бэкенд + витрина dev → залогиненным покупателем (бонусы начислить: `cd backend && npx medusa exec ./src/scripts/grant-demo-bonus.ts <email> 6000`) → чекаут: в summary «Pay with bonuses» → сумма → Apply (строка Bonuses в тоталах, тотал уменьшился) → способ оплаты Kaspi QR → Continue to review → QR-панель → мок платит → заказ оформится сам. Чистка демо-каталога (уже прогнана на dev-БД, идемпотентна): `npx medusa exec ./src/scripts/cleanup-starter-catalog.ts`.
+- **Претензию нельзя зарегистрировать из панели** (спор заводит только покупатель), а доказательств
+  доставки на заказе нет — ни курьера, ни фото, ни подписи. Фикс — T4.11 (частично зависит от E5).
 
-Для ручной проверки витрины: бэкенд `cd backend && npm run dev` (:9000) + витрина `cd storefront && npm run dev` (:8000) → http://localhost:8000/kz/store → товар → корзина → чекаут (нужен логин: зарегистрироваться на /kz/account) → адрес → способ получения («Доставка по Астане» 2000 KZT или «Самовывоз: <склад>» 0 KZT) → Manual Payment → Place order → подтверждение; статус и способ получения заказа видны админу в Order Queue / на странице заказа.
+- **Обрезка оболочки панели держится на разметке ядра** (T4.1a): селекторы `styles/shell.css`
+  опираются на классы контейнера сайдбара (`nav .flex.flex-col.gap-y-3`) и структуру пункта
+  (`> div.w-full > a[href]`). При обновлении Medusa слой может перестать действовать — панель
+  вернётся к ядровому виду (лишние разделы снова видны), НО ничего не сломается. Проверять файл
+  после апгрейда ядра.
+- **Ядровые экраны панели остаются ядровыми:** список заказов заменён нашим экраном в T4.2b
+  (ядровый пункт скрыт из сайдбара), но ядровая СТРАНИЦА заказа (клик по строке) и склад/товары
+  по-прежнему ядровые — «₸ 242 000,00 KZT», технические блоки; правится в T4.2c/T4.3. Блок
+  «Two-factor authentication» на странице профиля не переведён ядром на русский.
 
-Для ручной проверки бонусов: `npx medusa exec ./src/scripts/seed-demo-bonus.ts` (счёт 6600 kzt: обычный + скоро сгорающий + просроченный лоты, списание) → админка: Settings → Bonus Program (конфиг, Edit-drawer), Customers → Demo Bonus Buyer → секция «Bonus account» (баланс+история). Джоба сгорания вручную: в консоли/скрипте `expireBonusesJob(container)` либо дождаться `30 * * * *` на dev-сервере — просроченный лот сгорит (expiry-транзакция + `bonus.expired` в логе), о сгорающем через 3 дня появится `bonus.expiring_soon` (маркер не даст повториться). Списание в оформлении: `POST /store/carts/:id/bonus {"amount": N}` → тотал уменьшился → оплата Kaspi на остаток → `POST /store/orders`. Тесты: `npm run test:integration:http -- --testPathPattern="bonus-(spend|accrual|expiry)"`.
+- **`material_norm` ПУСТА** — расчёты количеств держатся на Gemini с оговорками; наполнение — T7.1
+  (развилка владельца по источнику норм). После перестройки промпта (2026-08-03) нормы заданы
+  процедурой с подстановкой и числовыми предохранителями — переоценка ×2…×3,2 ушла, но это всё ещё
+  модель, а не данные: пока нормы не наполнены, расчёт проверяем пробами.
+- **`set_delivery` берёт `options[0]`** из доступных способов доставки. Опции самовывоза за 0 ₸
+  удалены в T7.2a (2026-08-11), и опция осталась одна — «Доставка по Астане», так что выехать за 0 ₸
+  заказ больше не может. Сам выбор «первой из списка» не переписан: при появлении второй опции
+  доставки выбирать нужно по имени/типу (найдено 2026-08-03).
+- **Ассистент выдаёт покупателю только то, что найдёт `search_products`** — а он ищет подстрокой по
+  названию товара. Таблица разговорных названий (`SYNONYMS`) закрывает известные случаи, но новое
+  просторечие («сайдинг», «ротбанд») снова даст пустую выдачу и честное «у нас нет». При пополнении
+  каталога проверяй, как товар спрашивают вживую, и дополняй таблицу.
+- **Kaspi без публичной песочницы** — живой транспорт за адаптером, тестируется на моках; реальные
+  ключи запросить у клиента заранее. Пересоздание инвойса после `canceled|error` не реализовано (T8.3).
+- **Сессия buyer in-memory** — не переживает перезапуск приложения; замена провайдера на
+  `flutter_secure_storage` (T8.1).
+- **Redis не подключён** в `medusa-config.ts` (in-memory event bus/cache, предупреждение «fake redis») — T8.2.
+- **`medusa build` не копирует TTF** модуля `documents` в `.medusa/server`; file provider локальный
+  (`static/`) — T8.4 / прод-этап.
+- Долгоживущий dev-процесс ВИТРИНЫ отдаёт 500 на всех страницах с `Jest worker encountered 2 child
+  process exceptions, exceeding retry limit` (middleware при этом продолжает работать — редиректы
+  проверяются, а страницы нет) — лечится перезапуском `npm run dev` (найдено 2026-08-14 в T3.10).
+- Долгоживущий backend dev-процесс (сутки+) деградирует (store-роуты виснут) — лечится перезапуском
+  `npm run dev`. Симптом со стороны витрины (2026-08-03): `next build` валится на генерации
+  страниц товаров/категорий («took more than 60 seconds»), хотя `/health` отвечает 200 — сначала
+  перезапустить бэкенд, а не искать причину в сборке.
+- Витрина: ~800 КБ TTF IBM Plex Sans в бандле (4 веса) — сабсет woff2 отложен до прод-этапа
+  (нужен fonttools, локально нет).
+- Полный `test:integration:http` долгий; если машина уснёт — флейки. Гнать батчами
+  (`--testPathPattern`) или держать машину активной.
+- Docker Desktop после сна хоста может ломать порт-форвардинг к postgres (`ECONNRESET`) — надёжный
+  фикс: перезагрузка Windows, либо admin-PowerShell `wsl --shutdown` → `Restart-Service LxssManager`
+  → `Restart-Service com.docker.service`. БЕЗ admin `wsl --shutdown` НЕ делать (залипает WSL2-VM).
+- После пересида каталога при пустой витрине чистить `storefront/.next` (force-cache переживает рестарт).
+- Org/bundle id мобильных приложений — placeholder `kz.marketplace`; согласовать домен до сторов.
 
-**Готовый fulfillment-набор для реальной отгрузки KZ:** тест-фикстура `order-lifecycle-workflows.spec.ts` и скрипт `seed-demo-order.ts` показывают полный набор (fulfillment set + service zone + link склад↔provider `manual_manual` + shipping option + link product↔shipping_profile + payment session `pp_system_default`) — при реализации оформления/доставки KZ повторить в `seed-kz.ts` (сейчас там осознанно отложено, DECISIONS 2026-07-14 склады+KZ).
+## Открытые вопросы владельцу
 
-Для ручной проверки заказа: `cd backend && npm run dev` → http://localhost:9000/app (admin@example.com / supersecret) → «Order Queue» (после `npx medusa exec ./src/scripts/seed-demo-order.ts` — 3 демо-заказа new/confirmed/in_delivery; клик по строке → страница заказа → секция «Order lifecycle» с переходами в «...»-меню), «Companies» (3 демо-компании), «Product Moderation» (demo из `seed-demo-catalog.ts`), Settings → Locations. Тесты заказа: `npm run test:integration:http -- --testPathPattern=order-routes` (роуты) / `--testPathPattern=order-lifecycle-workflows` (сквозной цикл) / `npm run test:integration:modules -- --testPathPattern=order-lifecycle` (модуль) — нужен docker-postgres + `.env.test`.
+Зеркало «Открытых развилок» PLAN.md: (1) ~~вход по SMS~~ — закрыта 2026-08-25 (телефон), остался
+**провайдер SMS/OTP** (ключи, бюджет, отправитель в РК); (2) источник нормативов material_norm;
+(3) приоритет E4 (продавец) — параллельно или после E2/E3; (4) оболочка панели продавца — оставить
+ядровую в бренде (сейчас), форк `@medusajs/dashboard` или отдельное веб-приложение продавца.
+Новые после разворота 2026-08-25: (6) STT — остаёмся на Gemini или отдельный провайдер (решаем по
+прогону T10.5); ~~(7) приложение сборщика~~ — ЗАКРЫТА 2026-09-02: роль в `apps/partner`;
+(8) юрлица после MVP — возвращаем за флагом или выпиливаем; (9) склад — свой экран
+поверх ядрового inventory (по умолчанию), своя таблица цен и остатков или уход от Medusa в этой части;
+~~(10) документ покупателю-физлицу~~ — ЗАКРЫТА 2026-09-04: **счёт + накладная**, тип «чек» и
+фискальный чек через ККМ — после показа (DECISIONS 2026-09-04);
+(11) **остаток без карточки товара** (поднято перепрогоном T10.14e 2026-09-02): приёмка умеет
+заводить складскую позицию без карточки (`KZ-SAND-BB1`), и после сведения плитки дашборда с экраном
+«Цены и остатки» такую позицию видит только владелец в ядровом «Складе» — запрещаем это в приёмке
+или заводим отдельный показатель «остаток без карточки».
+(12) канал уведомлений продавцу (поднято T4.12) — панели достаточно или нужен внешний сигнал;
+(13) **допуск водителя** (поднято T5.1 2026-09-04): заявку самрегистрации проверяет продавец
+(сейчас так) или водителей пускаем к заказам сразу — если они «все свои».
 
-Для ручной проверки оплаты Kaspi (регион KZ уже с провайдером после `seed-kz.ts`): залогиненным покупателем собрать корзину (регион Kazakhstan) → `POST /store/carts/:id/payment/kaspi` body `{"scenario":"paid"}` → в ответе `qr_payload`/`payment_url` → `GET` того же пути → `status: authorized` → `POST /store/orders {cart_id}` → заказ + lifecycle new. Тесты оплаты: `npm run test:integration:http -- --testPathPattern=kaspi-payment`. Внимание: у корзины должна быть доставка (fulfillment-набор KZ в `seed-kz.ts` по-прежнему отложен — тест-фикстуры строят свой, см. блок выше).
+## Шпаргалки ручных проверок
+
+Рецепты live-проверок (Kaspi QR, бонусы, заказы, POS-архив) — в архиве:
+`docs/archive/STATE-2026-07.md`, раздел «Для ручной проверки…».
