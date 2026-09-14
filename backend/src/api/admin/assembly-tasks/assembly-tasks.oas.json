@@ -1,0 +1,631 @@
+{
+  "paths": {
+    "/admin/assembly-tasks": {
+      "get": {
+        "operationId": "GetAssemblyTasks",
+        "summary": "List Assembly Tasks",
+        "description": "Очередь заданий сборки: оплаченный заказ распадается на задания по категориям (по одному на категорию). Один ресурс на два экрана — сборщик видит только задания своей группы (категория подставляется из его учётки и перекрывает параметр category), отгрузка видит все задания. Каждая запись несёт готовую строку экрана: заказ, категория, статус, позиции с отметками и сводка по ним.",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Фильтр по статусу задания. Одно значение или несколько через запятую («pending,picking»). Описан ПРОСТОЙ строкой, а не объединением «строка | массив»: из oneOf кодогенератор Dart делает параметр dynamic и зовёт у него toJson(), из-за чего очередь сборщика падала NoSuchMethodError ещё до запроса (найдено на совместном прогоне 2026-09-06).",
+            "schema": {
+              "type": "string",
+              "example": "pending,picking"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Категория-группа (handle категории каталога). У сборщика игнорируется — его группа берётся из учётки.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": false,
+            "description": "Задания одного заказа.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Задания сборки со счётчиками по статусам.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAssemblyTaskListRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/assembly-tasks/{id}": {
+      "get": {
+        "operationId": "GetAssemblyTaskById",
+        "summary": "Get Assembly Task",
+        "description": "Карточка задания: позиции с количеством и отметками, заказ, статус.",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Задание сборки.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAssemblyTaskRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/assembly-tasks/{id}/start": {
+      "post": {
+        "operationId": "PostAssemblyTaskStart",
+        "summary": "Start Assembly Task",
+        "description": "Сборщик взял задание в работу (ожидает → собирается). Исполнителем становится учётка запроса.",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Задание в работе.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAssemblyTaskRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/assembly-tasks/{id}/items/{item_id}": {
+      "post": {
+        "operationId": "PostAssemblyTaskItemMark",
+        "summary": "Mark Assembly Item",
+        "description": "Отметка сборщика по позиции задания: набрано целиком, набрано частично (сколько именно) или нет в наличии. В ответ приходит всё задание целиком.",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminMarkAssemblyItem"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Задание с обновлённой отметкой.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAssemblyTaskRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/assembly-tasks/{id}/complete": {
+      "post": {
+        "operationId": "PostAssemblyTaskComplete",
+        "summary": "Complete Assembly Task",
+        "description": "Сборщик закрыл задание. Итог выводится из отметок позиций: всё набрано — «собрано», иначе «нехватка». Когда закрыто последнее задание заказа, набранное уходит в отгрузку (fulfillment) и бизнес-статус заказа становится «собран» или «частично собран».",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCompleteAssemblyTask"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Закрытое задание и агрегат сборки заказа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminAssemblyTaskCompleteRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/assembly": {
+      "get": {
+        "operationId": "GetOrderAssembly",
+        "summary": "Get Order Assembly",
+        "description": "Сборка одного заказа: задания по категориям со статусами и агрегат («заказ собран», где нехватка). База экрана отгрузки.",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Задания заказа и агрегат сборки.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderAssemblyRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminAssemblyTaskItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_item_id",
+          "title",
+          "quantity",
+          "picked_quantity",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_item_id": {
+            "type": "string"
+          },
+          "variant_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "picked_quantity": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "picked",
+              "partial",
+              "missing"
+            ]
+          },
+          "marked_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "marked_by": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "AdminAssemblyTask": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "category_handle",
+          "category_name",
+          "status",
+          "items_total",
+          "items_marked",
+          "items_missing",
+          "items"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "order_display_id": {
+            "type": "number",
+            "nullable": true
+          },
+          "customer_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "category_handle": {
+            "type": "string"
+          },
+          "category_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "picking",
+              "assembled",
+              "shortage"
+            ]
+          },
+          "assignee_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "completed_by": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "items_total": {
+            "type": "number"
+          },
+          "items_marked": {
+            "type": "number"
+          },
+          "items_missing": {
+            "type": "number"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAssemblyTaskItem"
+            }
+          }
+        }
+      },
+      "AdminAssemblyTaskCounts": {
+        "type": "object",
+        "required": [
+          "total",
+          "by_status"
+        ],
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "by_status": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "AdminAssemblyTaskListRes": {
+        "type": "object",
+        "required": [
+          "assembly_tasks",
+          "counts",
+          "count",
+          "offset",
+          "limit"
+        ],
+        "properties": {
+          "assembly_tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAssemblyTask"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AdminAssemblyTaskCounts"
+          },
+          "group": {
+            "type": "string",
+            "nullable": true,
+            "description": "Группа сборщика, которой ограничена выборка (null — видны все задания)."
+          },
+          "count": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminAssemblyTaskRes": {
+        "type": "object",
+        "required": [
+          "assembly_task"
+        ],
+        "properties": {
+          "assembly_task": {
+            "$ref": "#/components/schemas/AdminAssemblyTask"
+          }
+        }
+      },
+      "AdminOrderAssemblySummary": {
+        "type": "object",
+        "required": [
+          "tasks_total",
+          "tasks_finished",
+          "tasks_assembled",
+          "tasks_shortage",
+          "is_finished",
+          "is_assembled",
+          "has_shortage"
+        ],
+        "properties": {
+          "tasks_total": {
+            "type": "number"
+          },
+          "tasks_finished": {
+            "type": "number"
+          },
+          "tasks_assembled": {
+            "type": "number"
+          },
+          "tasks_shortage": {
+            "type": "number"
+          },
+          "is_finished": {
+            "type": "boolean",
+            "description": "По каждому заданию сборщик отработал — заказ можно передавать отгрузке."
+          },
+          "is_assembled": {
+            "type": "boolean",
+            "description": "Заказ СОБРАН: собраны все задания, нехватки нет."
+          },
+          "has_shortage": {
+            "type": "boolean",
+            "description": "Нехватка хотя бы в одном задании — флаг отвечающему за отгрузку."
+          }
+        }
+      },
+      "AdminAssemblyTaskCompleteRes": {
+        "type": "object",
+        "required": [
+          "assembly_task",
+          "order_assembly"
+        ],
+        "properties": {
+          "assembly_task": {
+            "$ref": "#/components/schemas/AdminAssemblyTask"
+          },
+          "order_assembly": {
+            "$ref": "#/components/schemas/AdminOrderAssemblySummary"
+          }
+        }
+      },
+      "AdminOrderAssemblyRes": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "assembly_tasks",
+          "summary"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "assembly_tasks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminAssemblyTask"
+            }
+          },
+          "summary": {
+            "$ref": "#/components/schemas/AdminOrderAssemblySummary"
+          }
+        }
+      },
+      "AdminMarkAssemblyItem": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "picked",
+              "partial",
+              "missing"
+            ],
+            "description": "Набрано целиком / частично / нет в наличии."
+          },
+          "picked_quantity": {
+            "type": "integer",
+            "description": "Сколько набрано — обязателен для partial (строго от 1 до quantity−1)."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "AdminCompleteAssemblyTask": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "description": "Комментарий сборщика (обычно причина нехватки)."
+          }
+        }
+      }
+    }
+  }
+}
