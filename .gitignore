@@ -59,4 +59,4 @@ backend/scripts/shots/
 backend/scripts/admin-screenshots.mjs
 backend/scripts/demo-rehearsal.mjs
 storefront/scripts/
-mobile/apps/*/test/screenshots/
+mobile/**/test/screenshots/
