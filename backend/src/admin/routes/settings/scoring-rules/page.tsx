@@ -9,12 +9,17 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
+import FeatureDisabledNotice from "../../../components/feature-disabled-notice"
 import ScoringConfigDrawer from "../../../components/scoring-config-drawer"
+import { useFeatureFlags } from "../../../hooks/use-feature-flags"
+import { formatTenge } from "../../../lib/money"
 import {
   AdminScoringConfigResponse,
   SCORING_CONFIG_FIELDS,
 } from "../../../lib/scoring"
 import { sdk } from "../../../lib/sdk"
+import { routeLabel } from "../../../lib/route-label"
 
 const CardRow = ({
   label,
@@ -37,6 +42,7 @@ const CardRow = ({
 // settings/bonus-program: секция «метка — значение» + Edit-drawer. Данные —
 // GET/POST /admin/scoring-config.
 const ScoringRulesPage = () => {
+  const { t } = useTranslation()
   const [editOpen, setEditOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -50,9 +56,9 @@ const ScoringRulesPage = () => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
-          <Heading>Scoring Rules</Heading>
+          <Heading>{t("scoring.rules.title")}</Heading>
           <Text className="text-ui-fg-subtle" size="small">
-            Configurable weights and thresholds for company deferral scoring.
+            {t("scoring.rules.subtitle")}
           </Text>
         </div>
         <DropdownMenu>
@@ -68,22 +74,24 @@ const ScoringRulesPage = () => {
               disabled={isLoading || !config}
             >
               <PencilSquare className="text-ui-fg-subtle" />
-              Edit
+              {t("common.edit")}
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu>
       </div>
 
       {config ? (
-        SCORING_CONFIG_FIELDS.map(({ key, label }) => (
-          <CardRow key={key} label={label}>
-            {config[key]}
+        // Суммы показываем в тенге: «Лимит на балл 5000» без валюты управляющий
+        // читал как баллы (Ф-прогон T4.6).
+        SCORING_CONFIG_FIELDS.map(({ key, label, money }) => (
+          <CardRow key={key} label={t(label)}>
+            {money ? formatTenge(config[key]) : config[key]}
           </CardRow>
         ))
       ) : (
         <div className="px-6 py-4">
           <Text size="small" className="text-ui-fg-subtle">
-            {isLoading ? "Loading…" : "Failed to load scoring rules."}
+            {isLoading ? t("common.loading") : t("scoring.rules.loadFailed")}
           </Text>
         </div>
       )}
@@ -99,8 +107,23 @@ const ScoringRulesPage = () => {
   )
 }
 
+// Юрлица заморожены на MVP (T10.9): адрес остаётся рабочим, но экран не
+// монтируется, пока домен выключен, — открывший его видит объяснение.
+const ScoringRulesRoute = () => {
+  const { t } = useTranslation()
+  const { data: featureFlags } = useFeatureFlags()
+
+  if (!featureFlags.companies) {
+    return (
+      <FeatureDisabledNotice message={t("common.featureDisabled.companies")} />
+    )
+  }
+
+  return <ScoringRulesPage />
+}
+
 export const config = defineRouteConfig({
-  label: "Scoring Rules",
+  label: routeLabel({ en: "Scoring Rules", ru: "Правила скоринга" }),
 })
 
-export default ScoringRulesPage
+export default ScoringRulesRoute

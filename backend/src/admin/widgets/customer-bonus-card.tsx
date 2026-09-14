@@ -2,21 +2,14 @@ import { defineWidgetConfig } from "@medusajs/admin-sdk"
 import { AdminCustomer, DetailWidgetProps } from "@medusajs/framework/types"
 import { Container, Heading, Text } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
+import { useTranslation } from "react-i18next"
 import {
   AdminCustomerBonusResponse,
   BONUS_TRANSACTION_META,
   formatBonusAmount,
 } from "../lib/bonus"
+import { formatDateTime } from "../lib/date"
 import { sdk } from "../lib/sdk"
-
-const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
 
 // Widget бонусного счёта на ядровой странице покупателя: баланс + последние
 // операции леджера. Данные — своим запросом (GET /admin/customers/:id/bonus):
@@ -25,6 +18,7 @@ const formatDateTime = (value: string) =>
 const CustomerBonusCardWidget = ({
   data,
 }: DetailWidgetProps<AdminCustomer>) => {
+  const { t } = useTranslation()
   const { data: detail, isLoading } = useQuery({
     queryKey: ["customer-bonus", data.id],
     queryFn: () =>
@@ -39,12 +33,12 @@ const CustomerBonusCardWidget = ({
   return (
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Bonus account</Heading>
+        <Heading level="h2">{t("bonus.account.title")}</Heading>
       </div>
 
       <div className="text-ui-fg-subtle grid grid-cols-2 items-center px-6 py-4">
         <Text size="small" weight="plus" leading="compact">
-          Balance
+          {t("bonus.account.balance")}
         </Text>
         <Text size="small" leading="compact">
           {isLoading || !bonus
@@ -56,14 +50,14 @@ const CustomerBonusCardWidget = ({
       {bonus && !bonus.account_id ? (
         <div className="px-6 py-4">
           <Text size="small" className="text-ui-fg-subtle">
-            No bonus account yet — it is created with the first accrual.
+            {t("bonus.account.empty")}
           </Text>
         </div>
       ) : (
         <div className="flex flex-col">
           <div className="px-6 py-4">
             <Text size="small" weight="plus" className="text-ui-fg-subtle">
-              Recent transactions
+              {t("bonus.account.recent")}
             </Text>
           </div>
           {transactions.length ? (
@@ -77,7 +71,7 @@ const CustomerBonusCardWidget = ({
                   >
                     <div className="flex items-center gap-x-2">
                       <Text size="small" weight="plus">
-                        {meta.label}
+                        {t(meta.label)}
                       </Text>
                       <Text
                         size="small"
@@ -100,7 +94,9 @@ const CustomerBonusCardWidget = ({
                     {(tx.expires_at || tx.note) && (
                       <Text size="small" className="text-ui-fg-subtle">
                         {tx.expires_at
-                          ? `expires ${formatDateTime(tx.expires_at)}`
+                          ? t("bonus.account.expires", {
+                              date: formatDateTime(tx.expires_at),
+                            })
                           : ""}
                         {tx.expires_at && tx.note ? " · " : ""}
                         {tx.note ?? ""}
@@ -113,7 +109,7 @@ const CustomerBonusCardWidget = ({
           ) : (
             <div className="border-t px-6 py-4">
               <Text size="small" className="text-ui-fg-subtle">
-                No transactions yet.
+                {t("bonus.account.noTransactions")}
               </Text>
             </div>
           )}

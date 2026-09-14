@@ -10,6 +10,7 @@ import {
 } from "@medusajs/ui"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   AdminMaterialNorm,
   AdminMaterialNormResponse,
@@ -75,6 +76,7 @@ type CategoriesResponse = {
 // списка категорий каталога (для подборки товаров). Сохранение — upsert по code
 // (POST /admin/material-norms), при правке code не меняется.
 const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [form, setForm] = useState<FormState>(() => toForm(norm))
 
@@ -101,7 +103,7 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
         body,
       }),
     onSuccess: () => {
-      toast.success("Material norm saved")
+      toast.success(t("estimator.toast.saved"))
       queryClient.invalidateQueries({ queryKey: ["material-norms"] })
       onClose()
     },
@@ -139,11 +141,13 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Content>
         <Drawer.Header>
-          <Drawer.Title>{norm ? "Edit norm" : "New norm"}</Drawer.Title>
+          <Drawer.Title>
+            {t(norm ? "estimator.drawer.editTitle" : "estimator.drawer.createTitle")}
+          </Drawer.Title>
         </Drawer.Header>
         <Drawer.Body className="flex flex-col gap-y-4 overflow-y-auto">
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-code">Code</Label>
+            <Label htmlFor="norm-code">{t("estimator.drawer.code")}</Label>
             <Input
               id="norm-code"
               value={form.code}
@@ -152,7 +156,7 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-name">Name</Label>
+            <Label htmlFor="norm-name">{t("estimator.drawer.name")}</Label>
             <Input
               id="norm-name"
               value={form.name}
@@ -160,7 +164,9 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-work-type">Work type</Label>
+            <Label htmlFor="norm-work-type">
+              {t("estimator.drawer.workType")}
+            </Label>
             <Input
               id="norm-work-type"
               value={form.work_type}
@@ -168,7 +174,9 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-material">Material kind</Label>
+            <Label htmlFor="norm-material">
+              {t("estimator.drawer.materialKind")}
+            </Label>
             <Input
               id="norm-material"
               value={form.material_kind}
@@ -176,7 +184,7 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label>Base</Label>
+            <Label>{t("estimator.drawer.base")}</Label>
             <Select
               value={form.base}
               onValueChange={(v) => set({ base: v as NormBase })}
@@ -187,14 +195,16 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
               <Select.Content>
                 {NORM_BASES.map((b) => (
                   <Select.Item key={b} value={b}>
-                    {NORM_BASE_LABELS[b]}
+                    {t(NORM_BASE_LABELS[b])}
                   </Select.Item>
                 ))}
               </Select.Content>
             </Select>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-consumption">Consumption per unit</Label>
+            <Label htmlFor="norm-consumption">
+              {t("estimator.drawer.consumption")}
+            </Label>
             <Input
               id="norm-consumption"
               type="number"
@@ -205,7 +215,7 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-unit">Material unit</Label>
+            <Label htmlFor="norm-unit">{t("estimator.drawer.materialUnit")}</Label>
             <Input
               id="norm-unit"
               value={form.unit}
@@ -213,13 +223,13 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label>Catalog category (for suggestions)</Label>
+            <Label>{t("estimator.drawer.category")}</Label>
             <Select
               value={form.category_id}
               onValueChange={(v) => set({ category_id: v })}
             >
               <Select.Trigger>
-                <Select.Value placeholder="None" />
+                <Select.Value placeholder={t("estimator.drawer.categoryNone")} />
               </Select.Trigger>
               <Select.Content>
                 {categories.map((c) => (
@@ -236,10 +246,10 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
               checked={form.active}
               onCheckedChange={(v) => set({ active: v })}
             />
-            <Label htmlFor="norm-active">Active</Label>
+            <Label htmlFor="norm-active">{t("estimator.drawer.active")}</Label>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="norm-note">Note</Label>
+            <Label htmlFor="norm-note">{t("estimator.drawer.note")}</Label>
             <Input
               id="norm-note"
               value={form.note}
@@ -247,15 +257,13 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             />
           </div>
           <Text size="small" className="text-ui-fg-subtle">
-            Consumption is the material amount per base unit (e.g. 10 kg of
-            cement per m²). Category links the norm to catalog products for
-            per-segment suggestions.
+            {t("estimator.drawer.hint")}
           </Text>
         </Drawer.Body>
         <Drawer.Footer>
           <Drawer.Close asChild>
             <Button size="small" variant="secondary">
-              Cancel
+              {t("common.cancel")}
             </Button>
           </Drawer.Close>
           <Button
@@ -264,7 +272,7 @@ const MaterialNormDrawer = ({ norm, open, onClose }: MaterialNormDrawerProps) =>
             isLoading={saveMutation.isPending}
             onClick={save}
           >
-            Save
+            {t("common.save")}
           </Button>
         </Drawer.Footer>
       </Drawer.Content>

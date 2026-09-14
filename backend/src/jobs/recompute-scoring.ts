@@ -1,5 +1,6 @@
 import { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { isCompaniesEnabled } from "../lib/feature-flags"
 import { recomputeCompanyScoringWorkflow } from "../workflows/recompute-company-scoring"
 
 // Периодический пересчёт рейтинга одобренных компаний (ТЗ 4.7). Пересчёт также
@@ -9,6 +10,12 @@ import { recomputeCompanyScoringWorkflow } from "../workflows/recompute-company-
 // компании не роняет прогон.
 export default async function recomputeScoringJob(container: MedusaContainer) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
+
+  // Юрлица заморожены (T10.9): пересчитывать нечего — прогон пропускаем целиком.
+  if (!isCompaniesEnabled()) {
+    return
+  }
+
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
   const { data: companies } = await query.graph({

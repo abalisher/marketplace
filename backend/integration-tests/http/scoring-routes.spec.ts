@@ -2,6 +2,11 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { Modules } from "@medusajs/framework/utils"
 import { MedusaContainer } from "@medusajs/framework/types"
 
+// Юрлица живут за флагом FEATURE_COMPANIES (T10.9) и на MVP выключены: роуты
+// домена отвечают 404. Здесь проверяется ВКЛЮЧЁННЫЙ домен, поэтому флаг
+// поднимаем до старта приложения. Гейт с выключенным флагом — companies-frozen.spec.ts.
+process.env.FEATURE_COMPANIES = "true"
+
 jest.setTimeout(120000)
 
 // HTTP-роуты admin API скоринга (подзадача 2a): настраиваемый конфиг +
@@ -131,4 +136,10 @@ medusaIntegrationTestRunner({
       })
     })
   },
+})
+
+// Флаг живёт в process.env, который jest делит между спеками одного прогона, —
+// не даём ему утечь в соседние файлы.
+afterAll(() => {
+  delete process.env.FEATURE_COMPANIES
 })

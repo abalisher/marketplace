@@ -32,23 +32,29 @@ export type AdminScorecard = {
 
 export type AdminScorecardResponse = { scorecard: AdminScorecard }
 
-// Поля конфига в порядке отображения: ключ + подпись. Все — числовые.
+// Поля конфига в порядке отображения: ключ + i18n-ключ подписи (label —
+// ключ react-i18next, потребляется как t(label)). Все — числовые; `money`
+// помечает суммы — они показываются в тенге (управляющий в Ф-прогоне T4.6 видел
+// «Лимит на балл 5000» и «Макс. лимит 5000000» без валюты и не понимал, деньги
+// это или баллы).
 export const SCORING_CONFIG_FIELDS: {
   key: keyof Omit<AdminScoringConfig, "id">
   label: string
+  money?: boolean
 }[] = [
-  { key: "points_per_order", label: "Points per order" },
-  { key: "max_orders_points", label: "Max order points" },
-  { key: "volume_per_point", label: "Volume per point" },
-  { key: "max_volume_points", label: "Max volume points" },
-  { key: "days_per_point", label: "Days per tenure point" },
-  { key: "max_tenure_points", label: "Max tenure points" },
-  { key: "penalty_per_return", label: "Penalty per return" },
-  { key: "min_score_for_credit", label: "Min score for credit" },
-  { key: "base_limit", label: "Base limit" },
-  { key: "limit_per_score_point", label: "Limit per score point" },
-  { key: "max_limit", label: "Max limit" },
+  { key: "points_per_order", label: "scoring.field.points_per_order" },
+  { key: "max_orders_points", label: "scoring.field.max_orders_points" },
+  { key: "volume_per_point", label: "scoring.field.volume_per_point", money: true },
+  { key: "max_volume_points", label: "scoring.field.max_volume_points" },
+  { key: "days_per_point", label: "scoring.field.days_per_point" },
+  { key: "max_tenure_points", label: "scoring.field.max_tenure_points" },
+  { key: "penalty_per_return", label: "scoring.field.penalty_per_return" },
+  { key: "min_score_for_credit", label: "scoring.field.min_score_for_credit" },
+  { key: "base_limit", label: "scoring.field.base_limit", money: true },
+  {
+    key: "limit_per_score_point",
+    label: "scoring.field.limit_per_score_point",
+    money: true,
+  },
+  { key: "max_limit", label: "scoring.field.max_limit", money: true },
 ]
-
-export const formatMoney = (amount: number) =>
-  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)

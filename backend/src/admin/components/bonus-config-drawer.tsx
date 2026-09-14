@@ -1,6 +1,7 @@
 import { Button, Drawer, Input, Label, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   AdminBonusConfig,
   AdminBonusConfigResponse,
@@ -54,6 +55,7 @@ const isDays = (value: string, min: number) => {
 // Drawer правки настроек бонусной программы — идиома форм редактирования
 // секций ядра (как product-card-drawer). Сохранение — POST /admin/bonus-config.
 const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [form, setForm] = useState<FormState>(() => toFormState(config))
 
@@ -78,7 +80,7 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
         body,
       }),
     onSuccess: () => {
-      toast.success("Bonus program settings updated")
+      toast.success(t("bonus.toast.saved"))
       queryClient.invalidateQueries({ queryKey: ["bonus-config"] })
       onClose()
     },
@@ -131,11 +133,13 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
     >
       <Drawer.Content>
         <Drawer.Header>
-          <Drawer.Title>Edit bonus program</Drawer.Title>
+          <Drawer.Title>{t("bonus.drawer.title")}</Drawer.Title>
         </Drawer.Header>
         <Drawer.Body className="flex flex-col gap-y-6 overflow-y-auto">
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="bonus-accrual-percent">Accrual percent</Label>
+            <Label htmlFor="bonus-accrual-percent">
+              {t("bonus.drawer.accrualPercent")}
+            </Label>
             <Input
               id="bonus-accrual-percent"
               type="number"
@@ -148,16 +152,15 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
               }
             />
             <Text size="small" className="text-ui-fg-subtle">
-              Percent of item subtotals accrued after an order is closed and
-              the return window has elapsed.
+              {t("bonus.drawer.accrualHint")}
             </Text>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label>Segment overrides</Label>
+            <Label>{t("bonus.drawer.segmentOverrides")}</Label>
             {BONUS_SEGMENT_KEYS.map((key) => (
               <div key={key} className="flex items-center gap-x-2">
-                <Text size="small" className="w-24 capitalize">
-                  {key}
+                <Text size="small" className="w-24">
+                  {t(`bonus.segment.${key}`)}
                 </Text>
                 <Input
                   type="number"
@@ -166,13 +169,13 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
                   step={0.1}
                   value={form.segments[key] ?? ""}
                   onChange={(event) => setSegment(key, event.target.value)}
-                  placeholder="Platform default"
+                  placeholder={t("bonus.drawer.platformDefault")}
                 />
               </div>
             ))}
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="bonus-max-spend">Max spend percent</Label>
+            <Label htmlFor="bonus-max-spend">{t("bonus.drawer.maxSpend")}</Label>
             <Input
               id="bonus-max-spend"
               type="number"
@@ -185,11 +188,13 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
               }
             />
             <Text size="small" className="text-ui-fg-subtle">
-              Bonuses may cover at most this percent of a new order total.
+              {t("bonus.drawer.maxSpendHint")}
             </Text>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="bonus-expiry-days">Expiry days</Label>
+            <Label htmlFor="bonus-expiry-days">
+              {t("bonus.drawer.expiryDays")}
+            </Label>
             <Input
               id="bonus-expiry-days"
               type="number"
@@ -197,14 +202,16 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
               step={1}
               value={form.expiry_days}
               onChange={(event) => setField({ expiry_days: event.target.value })}
-              placeholder="Disabled"
+              placeholder={t("bonus.program.disabled")}
             />
             <Text size="small" className="text-ui-fg-subtle">
-              Lifetime of each accrual. Leave empty to disable expiry.
+              {t("bonus.drawer.expiryHint")}
             </Text>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="bonus-expiry-notice-days">Expiry notice days</Label>
+            <Label htmlFor="bonus-expiry-notice-days">
+              {t("bonus.drawer.expiryNoticeDays")}
+            </Label>
             <Input
               id="bonus-expiry-notice-days"
               type="number"
@@ -216,12 +223,13 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
               }
             />
             <Text size="small" className="text-ui-fg-subtle">
-              Notify buyers this many days before their bonuses expire. 0
-              disables the notice.
+              {t("bonus.drawer.expiryNoticeHint")}
             </Text>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="bonus-return-window-days">Return window days</Label>
+            <Label htmlFor="bonus-return-window-days">
+              {t("bonus.drawer.returnWindowDays")}
+            </Label>
             <Input
               id="bonus-return-window-days"
               type="number"
@@ -233,15 +241,14 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
               }
             />
             <Text size="small" className="text-ui-fg-subtle">
-              Accrual waits this many days after delivery before bonuses are
-              credited.
+              {t("bonus.drawer.returnWindowHint")}
             </Text>
           </div>
         </Drawer.Body>
         <Drawer.Footer>
           <Drawer.Close asChild>
             <Button size="small" variant="secondary">
-              Cancel
+              {t("common.cancel")}
             </Button>
           </Drawer.Close>
           <Button
@@ -250,7 +257,7 @@ const BonusConfigDrawer = ({ config, open, onClose }: BonusConfigDrawerProps) =>
             isLoading={saveMutation.isPending}
             onClick={save}
           >
-            Save
+            {t("common.save")}
           </Button>
         </Drawer.Footer>
       </Drawer.Content>

@@ -1,5 +1,6 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { isCompaniesEnabled } from "../lib/feature-flags"
 import { ORDER_STATUS_CHANGED_EVENT } from "../modules/order-lifecycle/events"
 import { recomputeCompanyScoringWorkflow } from "../workflows/recompute-company-scoring"
 
@@ -16,7 +17,8 @@ export default async function recomputeScoringOnOrderClosed({
   event: { data },
   container,
 }: SubscriberArgs<StatusChangedPayload>) {
-  if (data.to !== "closed") {
+  // Юрлица заморожены (T10.9) — скоринга нет, заказы закрываются без него.
+  if (data.to !== "closed" || !isCompaniesEnabled()) {
     return
   }
   const query = container.resolve(ContainerRegistrationKeys.QUERY)

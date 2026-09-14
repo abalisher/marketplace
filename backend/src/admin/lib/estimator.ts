@@ -21,9 +21,10 @@ export type AdminMaterialNormResponse = { material_norm: AdminMaterialNorm }
 
 export const NORM_BASES: NormBase[] = ["area", "volume", "length", "count"]
 
+// Значения — i18n-ключи (react-i18next); потребители подписи оборачивают в t(...).
 export const NORM_BASE_LABELS: Record<NormBase, string> = {
-  area: "per m² (area)",
-  volume: "per m³ (volume)",
-  length: "per m (length)",
-  count: "per unit (count)",
+  area: "estimator.base.area",
+  volume: "estimator.base.volume",
+  length: "estimator.base.length",
+  count: "estimator.base.count",
 }

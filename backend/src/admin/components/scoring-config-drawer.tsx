@@ -1,6 +1,7 @@
 import { Button, Drawer, Input, Label, Text, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   AdminScoringConfig,
   AdminScoringConfigResponse,
@@ -28,6 +29,7 @@ const ScoringConfigDrawer = ({
   open,
   onClose,
 }: ScoringConfigDrawerProps) => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [form, setForm] = useState<FormState>(() => toFormState(config))
 
@@ -44,7 +46,7 @@ const ScoringConfigDrawer = ({
         body,
       }),
     onSuccess: () => {
-      toast.success("Scoring rules updated")
+      toast.success(t("scoring.toast.saved"))
       queryClient.invalidateQueries({ queryKey: ["scoring-config"] })
       onClose()
     },
@@ -71,12 +73,12 @@ const ScoringConfigDrawer = ({
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Content>
         <Drawer.Header>
-          <Drawer.Title>Edit scoring rules</Drawer.Title>
+          <Drawer.Title>{t("scoring.drawer.title")}</Drawer.Title>
         </Drawer.Header>
         <Drawer.Body className="flex flex-col gap-y-4 overflow-y-auto">
           {SCORING_CONFIG_FIELDS.map(({ key, label }) => (
             <div key={key} className="flex flex-col gap-y-2">
-              <Label htmlFor={`scoring-${key}`}>{label}</Label>
+              <Label htmlFor={`scoring-${key}`}>{t(label)}</Label>
               <Input
                 id={`scoring-${key}`}
                 type="number"
@@ -87,15 +89,13 @@ const ScoringConfigDrawer = ({
             </div>
           ))}
           <Text size="small" className="text-ui-fg-subtle">
-            Score is a weighted sum of order count, volume and tenure minus a
-            per-return penalty (capped 0–100). The deferral limit is derived
-            from the score above the threshold.
+            {t("scoring.drawer.hint")}
           </Text>
         </Drawer.Body>
         <Drawer.Footer>
           <Drawer.Close asChild>
             <Button size="small" variant="secondary">
-              Cancel
+              {t("common.cancel")}
             </Button>
           </Drawer.Close>
           <Button
@@ -104,7 +104,7 @@ const ScoringConfigDrawer = ({
             isLoading={saveMutation.isPending}
             onClick={save}
           >
-            Save
+            {t("common.save")}
           </Button>
         </Drawer.Footer>
       </Drawer.Content>

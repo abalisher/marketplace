@@ -1,6 +1,10 @@
 # Модуль `scoring` — рейтинг и лимиты отсрочки
 
-**Статус:** MVP готов (1, 2a, 2b, 3; 2c-постоплата отложена) · **Код:** `backend/src/modules/scoring/`,
+**Статус:** MVP готов (1, 2a, 2b, 3; 2c-постоплата отложена), **ЗАМОРОЖЕН на MVP** вместе с
+юрлицами — флаг `FEATURE_COMPANIES` (T10.9, подробности — `docs/modules/company.md`): роут
+`/admin/scoring-config*` отвечает 404, «Настройки → Правила скоринга» скрыты в панели, событийный
+(`subscribers/recompute-scoring-on-order-closed.ts`) и кроновый (`jobs/recompute-scoring.ts`)
+пересчёты выходят сразу. Код и данные не тронуты · **Код:** `backend/src/modules/scoring/`,
 `backend/src/workflows/` (update-scoring-config/set-company-credit-limit/recompute-company-scoring + шаги),
 `backend/src/jobs/recompute-scoring.ts`, `backend/src/api/admin/{scoring-config,companies/[id]/scorecard}/`,
 `backend/src/admin/` (Settings правил + карточка на странице компании)

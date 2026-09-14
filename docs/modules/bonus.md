@@ -122,8 +122,8 @@ link транзакции к заказу, `emitEventStep(bonus.accrued)`. По�
   `refreshPaymentCollectionForCartWorkflow` (если оплата уже инициализирована: сумма collection
   синхронизируется, устаревшие сессии/инвойс Kaspi сбрасываются ядром — клиент инициализирует оплату
   заново). Повторный POST заменяет сумму; `DELETE` снимает (идемпотентен).
-- **Списание лотов** — шаг `spend-cart-bonus` в ОБОИХ workflow завершения корзины (`place-order`,
-  `place-counter-order`), строго между `ensure-cart-payment-authorized` и `completeCartWorkflow`:
+- **Списание лотов** — шаг `spend-cart-bonus` в workflow завершения корзины `place-order`
+  (после пивота 2026-07-22 `place-counter-order` удалён), строго между `ensure-cart-payment-authorized` и `completeCartWorkflow`:
   перепроверяет потолок, списывает FIFO (`spend`), компенсация — `revertSpend`. После completeCart —
   link заказа к spend-транзакции + `bonus.spent`. Без бонусной линии шаг — no-op.
 - **Полная оплата бонусами**: total=0 → `ensure-cart-payment-authorized` не требует платёжной сессии,

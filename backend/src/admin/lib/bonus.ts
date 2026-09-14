@@ -48,16 +48,17 @@ export type AdminCustomerBonusResponse = {
 // начисления (те же, что в lib/catalog.ts — ключи segment_percents).
 export const BONUS_SEGMENT_KEYS = ["economy", "comfort", "business"] as const
 
-// Подписи и направление операций леджера: кредит (+) / дебет (−).
+// Подписи и направление операций леджера: label — i18n-ключ (t(meta.label)),
+// direction — кредит (+) / дебет (−).
 export const BONUS_TRANSACTION_META: Record<
   BonusTransactionType,
   { label: string; direction: 1 | -1 }
 > = {
-  accrual: { label: "Accrued", direction: 1 },
-  spend: { label: "Spent", direction: -1 },
-  expiry: { label: "Expired", direction: -1 },
-  manual_credit: { label: "Manual credit", direction: 1 },
-  manual_debit: { label: "Manual debit", direction: -1 },
+  accrual: { label: "bonus.txn.accrual", direction: 1 },
+  spend: { label: "bonus.txn.spend", direction: -1 },
+  expiry: { label: "bonus.txn.expiry", direction: -1 },
+  manual_credit: { label: "bonus.txn.manual_credit", direction: 1 },
+  manual_debit: { label: "bonus.txn.manual_debit", direction: -1 },
 }
 
 export const formatBonusAmount = (amount: number, currencyCode: string) =>

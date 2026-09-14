@@ -9,12 +9,14 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import BonusConfigDrawer from "../../../components/bonus-config-drawer"
 import {
   AdminBonusConfigResponse,
   BONUS_SEGMENT_KEYS,
 } from "../../../lib/bonus"
 import { sdk } from "../../../lib/sdk"
+import { routeLabel } from "../../../lib/route-label"
 
 // Строка «метка — значение» — идиома SectionRow детальных страниц ядра.
 const CardRow = ({
@@ -38,6 +40,7 @@ const CardRow = ({
 // страниц ядра Settings (Store/Regions): секция «метка — значение», правка
 // через Drawer из «...»-меню. Данные — GET/POST /admin/bonus-config.
 const BonusProgramPage = () => {
+  const { t } = useTranslation()
   const [editOpen, setEditOpen] = useState(false)
 
   const { data, isLoading } = useQuery({
@@ -56,9 +59,9 @@ const BonusProgramPage = () => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <div>
-          <Heading>Bonus Program</Heading>
+          <Heading>{t("bonus.program.title")}</Heading>
           <Text className="text-ui-fg-subtle" size="small">
-            Accrual percents, spending cap and expiry of buyer bonuses.
+            {t("bonus.program.subtitle")}
           </Text>
         </div>
         {/* Действия — в «...»-меню, как у секций стандартных страниц ядра. */}
@@ -75,7 +78,7 @@ const BonusProgramPage = () => {
               disabled={isLoading || !config}
             >
               <PencilSquare className="text-ui-fg-subtle" />
-              Edit
+              {t("common.edit")}
             </DropdownMenu.Item>
           </DropdownMenu.Content>
         </DropdownMenu>
@@ -83,13 +86,15 @@ const BonusProgramPage = () => {
 
       {config ? (
         <>
-          <CardRow label="Accrual percent">{config.accrual_percent}%</CardRow>
-          <CardRow label="Segment overrides">
+          <CardRow label={t("bonus.program.accrualPercent")}>
+            {config.accrual_percent}%
+          </CardRow>
+          <CardRow label={t("bonus.program.segmentOverrides")}>
             {overrideRows.length ? (
               <span className="flex flex-col gap-y-1">
                 {overrideRows.map((key) => (
-                  <span key={key} className="capitalize">
-                    {key}: {overrides![key]}%
+                  <span key={key}>
+                    {t(`bonus.segment.${key}`)}: {overrides![key]}%
                   </span>
                 ))}
               </span>
@@ -97,27 +102,33 @@ const BonusProgramPage = () => {
               "—"
             )}
           </CardRow>
-          <CardRow label="Max spend percent">
-            {config.max_spend_percent}% of order total
+          <CardRow label={t("bonus.program.maxSpendPercent")}>
+            {t("bonus.program.maxSpendValue", {
+              value: config.max_spend_percent,
+            })}
           </CardRow>
-          <CardRow label="Expiry">
+          <CardRow label={t("bonus.program.expiry")}>
             {config.expiry_days != null
-              ? `${config.expiry_days} days`
-              : "Disabled"}
+              ? t("bonus.program.expiryValue", { days: config.expiry_days })
+              : t("bonus.program.disabled")}
           </CardRow>
-          <CardRow label="Expiry notice">
+          <CardRow label={t("bonus.program.expiryNotice")}>
             {config.expiry_notice_days > 0
-              ? `${config.expiry_notice_days} days before expiry`
-              : "Disabled"}
+              ? t("bonus.program.expiryNoticeValue", {
+                  days: config.expiry_notice_days,
+                })
+              : t("bonus.program.disabled")}
           </CardRow>
-          <CardRow label="Return window">
-            {config.return_window_days} days after delivery
+          <CardRow label={t("bonus.program.returnWindow")}>
+            {t("bonus.program.returnWindowValue", {
+              days: config.return_window_days,
+            })}
           </CardRow>
         </>
       ) : (
         <div className="px-6 py-4">
           <Text size="small" className="text-ui-fg-subtle">
-            {isLoading ? "Loading…" : "Failed to load bonus settings."}
+            {isLoading ? t("common.loading") : t("bonus.program.loadFailed")}
           </Text>
         </div>
       )}
@@ -134,7 +145,7 @@ const BonusProgramPage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Bonus Program",
+  label: routeLabel({ en: "Bonus Program", ru: "Бонусная программа" }),
 })
 
 export default BonusProgramPage
