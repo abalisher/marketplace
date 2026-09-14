@@ -1,6 +1,7 @@
 import { Button, Drawer, Input, Label, Text, Textarea, toast } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { AdminScorecard, AdminScorecardResponse } from "../lib/scoring"
 import { sdk } from "../lib/sdk"
 
@@ -20,6 +21,7 @@ const CreditLimitDrawer = ({
   open,
   onClose,
 }: CreditLimitDrawerProps) => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [limit, setLimit] = useState("")
   const [note, setNote] = useState("")
@@ -38,7 +40,7 @@ const CreditLimitDrawer = ({
         { method: "POST", body }
       ),
     onSuccess: () => {
-      toast.success("Credit limit updated")
+      toast.success(t("companies.creditLimit.toast"))
       queryClient.invalidateQueries({ queryKey: ["company-scorecard", companyId] })
       onClose()
     },
@@ -60,25 +62,29 @@ const CreditLimitDrawer = ({
     <Drawer open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Content>
         <Drawer.Header>
-          <Drawer.Title>Manual credit limit</Drawer.Title>
+          <Drawer.Title>{t("companies.creditLimit.title")}</Drawer.Title>
         </Drawer.Header>
         <Drawer.Body className="flex flex-col gap-y-4 overflow-y-auto">
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="manual-limit">Manual limit</Label>
+            <Label htmlFor="manual-limit">
+              {t("companies.creditLimit.limitLabel")}
+            </Label>
             <Input
               id="manual-limit"
               type="number"
               min={0}
               value={limit}
               onChange={(e) => setLimit(e.target.value)}
-              placeholder="Leave empty to use the computed limit"
+              placeholder={t("companies.creditLimit.limitPlaceholder")}
             />
             <Text size="small" className="text-ui-fg-subtle">
-              Overrides the score-derived limit. Empty clears the override.
+              {t("companies.creditLimit.limitHint")}
             </Text>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="manual-limit-note">Note (audit)</Label>
+            <Label htmlFor="manual-limit-note">
+              {t("companies.creditLimit.noteLabel")}
+            </Label>
             <Textarea
               id="manual-limit-note"
               value={note}
@@ -89,7 +95,7 @@ const CreditLimitDrawer = ({
         <Drawer.Footer>
           <Drawer.Close asChild>
             <Button size="small" variant="secondary">
-              Cancel
+              {t("common.cancel")}
             </Button>
           </Drawer.Close>
           <Button
@@ -98,7 +104,7 @@ const CreditLimitDrawer = ({
             isLoading={saveMutation.isPending}
             onClick={save}
           >
-            Save
+            {t("common.save")}
           </Button>
         </Drawer.Footer>
       </Drawer.Content>

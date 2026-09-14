@@ -2,6 +2,11 @@ import { medusaIntegrationTestRunner } from "@medusajs/test-utils"
 import { Modules } from "@medusajs/framework/utils"
 import { MedusaContainer } from "@medusajs/framework/types"
 
+// Юрлица живут за флагом FEATURE_COMPANIES (T10.9) и на MVP выключены: роуты
+// домена отвечают 404. Здесь проверяется ВКЛЮЧЁННЫЙ домен, поэтому флаг
+// поднимаем до старта приложения. Гейт с выключенным флагом — companies-frozen.spec.ts.
+process.env.FEATURE_COMPANIES = "true"
+
 jest.setTimeout(120000)
 
 // Интеграционные тесты HTTP-роутов модуля company: аутентификация,
@@ -128,13 +133,25 @@ medusaIntegrationTestRunner({
       it("registers a pending company with the caller as admin", async () => {
         const { headers } = await createCustomer()
 
+        // Учредительные документы приходят содержимым: роут грузит их в File
+        // Module и сохраняет ссылку в компании (модератор открывает её в панели).
         const res = await registerCompany(headers, {
-          documents: [{ name: "charter.pdf", url: "https://files/charter" }],
+          files: [
+            {
+              name: "Устав.pdf",
+              mime_type: "application/pdf",
+              content_base64: Buffer.from("%PDF-1.4 charter").toString(
+                "base64"
+              ),
+            },
+          ],
         })
 
         expect(res.status).toEqual(201)
         expect(res.data.company.status).toEqual("pending")
         expect(res.data.company.documents).toHaveLength(1)
+        expect(res.data.company.documents[0].name).toEqual("Устав.pdf")
+        expect(res.data.company.documents[0].url).toBeTruthy()
         expect(res.data.employee.role).toEqual("admin")
       })
 
@@ -145,6 +162,22 @@ medusaIntegrationTestRunner({
 
         expect(res.status).toEqual(400)
         expect(res.data.message).toContain("12 digits")
+      })
+
+      it("rejects a document of an unsupported type with 400", async () => {
+        const { headers } = await createCustomer()
+
+        const res = await registerCompany(headers, {
+          files: [
+            {
+              name: "charter.exe",
+              mime_type: "application/x-msdownload",
+              content_base64: Buffer.from("MZ").toString("base64"),
+            },
+          ],
+        })
+
+        expect(res.status).toEqual(400)
       })
     })
 
@@ -171,6 +204,154 @@ medusaIntegrationTestRunner({
         )
 
         expect(res.status).toEqual(404)
+      })
+    })
+
+    describe("POST /store/companies/me", () => {
+      // Документ-заглушка: содержимое не важно, важен путь приёма файла.
+      const pdf = (name: string) => ({
+        name,
+        mime_type: "application/pdf",
+        content_base64: Buffer.from(`%PDF-1.4 ${name}`).toString("base64"),
+      })
+
+      it("uploads documents to an application in review", async () => {
+        const { headers } = await createCustomer()
+        await registerCompany(headers, { files: [pdf("Устав.pdf")] })
+
+        const res = await call(
+          api.post(
+            "/store/companies/me",
+            { files: [pdf("Приказ.pdf")] },
+            { headers }
+          )
+        )
+
+        expect(res.status).toEqual(200)
+        // Догруженный файл добавляется к уже приложенным, а не заменяет их.
+        expect(res.data.company.documents).toHaveLength(2)
+        expect(res.data.company.documents[1].name).toEqual("Приказ.pdf")
+        expect(res.data.company.status).toEqual("pending")
+        expect(res.data.company.resubmitted_at).toBeNull()
+      })
+
+      it("returns a rejected application to moderation with the fixed requisites", async () => {
+        const { headers } = await createCustomer()
+        const created = await registerCompany(headers)
+        const companyId = created.data.company.id
+        await call(
+          api.post(
+            `/admin/companies/${companyId}/reject`,
+            { reason: "Приложите справку о регистрации" },
+            { headers: adminHeaders }
+          )
+        )
+
+        const res = await call(
+          api.post(
+            "/store/companies/me",
+            { name: "ТОО Стройка плюс", files: [pdf("Справка.pdf")] },
+            { headers }
+          )
+        )
+
+        expect(res.status).toEqual(200)
+        expect(res.data.company.status).toEqual("pending")
+        expect(res.data.company.name).toEqual("ТОО Стройка плюс")
+        expect(res.data.company.resubmitted_at).toBeTruthy()
+        // Причина отказа остаётся: модератор видит, что просил исправить.
+        expect(res.data.company.rejection_reason).toEqual(
+          "Приложите справку о регистрации"
+        )
+      })
+
+      it("rejects an empty update with 400", async () => {
+        const { headers } = await createCustomer()
+        await registerCompany(headers)
+
+        const res = await call(
+          api.post("/store/companies/me", {}, { headers })
+        )
+
+        expect(res.status).toEqual(400)
+      })
+
+      it("keeps the total number of documents within the limit", async () => {
+        const { headers } = await createCustomer()
+        await registerCompany(headers, {
+          files: [pdf("1.pdf"), pdf("2.pdf"), pdf("3.pdf")],
+        })
+
+        const res = await call(
+          api.post(
+            "/store/companies/me",
+            { files: [pdf("4.pdf"), pdf("5.pdf")] },
+            { headers }
+          )
+        )
+
+        expect(res.status).toEqual(400)
+        expect(res.data.message).toContain("at most")
+
+        // Отказ проверки не оставил заявку с частично догруженными файлами.
+        const me = await call(api.get("/store/companies/me", { headers }))
+        expect(me.data.company.documents).toHaveLength(3)
+      })
+
+      it("does not let an approved company change its requisites", async () => {
+        const { headers } = await createCustomer()
+        const created = await registerCompany(headers)
+        await call(
+          api.post(
+            `/admin/companies/${created.data.company.id}/approve`,
+            {},
+            { headers: adminHeaders }
+          )
+        )
+
+        const res = await call(
+          api.post(
+            "/store/companies/me",
+            { bin: "111222333444" },
+            { headers }
+          )
+        )
+
+        expect(res.status).toEqual(400)
+        expect(res.data.message).toContain("approved")
+      })
+
+      it("denies a member and a customer without a company", async () => {
+        const admin = await createCustomer()
+        await registerCompany(admin.headers)
+        const member = await createCustomer()
+        await call(
+          api.post(
+            "/store/companies/me/employees",
+            { customer_id: member.customerId },
+            { headers: admin.headers }
+          )
+        )
+
+        const byMember = await call(
+          api.post(
+            "/store/companies/me",
+            { files: [pdf("Устав.pdf")] },
+            { headers: member.headers }
+          )
+        )
+        expect(byMember.status).toEqual(400)
+        expect(byMember.data.message).toContain("admin")
+
+        const stranger = await createCustomer()
+        const byStranger = await call(
+          api.post(
+            "/store/companies/me",
+            { files: [pdf("Устав.pdf")] },
+            { headers: stranger.headers }
+          )
+        )
+        expect(byStranger.status).toEqual(404)
       })
     })
 
@@ -404,4 +585,10 @@ medusaIntegrationTestRunner({
       })
     })
   },
+})
+
+// Флаг живёт в process.env, который jest делит между спеками одного прогона, —
+// не даём ему утечь в соседние файлы.
+afterAll(() => {
+  delete process.env.FEATURE_COMPANIES
 })

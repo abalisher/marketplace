@@ -21,6 +21,7 @@ export type StoreEmployeeWithCompany = {
     status: CompanyStatus
     rejection_reason: string | null
     documents: { name: string; url: string }[] | null
+    resubmitted_at: string | null
   }
 }
 

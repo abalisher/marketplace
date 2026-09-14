@@ -14,10 +14,14 @@ const Company = model.define("company", {
   bin: model.text().unique().searchable(),
   // Спред — копия readonly-кортежа: model.enum не принимает readonly-массив.
   status: model.enum([...COMPANY_STATUSES]).default("pending"),
-  // Комментарий админа при отклонении; для pending/approved — null.
+  // Комментарий админа при отклонении; для approved — null. У повторно поданной
+  // заявки (rejected → pending) сохраняется: модератор видит, что просил исправить.
   rejection_reason: model.text().nullable(),
   // Учредительные документы: массив { name, url } (файлы лежат в file-провайдере Medusa).
   documents: model.json().nullable(),
+  // Момент повторной подачи после отказа: заявка вернулась в очередь модерации
+  // с исправленными реквизитами или догруженными документами (null — не подавали).
+  resubmitted_at: model.dateTime().nullable(),
   employees: model.hasMany(() => Employee, { mappedBy: "company" }),
 })
 

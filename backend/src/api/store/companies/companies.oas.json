@@ -62,6 +62,43 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "PostCompaniesMe",
+        "summary": "Update My Company Application",
+        "description": "Правка собственной заявки админом компании: исправить реквизиты после отказа модератора и/или догрузить учредительные документы (общий лимит на компанию — 4 файла). Отклонённая заявка возвращается в очередь модерации (rejected → pending, отметка resubmitted_at); реквизиты одобренной компании менять нельзя.",
+        "tags": ["Companies"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreUpdateCompanyApplication"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Обновлённая заявка компании.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreCompanyRes"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/store/companies/me/employees": {
@@ -256,6 +293,24 @@
           "url": { "type": "string" }
         }
       },
+      "StoreCreateCompanyFile": {
+        "type": "object",
+        "required": ["name", "mime_type", "content_base64"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Имя файла для модератора (показывается как есть)."
+          },
+          "mime_type": {
+            "type": "string",
+            "enum": ["application/pdf", "image/jpeg", "image/png"]
+          },
+          "content_base64": {
+            "type": "string",
+            "description": "Содержимое файла в base64, до 3 МБ до кодирования."
+          }
+        }
+      },
       "StoreCompany": {
         "type": "object",
         "required": ["id", "name", "bin", "status"],
@@ -272,6 +327,12 @@
             "type": "array",
             "nullable": true,
             "items": { "$ref": "#/components/schemas/StoreCompanyDocument" }
+          },
+          "resubmitted_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Момент повторной подачи заявки после отказа модератора; null — заявку не переподавали."
           },
           "created_at": {
             "type": "string",
@@ -367,10 +428,35 @@
             "type": "string",
             "description": "БИН — ровно 12 цифр."
           },
-          "documents": {
+          "files": {
             "type": "array",
             "nullable": true,
-            "items": { "$ref": "#/components/schemas/StoreCompanyDocument" }
+            "maxItems": 4,
+            "description": "Учредительные документы содержимым (base64): до 4 файлов по 3 МБ, только PDF/JPEG/PNG. Ссылки клиент не присылает — их выдаёт бэкенд после загрузки.",
+            "items": {
+              "$ref": "#/components/schemas/StoreCreateCompanyFile"
+            }
+          }
+        }
+      },
+      "StoreUpdateCompanyApplication": {
+        "type": "object",
+        "description": "Хотя бы одно поле обязательно: пустая правка отклоняется с 400.",
+        "properties": {
+          "name": { "type": "string", "nullable": true },
+          "bin": {
+            "type": "string",
+            "nullable": true,
+            "description": "БИН — ровно 12 цифр. У одобренной компании реквизиты менять нельзя."
+          },
+          "files": {
+            "type": "array",
+            "nullable": true,
+            "maxItems": 4,
+            "description": "Догружаемые учредительные документы содержимым (base64). Считаются вместе с уже приложенными: всего у компании не более 4 файлов.",
+            "items": {
+              "$ref": "#/components/schemas/StoreCreateCompanyFile"
+            }
           }
         }
       },
@@ -408,6 +494,13 @@
         "properties": {
           "company": { "$ref": "#/components/schemas/StoreCompany" },
           "employee": { "$ref": "#/components/schemas/StoreEmployee" }
+        }
+      },
+      "StoreCompanyRes": {
+        "type": "object",
+        "required": ["company"],
+        "properties": {
+          "company": { "$ref": "#/components/schemas/StoreCompany" }
         }
       },
       "StoreCompanyMeRes": {

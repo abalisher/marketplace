@@ -1,11 +1,13 @@
 import { toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useTranslation } from "react-i18next"
 import { AdminCompanyResponse } from "../lib/company"
 import { sdk } from "../lib/sdk"
 
 // Мутации модерации компании (approve с подтверждением, reject с причиной).
 // Общие для списка (действия строки) и карточки.
 export const useCompanyModeration = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const confirmDialog = usePrompt()
 
@@ -18,7 +20,7 @@ export const useCompanyModeration = () => {
         method: "POST",
       }),
     onSuccess: () => {
-      toast.success("Company approved")
+      toast.success(t("companies.toast.approved"))
       invalidate()
     },
     onError: (error: Error) => toast.error(error.message),
@@ -31,7 +33,7 @@ export const useCompanyModeration = () => {
         body: { reason },
       }),
     onSuccess: () => {
-      toast.success("Company rejected")
+      toast.success(t("companies.toast.rejected"))
       invalidate()
     },
     onError: (error: Error) => toast.error(error.message),
@@ -39,10 +41,10 @@ export const useCompanyModeration = () => {
 
   const approveWithConfirm = async (company: { id: string; name: string }) => {
     const confirmed = await confirmDialog({
-      title: "Approve company?",
-      description: `The company "${company.name}" will be activated: its employees will be able to place orders within their spend limits.`,
-      confirmText: "Approve",
-      cancelText: "Cancel",
+      title: t("companies.approve.title"),
+      description: t("companies.approve.description", { name: company.name }),
+      confirmText: t("companies.action.approve"),
+      cancelText: t("common.cancel"),
       variant: "confirmation",
     })
     if (confirmed) {

@@ -1,5 +1,6 @@
 import { Label, Prompt, Textarea } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 type RejectCompanyPromptProps = {
   // null — диалог закрыт
@@ -17,6 +18,7 @@ const RejectCompanyPrompt = ({
   onSubmit,
   isPending,
 }: RejectCompanyPromptProps) => {
+  const { t } = useTranslation()
   const [reason, setReason] = useState("")
 
   useEffect(() => {
@@ -35,28 +37,27 @@ const RejectCompanyPrompt = ({
     >
       <Prompt.Content>
         <Prompt.Header>
-          <Prompt.Title>Reject company</Prompt.Title>
+          <Prompt.Title>{t("companies.reject.title")}</Prompt.Title>
           <Prompt.Description>
-            A rejection reason is required — the buyer will see it in their
-            profile.
+            {t("companies.reject.description")}
           </Prompt.Description>
         </Prompt.Header>
         <div className="flex flex-col gap-y-2 px-6 py-4">
-          <Label htmlFor="reject-reason">Reason</Label>
+          <Label htmlFor="reject-reason">{t("common.reason")}</Label>
           <Textarea
             id="reject-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="e.g. Incorporation documents are missing"
+            placeholder={t("companies.reject.placeholder")}
           />
         </div>
         <Prompt.Footer>
-          <Prompt.Cancel>Cancel</Prompt.Cancel>
+          <Prompt.Cancel>{t("common.cancel")}</Prompt.Cancel>
           <Prompt.Action
             disabled={!reason.trim() || isPending}
             onClick={() => company && onSubmit(company.id, reason.trim())}
           >
-            Reject
+            {t("companies.action.reject")}
           </Prompt.Action>
         </Prompt.Footer>
       </Prompt.Content>

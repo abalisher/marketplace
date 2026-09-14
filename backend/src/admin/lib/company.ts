@@ -16,6 +16,9 @@ export type AdminCompany = {
   status: CompanyStatus
   rejection_reason: string | null
   documents: CompanyDocument[] | null
+  // Повторная подача после отказа: покупатель исправил реквизиты или догрузил
+  // документы, и заявка вернулась в очередь модерации (null — не переподавали).
+  resubmitted_at: string | null
   created_at: string
   updated_at: string
 }
@@ -55,23 +58,26 @@ export type AdminCompanyResponse = {
   company: AdminCompanyDetail
 }
 
-// Подписи и цвета статусов модерации. Тексты — на английском, как и весь
-// дашборд (ядро не шипит русскую локаль; локализация — отдельная задача).
-// color — палитра StatusBadge (карточка), dotClass — точка в списках
-// (идиома StatusCell стандартных таблиц ядра).
+// Метаданные статусов модерации. label — i18n-ключ (рендерится через t(...)
+// в местах потребления). color — палитра StatusBadge (карточка), dotClass —
+// точка в списках (идиома StatusCell стандартных таблиц ядра).
 export const COMPANY_STATUS_META: Record<
   CompanyStatus,
   { label: string; color: "orange" | "green" | "red"; dotClass: string }
 > = {
   pending: {
-    label: "Pending",
+    label: "companies.status.pending",
     color: "orange",
     dotClass: "bg-ui-tag-orange-icon",
   },
   approved: {
-    label: "Approved",
+    label: "companies.status.approved",
     color: "green",
     dotClass: "bg-ui-tag-green-icon",
   },
-  rejected: { label: "Rejected", color: "red", dotClass: "bg-ui-tag-red-icon" },
+  rejected: {
+    label: "companies.status.rejected",
+    color: "red",
+    dotClass: "bg-ui-tag-red-icon",
+  },
 }
