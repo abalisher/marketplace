@@ -1,0 +1,11 @@
+# Контекст сборки образа витрины.
+node_modules
+.next
+out
+build
+.env
+.env.local
+.git
+.idea
+.vscode
+*.log

@@ -1,0 +1,193 @@
+# Прод-стенд на VPS (Астана). Один вход — nginx; сервисы наружу портов не
+# публикуют. Внешние порты провайдер NAT-ит на стандартные (2240→22, 8040→80,
+# 4440→443), поэтому nginx слушает 80 — и на всякий случай сам 8040, если
+# проброс окажется прямым.
+#
+# Запуск: см. infra/prod/README.md. Порядок обязателен: витрина вшивает
+# публикуемый ключ в бандл на сборке, а ключ появляется только после сида.
+name: stroymarket
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Redis поднят для паритета с локальной средой и под будущие кэш/событийные
+  # модули. medusa-config их пока не подключает — бэкенд работает на
+  # in-memory (один инстанс), и это осознанно: менять конфигурацию модулей
+  # перед первым деплоем рискованнее, чем оставить контейнер простаивать.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ../../backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+    ports:
+      # ТОЛЬКО на петлю хоста, наружу не публикуется. Нужен на СБОРКЕ витрины:
+      # `next build` собирает данные страниц категорий и товаров и для этого
+      # обращается к бэкенду, а сборочный контейнер в сеть compose не включён —
+      # имя `backend` там не резолвится. Витрина собирается с сетью хоста и
+      # ходит сюда (см. build.network у storefront).
+      - "127.0.0.1:9000:9000"
+    volumes:
+      # Загрузки: фото товаров и PDF документов. Том, а не образ — файлы
+      # переживают пересборку. Путь ИМЕННО такой: локальный file-провайдер и
+      # роут /media/:file резолвят каталог как `<cwd>/static`, а cwd сервера —
+      # прод-сборка `.medusa/server` (см. WORKDIR в backend/Dockerfile).
+      - static:/app/.medusa/server/static
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+  storefront:
+    build:
+      context: ../../storefront
+      # Сеть хоста на сборке: `next build` обращается к бэкенду за данными
+      # страниц, а сборочный контейнер в сеть compose не входит — имя `backend`
+      # в нём не резолвится (сборка падала на ECONNREFUSED 127.0.0.1:9000).
+      # Бэкенд для этого опубликован на петле хоста.
+      network: host
+      args:
+        MEDUSA_BACKEND_URL: http://127.0.0.1:9000
+        # Вшиваются в бандл на сборке — правка значения требует пересборки
+        # образа витрины, не только рестарта.
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_BASE_URL: ${PUBLIC_ORIGIN}
+        NEXT_PUBLIC_DEFAULT_REGION: kz
+        NEXT_PUBLIC_FEATURE_COMPANIES: ${FEATURE_COMPANIES}
+        NEXT_PUBLIC_MEDIA_BASE_URL: ${PUBLIC_ORIGIN}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # Витрина ходит в бэкенд только с сервера — внутреннее имя сервиса.
+      MEDUSA_BACKEND_URL: http://backend:9000
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}
+      NEXT_PUBLIC_BASE_URL: ${PUBLIC_ORIGIN}
+      NEXT_PUBLIC_DEFAULT_REGION: kz
+      NEXT_PUBLIC_FEATURE_COMPANIES: ${FEATURE_COMPANIES}
+      NEXT_PUBLIC_MEDIA_BASE_URL: ${PUBLIC_ORIGIN}
+      KASPI_MOCK_SCENARIO: ${KASPI_MOCK_SCENARIO}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      # redirect: manual обязателен. Витрина на первом запросе ставит cookie
+      # `_medusa_cache_id` и переадресует на тот же адрес; клиент без cookie
+      # (а fetch здесь именно такой) ходит по кругу и упирается в предел
+      # переадресаций — проверка падала, и контейнер был unhealthy, хотя
+      # страницы отдавались нормально. Ответ 3xx здесь — признак здоровья.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/',{redirect:'manual'}).then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8040:80"
+      # HTTPS: провайдер выводит наружу 4440, внутри стандартный 443.
+      - "443:443"
+      - "4440:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Маршруты подключаются обоими server-блоками (http и https).
+      - ./nginx-locations.conf:/etc/nginx/snippets/locations.conf:ro
+      # Самоподписанный сертификат на IP-адрес. Создаётся на сервере
+      # скриптом make-tls-cert.sh; в git не попадает (там приватный ключ).
+      - ./tls:/etc/nginx/tls:ro
+      # Приложение сборщика — статика Flutter web, собирается на машине
+      # разработчика и доставляется rsync'ом (Flutter в образ не тянем).
+      - ./picker:/usr/share/nginx/html/picker:ro
+    depends_on:
+      - backend
+      - storefront
+
+  # HTTPS-вход для стенда. Нужен РАДИ ГОЛОСА: браузеры отдают
+  # `navigator.mediaDevices.getUserMedia` только в защищённом контексте, поэтому
+  # по http://<ip>:8040 кнопка микрофона в чате не показывается вовсе
+  # (см. isVoiceRecordingSupported в storefront/src/lib/voice/voice-recorder.ts).
+  # Let's Encrypt здесь бессилен: HTTP-01 требует внешний порт 80, TLS-ALPN —
+  # 443, а наружу провайдер выводит только 8040/4440. Туннель даёт доверенный
+  # сертификат без этих портов.
+  #
+  # ДВА РЕЖИМА, переключает единственная переменная TUNNEL_RUN в .env. Она
+  # хранит готовый хвост команды целиком, а не токен: вычислять аргументы из
+  # токена пришлось бы в скрипте развёртывания, и тогда ручной `docker compose
+  # up -d` без скрипта молча уводил бы стенд обратно на быстрый туннель.
+  #
+  #  1. Постоянный адрес на своём домене (TUNNEL_RUN="run --token eyJ…";
+  #     кавычки обязательны — .env читается ещё и через `source`) —
+  #     именованный туннель. Адрес вида https://stand.example.com: без порта,
+  #     без предупреждения браузера, НЕ меняется при перезапуске. Туннель и его
+  #     маршрут настраиваются в панели Cloudflare (Zero Trust → Networks →
+  #     Tunnels), оттуда же берётся токен. Порядок — infra/prod/README.md.
+  #
+  #  2. Быстрый туннель (TUNNEL_RUN пуст) — запасной путь без учётной записи.
+  #     Адрес выдаётся при старте и ВИДЕН ТОЛЬКО В ЛОГЕ:
+  #       docker compose logs tunnel | grep trycloudflare.com
+  #     Он МЕНЯЕТСЯ при каждом перезапуске сервиса — поэтому и понадобился домен.
+  #
+  # Смена адреса требует ПЕРЕСБОРКИ витрины и окна сборщика: адрес вшивается в
+  # бандл (NEXT_PUBLIC_*, --dart-define). Делать это скриптом set-origin.sh,
+  # он же чинит абсолютные ссылки на файлы в базе.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    # В nginx туннель идёт по HTTPS, а не по http, хотя канал внутренний.
+    # Причина: в production Medusa ставит сессионную cookie с флагом Secure, и
+    # по незащищённому соединению она не выставляется вовсе — вход в панель
+    # `/app` молча не проходил (роут /auth/session отвечал 200 без Set-Cookie).
+    # Альтернатива — доверять заголовку X-Forwarded-Proto от cloudflared, но это
+    # означало бы верить заголовку, который может подделать любой клиент,
+    # достучавшийся до nginx напрямую. Здесь nginx видит настоящий https.
+    #
+    # --no-tls-verify (сертификат стенда самоподписанный) действует только для
+    # БЫСТРОГО туннеля. У именованного конфигурация origin'а живёт на стороне
+    # Cloudflare, и флаг командной строки она не читает — там тот же выбор
+    # делается галочкой «No TLS Verify» в маршруте (см. README).
+    command: tunnel --no-autoupdate --no-tls-verify ${TUNNEL_RUN:---url https://nginx:443}
+    depends_on:
+      - nginx
+
+volumes:
+  pgdata:
+  redisdata:
+  static:
