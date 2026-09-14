@@ -1,6 +1,7 @@
 import { z } from "@medusajs/framework/zod"
 import {
   DELIVERY_METHODS,
+  DELIVERY_WINDOWS,
   ORDER_STATUSES,
 } from "../../../modules/order-lifecycle/models/statuses"
 
@@ -15,15 +16,25 @@ export const ORDER_LIFECYCLE_ORDER_FIELDS = [
   "-updated_at",
 ] as const
 
+// Фильтр статуса принимает одно значение или несколько: чип «Сборка» на экране
+// заказов покрывает сразу `assembling` и `partially_assembled`. Список приходит
+// повторяющимся параметром (`status=a&status=b`) или через запятую.
+const OrderStatusFilter = z.preprocess(
+  (value) => (typeof value === "string" ? value.split(",") : value),
+  z.union([z.enum(ORDER_STATUSES), z.array(z.enum(ORDER_STATUSES)).min(1)])
+)
+
 // Фильтры очереди заказов по бизнес-статусу + способу получения + поиск +
-// сортировка + пагинация. Дефолт — FIFO по created_at (старые сверху, как
-// очередь на обработку). `q` ищет по номеру заказа (display_id) и email
-// покупателя (поиск по телефону появится с привязкой покупателя к POS-заказу).
+// сортировка + пагинация. Дефолт — НОВЫЕ СВЕРХУ (`-created_at`): правка
+// владельца 2026-09-06. Раньше стоял FIFO («старые сверху, как очередь на
+// обработку»), но на живой очереди из 38 заказов свежий уезжал на последнюю
+// страницу, и оператор его не находил. `q` ищет по номеру заказа (display_id)
+// и email покупателя.
 export const AdminGetOrderLifecyclesParams = z.object({
-  status: z.enum(ORDER_STATUSES).optional(),
+  status: OrderStatusFilter.optional(),
   delivery_method: z.enum(DELIVERY_METHODS).optional(),
   q: z.string().trim().min(1).optional(),
-  order: z.enum(ORDER_LIFECYCLE_ORDER_FIELDS).default("created_at"),
+  order: z.enum(ORDER_LIFECYCLE_ORDER_FIELDS).default("-created_at"),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
 })
@@ -53,21 +64,23 @@ export const AdminShipOrder = z.object({
 export type AdminShipOrderType = z.infer<typeof AdminShipOrder>
 
 // Вручение: конкретный fulfillment помечается доставленным. Код получения
-// обязателен для заказов со способом delivery (проверяет workflow — «передан
-// по коду»); для pickup код не нужен (приёмка по накладной).
+// обязателен (проверяет workflow — «передан по коду»).
 export const AdminDeliverOrder = z.object({
   fulfillment_id: z.string().min(1),
   delivery_code: z.string().trim().min(1).optional(),
 })
 export type AdminDeliverOrderType = z.infer<typeof AdminDeliverOrder>
 
-// Продажа у окна склада (POS): продавец собрал корзину покупателя на месте,
-// оплата уже авторизована — заказ создаётся сразу выданным (new → delivered).
-export const AdminPlaceCounterOrder = z.object({
-  cart_id: z.string().min(1),
-  location_id: z.string().min(1).optional(),
+// Перенос доставки на другое окно (T5.6b): новый слот + ОБЯЗАТЕЛЬНАЯ причина —
+// лог заказа должен отвечать, кто и почему подвинул доставку (по звонку
+// покупателя, из-за сдвига сборки). Доступность окна проверяет домен слота в
+// шаге workflow, здесь — только форма значений.
+export const AdminRescheduleOrder = z.object({
+  slot_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  slot_window: z.enum(DELIVERY_WINDOWS),
+  reason: z.string().trim().min(1),
 })
-export type AdminPlaceCounterOrderType = z.infer<typeof AdminPlaceCounterOrder>
+export type AdminRescheduleOrderType = z.infer<typeof AdminRescheduleOrder>
 
 // Отмена заказа админом — причина опциональна (логируется в note/лог переходов).
 export const AdminCancelOrder = z.object({

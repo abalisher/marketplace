@@ -4,29 +4,27 @@
       "get": {
         "operationId": "GetOrderLifecycles",
         "summary": "List Order Lifecycle Queue",
-        "description": "Очередь заказов по бизнес-статусу ТЗ. Отдельный ресурс, а не переопределение ядрового GET /admin/orders. Фильтр по статусу, сортировка (дефолт — FIFO по created_at), пагинация. Каждая запись несёт связанный заказ (номер/почта/дата).",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "description": "Очередь заказов по бизнес-статусу ТЗ. Отдельный ресурс, а не переопределение ядрового GET /admin/orders. Фильтр по статусу (одно значение или несколько), способу получения, поиск по номеру/почте, сортировка (дефолт — FIFO по created_at), пагинация. Каждая запись несёт заказ в виде готовой строки экрана «Заказы» (плательщик, число позиций, итог, оплата, адрес), а ответ — счётчики по статусам для чипов-фильтров.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "status",
             "in": "query",
             "required": false,
-            "description": "Фильтр по бизнес-статусу заказа.",
+            "description": "Фильтр по бизнес-статусу заказа. Одно значение или несколько через запятую («new,confirmed»). Описан ПРОСТОЙ строкой по той же причине, что и статус задания сборки: из oneOf кодогенератор Dart делает dynamic и зовёт toJson() (см. assembly-tasks.oas.json).",
             "schema": {
               "type": "string",
-              "enum": [
-                "new",
-                "confirmed",
-                "assembling",
-                "partially_assembled",
-                "assembled",
-                "in_delivery",
-                "delivered",
-                "closed",
-                "canceled",
-                "returned"
-              ]
+              "example": "new,confirmed"
             }
           },
           {
@@ -36,7 +34,9 @@
             "description": "Фильтр по способу получения заказа.",
             "schema": {
               "type": "string",
-              "enum": ["delivery", "pickup", "counter"]
+              "enum": [
+                "delivery"
+              ]
             }
           },
           {
@@ -44,7 +44,9 @@
             "in": "query",
             "required": false,
             "description": "Поиск: номер заказа (display_id, можно с «#») или email покупателя (частичное совпадение).",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           },
           {
             "name": "order",
@@ -77,7 +79,11 @@
             "name": "offset",
             "in": "query",
             "required": false,
-            "schema": { "type": "integer", "minimum": 0, "default": 0 }
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
           }
         ],
         "responses": {
@@ -99,14 +105,25 @@
         "operationId": "GetOrdersIdLifecycleAdmin",
         "summary": "Get Order Lifecycle Status (Admin)",
         "description": "Бизнес-статус заказа и полный лог переходов. 404 — заказ не найден.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -123,19 +140,70 @@
         }
       }
     },
-    "/admin/orders/{id}/lifecycle/confirm": {
-      "post": {
-        "operationId": "PostOrdersIdLifecycleConfirm",
-        "summary": "Confirm Order",
-        "description": "Подтверждение заявки менеджером: new → confirmed.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+    "/admin/orders/{id}/lifecycle/card": {
+      "get": {
+        "operationId": "GetOrdersIdLifecycleCardAdmin",
+        "summary": "Get Order Card (Admin)",
+        "description": "Карточка заказа для панели продавца одним ответом: статус и лог переходов, покупатель с лимитом отсрочки, позиции с итогами, доставка, документы и цели переходов. 404 — заказ не найден.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Карточка заказа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderCardRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}/lifecycle/confirm": {
+      "post": {
+        "operationId": "PostOrdersIdLifecycleConfirm",
+        "summary": "Confirm Order",
+        "description": "Подтверждение заявки менеджером: new → confirmed.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -157,14 +225,25 @@
         "operationId": "PostOrdersIdLifecycleStartAssembly",
         "summary": "Start Order Assembly",
         "description": "Кладовщик начал комплектацию: confirmed → assembling.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -186,14 +265,25 @@
         "operationId": "PostOrdersIdLifecycleCompleteAssembly",
         "summary": "Complete Order Assembly",
         "description": "Сборка (в т.ч. частичная): ядровый createOrderFulfillment фиксирует физику, статус синхронизируется (полная → assembled, частичная → partially_assembled).",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -225,21 +315,34 @@
         "operationId": "PostOrdersIdLifecycleShip",
         "summary": "Ship Order",
         "description": "Отгрузка: ядровый createOrderShipment (fulfillment → shipped), статус → in_delivery.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/AdminShipOrder" }
+              "schema": {
+                "$ref": "#/components/schemas/AdminShipOrder"
+              }
             }
           }
         },
@@ -261,22 +364,35 @@
       "post": {
         "operationId": "PostOrdersIdLifecycleDeliver",
         "summary": "Deliver Order",
-        "description": "Вручение: статус → delivered (для способа delivery обязателен верный код получения от покупателя; для pickup — выдача у окна по накладной, без кода), затем ядровый markOrderFulfillmentAsDelivered.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "description": "Вручение: статус → delivered (обязателен верный код получения от покупателя), затем ядровый markOrderFulfillmentAsDelivered.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/AdminDeliverOrder" }
+              "schema": {
+                "$ref": "#/components/schemas/AdminDeliverOrder"
+              }
             }
           }
         },
@@ -299,14 +415,25 @@
         "operationId": "PostOrdersIdLifecycleClose",
         "summary": "Close Order",
         "description": "Закрытие после окна возврата: ядровый completeOrder (order.status → completed), статус → closed.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -328,14 +455,25 @@
         "operationId": "GetOrdersIdDocuments",
         "summary": "List Order Documents (Admin)",
         "description": "Все документы-основания заказа (счёт/накладная/АВР), все версии, новые сверху. Namespace /documents не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -357,14 +495,25 @@
         "operationId": "GetOrdersIdDocumentsExport",
         "summary": "Export Order Source Data (1C)",
         "description": "Выгрузка исходных данных заказа для 1С/бухгалтерии: снапшоты текущих версий документов (реквизиты продавца, позиции, суммы деньгами/бонусами раздельно на момент выпуска). Официальные ЭСФ/АВР бухгалтер оформляет вручную; платформа отдаёт исходные данные.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -381,57 +530,39 @@
         }
       }
     },
-    "/admin/counter-orders": {
-      "post": {
-        "operationId": "PostCounterOrders",
-        "summary": "Place Counter Order (POS)",
-        "description": "Продажа у окна склада: продавец собрал корзину покупателя на месте, оплата авторизована — заказ создаётся сразу выданным (свёрнутый путь new → delivered, способ получения counter). Отдельный ресурс: статический сегмент под /admin/orders конфликтует с ядровым /admin/orders/{id}.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AdminPlaceCounterOrder"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Созданный заказ и его жизненный цикл (delivered).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminPlaceCounterOrderRes"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/admin/orders/{id}/lifecycle/cancel": {
       "post": {
         "operationId": "PostOrdersIdLifecycleCancel",
         "summary": "Cancel Order (Admin)",
         "description": "Отмена админом: ядровый cancelOrder (order.status → canceled), статус → canceled. Под /lifecycle/, чтобы не перекрывать ядровый POST /admin/orders/{id}/cancel.",
-        "tags": ["Orders"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
           "required": false,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/AdminCancelOrder" }
+              "schema": {
+                "$ref": "#/components/schemas/AdminCancelOrder"
+              }
             }
           }
         },
@@ -448,29 +579,127 @@
           }
         }
       }
+    },
+    "/admin/orders/{id}/lifecycle/reschedule": {
+      "get": {
+        "operationId": "GetOrdersIdLifecycleReschedule",
+        "summary": "List Delivery Slots For Reschedule (Admin)",
+        "description": "Окна приезда, которые заказу ещё можно поставить, и признак, можно ли его двигать (T5.6b). Доступность окна (запас на сборку, горизонт недели) считает домен слота — панель получает коды и подписывает их сама.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Доступные окна и текущий слот заказа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderRescheduleOptionsRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostOrdersIdLifecycleReschedule",
+        "summary": "Reschedule Order Delivery (Admin)",
+        "description": "Перенос доставки на другое окно (T5.6b): продавец двигает слот по звонку покупателя. Статус заказа не меняется; «кто и почему подвинул» пишется в лог заказа записью kind=slot.",
+        "tags": [
+          "Orders"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRescheduleOrder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Новый слот доставки заказа.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOrderSlotRes"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
       "AdminOrderLineInput": {
         "type": "object",
-        "required": ["id", "quantity"],
+        "required": [
+          "id",
+          "quantity"
+        ],
         "properties": {
           "id": {
             "type": "string",
             "description": "Id позиции заказа (order line item)."
           },
-          "quantity": { "type": "integer", "minimum": 1 }
+          "quantity": {
+            "type": "integer",
+            "minimum": 1
+          }
         }
       },
       "AdminCompleteAssembly": {
         "type": "object",
-        "required": ["items"],
+        "required": [
+          "items"
+        ],
         "properties": {
           "items": {
             "type": "array",
             "minItems": 1,
-            "items": { "$ref": "#/components/schemas/AdminOrderLineInput" }
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderLineInput"
+            }
           },
           "location_id": {
             "type": "string",
@@ -480,37 +709,34 @@
       },
       "AdminShipOrder": {
         "type": "object",
-        "required": ["fulfillment_id", "items"],
+        "required": [
+          "fulfillment_id",
+          "items"
+        ],
         "properties": {
-          "fulfillment_id": { "type": "string" },
+          "fulfillment_id": {
+            "type": "string"
+          },
           "items": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/AdminOrderLineInput" }
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderLineInput"
+            }
           }
         }
       },
       "AdminDeliverOrder": {
         "type": "object",
-        "required": ["fulfillment_id"],
+        "required": [
+          "fulfillment_id"
+        ],
         "properties": {
-          "fulfillment_id": { "type": "string" },
+          "fulfillment_id": {
+            "type": "string"
+          },
           "delivery_code": {
             "type": "string",
             "description": "Код получения от покупателя — обязателен для заказов со способом delivery."
-          }
-        }
-      },
-      "AdminPlaceCounterOrder": {
-        "type": "object",
-        "required": ["cart_id"],
-        "properties": {
-          "cart_id": {
-            "type": "string",
-            "description": "Корзина, собранная продавцом у окна (оплата уже авторизована)."
-          },
-          "location_id": {
-            "type": "string",
-            "description": "Склад выдачи (по умолчанию — из shipping option корзины)."
           }
         }
       },
@@ -525,23 +751,104 @@
       },
       "AdminOrderLifecycleOrder": {
         "type": "object",
-        "required": ["id"],
+        "description": "Заказ строкой очереди панели продавца: всё уже готово к отрисовке — имя плательщика, признак юрлица, число позиций, итог, состояние оплаты и адрес доставки считает бэкенд.",
+        "required": [
+          "id"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "display_id": { "type": "integer", "nullable": true },
-          "email": { "type": "string", "nullable": true },
+          "id": {
+            "type": "string"
+          },
+          "display_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "customer_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Человекочитаемый плательщик: название компании → ФИО → телефон → email."
+          },
+          "company_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Компания-покупатель, если заказ оформлен от имени юрлица."
+          },
+          "is_company": {
+            "type": "boolean",
+            "description": "Заказ оформлен юрлицом (нужен счёт и АВР)."
+          },
+          "item_count": {
+            "type": "integer",
+            "description": "Число позиций заказа."
+          },
+          "total": {
+            "type": "number",
+            "nullable": true,
+            "description": "Итог заказа в основной единице валюты (тенге — целые)."
+          },
+          "currency_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "payment_state": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "paid",
+              "awaiting",
+              "canceled"
+            ],
+            "description": "Состояние оплаты для панели: деньги получены/авторизованы, ждём оплату или оплата отменена. null — платёжной сессии нет."
+          },
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Адрес доставки одной строкой (улица, город)."
+          }
+        }
+      },
+      "AdminOrderLifecycleCounts": {
+        "type": "object",
+        "description": "Счётчики для чипов-фильтров экрана «Заказы»: всего и по каждому бизнес-статусу при текущем поиске/способе получения.",
+        "required": [
+          "total",
+          "by_status"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "by_status": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "overdue": {
+            "type": "integer",
+            "description": "Сколько заказов вышли за срок своей стадии при текущих фильтрах."
           }
         }
       },
       "AdminOrderLifecycle": {
         "type": "object",
-        "required": ["id", "status"],
+        "required": [
+          "id",
+          "status"
+        ],
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -557,12 +864,36 @@
               "returned"
             ]
           },
-          "previous_status": { "type": "string", "nullable": true },
-          "note": { "type": "string", "nullable": true },
+          "previous_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
           "delivery_method": {
             "type": "string",
-            "enum": ["delivery", "pickup", "counter"],
+            "enum": [
+              "delivery"
+            ],
             "description": "Способ получения заказа."
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). null — заказ оформлен до появления слотов."
+          },
+          "delivery_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ],
+            "nullable": true,
+            "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00."
           },
           "created_at": {
             "type": "string",
@@ -576,55 +907,194 @@
           },
           "order": {
             "$ref": "#/components/schemas/AdminOrderLifecycleOrder"
+          },
+          "age_hours": {
+            "type": "integer",
+            "description": "Возраст заказа в часах от оформления."
+          },
+          "status_hours": {
+            "type": "integer",
+            "description": "Сколько часов заказ стоит в ТЕКУЩЕМ статусе (от последнего перехода)."
+          },
+          "sla_hours": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Срок стадии в часах (ORDER_SLA_HOURS). null — у статуса срока нет: доставленный, закрытый, отменённый и возвращённый заказ уже никого не ждёт."
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "Заказ стоит в статусе дольше срока стадии."
+          },
+          "assignee": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdminOrderAssignee"
+              }
+            ],
+            "nullable": true
           }
         }
       },
       "AdminOrderLifecycleEvent": {
         "type": "object",
-        "required": ["id", "to_status", "actor_type"],
+        "required": [
+          "id",
+          "to_status",
+          "actor_type"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "from_status": { "type": "string", "nullable": true },
-          "to_status": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
+          "from_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "to_status": {
+            "type": "string"
+          },
           "actor_type": {
             "type": "string",
-            "enum": ["buyer", "seller", "admin", "system"]
+            "enum": [
+              "buyer",
+              "seller",
+              "admin",
+              "system"
+            ]
           },
-          "actor_id": { "type": "string", "nullable": true },
-          "reason": { "type": "string", "nullable": true },
+          "actor_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "actor_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Имя человека, сделавшего переход (учётка сотрудника или покупатель). null — переход системы или удалённая учётка: тогда подписью остаётся одна роль."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "status",
+              "slot"
+            ],
+            "description": "Род записи: переход статуса или перенос слота доставки (T5.6b)."
+          },
+          "from_slot_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Дата слота до переноса (kind=slot)."
+          },
+          "to_slot_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Дата слота после переноса (kind=slot)."
+          },
+          "from_slot_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ],
+            "nullable": true,
+            "description": "Окно до переноса (kind=slot)."
+          },
+          "to_slot_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ],
+            "nullable": true,
+            "description": "Окно после переноса (kind=slot)."
           }
         }
       },
       "AdminOrderLifecycleListRes": {
         "type": "object",
-        "required": ["order_lifecycles", "count", "offset", "limit"],
+        "required": [
+          "order_lifecycles",
+          "counts",
+          "count",
+          "offset",
+          "limit"
+        ],
         "properties": {
           "order_lifecycles": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/AdminOrderLifecycle" }
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderLifecycle"
+            }
           },
-          "count": { "type": "integer" },
-          "offset": { "type": "integer" },
-          "limit": { "type": "integer" }
+          "counts": {
+            "$ref": "#/components/schemas/AdminOrderLifecycleCounts"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
         }
       },
       "AdminOrderLifecycleRes": {
         "type": "object",
-        "required": ["order_id", "history"],
+        "required": [
+          "order_id",
+          "history"
+        ],
         "properties": {
-          "order_id": { "type": "string" },
-          "status": { "type": "string", "nullable": true },
-          "previous_status": { "type": "string", "nullable": true },
-          "note": { "type": "string", "nullable": true },
+          "order_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
           "delivery_method": {
             "type": "string",
-            "enum": ["delivery", "pickup", "counter"],
+            "enum": [
+              "delivery"
+            ],
             "nullable": true,
             "description": "Способ получения заказа. Кода получения в admin-ответах нет — он секрет покупателя."
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). null — заказ оформлен до появления слотов."
+          },
+          "delivery_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ],
+            "nullable": true,
+            "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00."
           },
           "history": {
             "type": "array",
@@ -634,58 +1104,387 @@
           }
         }
       },
-      "AdminPlaceCounterOrderRes": {
+      "AdminOrderStatusRes": {
         "type": "object",
-        "required": ["order", "lifecycle"],
+        "required": [
+          "order_id",
+          "status"
+        ],
         "properties": {
-          "order": {
-            "type": "object",
-            "description": "Заказ ядра (schema AdminOrder базовой спеки).",
-            "properties": { "id": { "type": "string" } }
+          "order_id": {
+            "type": "string"
           },
-          "lifecycle": {
-            "$ref": "#/components/schemas/AdminOrderLifecycle"
+          "status": {
+            "type": "string"
           }
         }
       },
-      "AdminOrderStatusRes": {
+      "AdminOrderCardItem": {
         "type": "object",
-        "required": ["order_id", "status"],
+        "required": [
+          "id",
+          "title",
+          "quantity"
+        ],
         "properties": {
-          "order_id": { "type": "string" },
-          "status": { "type": "string" }
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "variant_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderCardTotals": {
+        "type": "object",
+        "description": "Итоги карточки: «Товары» + «Доставка» − «Скидка» = «Итого».",
+        "properties": {
+          "item_total": {
+            "type": "number",
+            "nullable": true
+          },
+          "shipping_total": {
+            "type": "number",
+            "nullable": true
+          },
+          "discount_total": {
+            "type": "number",
+            "nullable": true
+          },
+          "total": {
+            "type": "number",
+            "nullable": true
+          },
+          "currency_code": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderCardCustomer": {
+        "type": "object",
+        "required": [
+          "is_company"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "is_company": {
+            "type": "boolean"
+          },
+          "company_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "company_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "company_bin": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderCardCredit": {
+        "type": "object",
+        "description": "Лимит отсрочки юрлица (модуль scoring). null — заказ физлица либо скоринг ещё не считался.",
+        "required": [
+          "limit",
+          "available",
+          "reserved"
+        ],
+        "properties": {
+          "limit": {
+            "type": "number"
+          },
+          "available": {
+            "type": "number"
+          },
+          "reserved": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminOrderCardDelivery": {
+        "type": "object",
+        "description": "Доставка заказа. Слота (даты и окна) в домене пока нет — только адрес, получатель и тариф.",
+        "properties": {
+          "recipient": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "postal_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "shipping_method": {
+            "type": "string",
+            "nullable": true
+          },
+          "slot_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). null — заказ оформлен до появления слотов."
+          },
+          "slot_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ],
+            "nullable": true,
+            "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00."
+          }
+        }
+      },
+      "AdminOrderCardTransitionTargets": {
+        "type": "object",
+        "description": "Цели переходов: позиции к сборке и fulfillment под отгрузку/вручение выбирает бэкенд.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderLineInput"
+            }
+          },
+          "ship_fulfillment_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "deliver_fulfillment_id": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderCard": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "customer",
+          "items",
+          "totals",
+          "delivery",
+          "documents",
+          "history",
+          "transition_targets"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "display_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "previous_status": {
+            "type": "string",
+            "nullable": true
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
+          "delivery_method": {
+            "type": "string",
+            "enum": [
+              "delivery"
+            ],
+            "nullable": true
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderLifecycleEvent"
+            }
+          },
+          "customer": {
+            "$ref": "#/components/schemas/AdminOrderCardCustomer"
+          },
+          "credit": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdminOrderCardCredit"
+              }
+            ],
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderCardItem"
+            }
+          },
+          "totals": {
+            "$ref": "#/components/schemas/AdminOrderCardTotals"
+          },
+          "payment_state": {
+            "type": "string",
+            "enum": [
+              "paid",
+              "awaiting",
+              "canceled"
+            ],
+            "nullable": true
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/AdminOrderCardDelivery"
+          },
+          "documents": {
+            "type": "array",
+            "description": "Только актуальные версии документов заказа.",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderDocument"
+            }
+          },
+          "transition_targets": {
+            "$ref": "#/components/schemas/AdminOrderCardTransitionTargets"
+          },
+          "active_dispute": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdminOrderCardDispute"
+              }
+            ],
+            "nullable": true,
+            "description": "Активная претензия по заказу; null — претензий нет."
+          }
+        }
+      },
+      "AdminOrderCardRes": {
+        "type": "object",
+        "required": [
+          "order_card"
+        ],
+        "properties": {
+          "order_card": {
+            "$ref": "#/components/schemas/AdminOrderCard"
+          }
         }
       },
       "AdminOrderFulfillmentRes": {
         "type": "object",
-        "required": ["order_id"],
+        "required": [
+          "order_id"
+        ],
         "properties": {
-          "order_id": { "type": "string" },
+          "order_id": {
+            "type": "string"
+          },
           "fulfillment": {
             "type": "object",
             "description": "Созданный fulfillment ядра.",
-            "properties": { "id": { "type": "string" } }
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            }
           }
         }
       },
       "AdminOrderDocument": {
         "type": "object",
-        "required": ["id", "type", "number", "version", "is_latest"],
+        "required": [
+          "id",
+          "type",
+          "number",
+          "version",
+          "is_latest"
+        ],
         "properties": {
-          "id": { "type": "string" },
+          "id": {
+            "type": "string"
+          },
           "type": {
             "type": "string",
-            "enum": ["invoice", "waybill", "internal_avr"]
+            "enum": [
+              "invoice",
+              "waybill",
+              "internal_avr"
+            ]
           },
-          "number": { "type": "string" },
-          "version": { "type": "integer" },
-          "is_latest": { "type": "boolean" },
-          "file_id": { "type": "string", "nullable": true },
-          "file_url": { "type": "string", "nullable": true },
-          "total_money": { "type": "number" },
-          "total_bonus": { "type": "number" },
-          "currency_code": { "type": "string" },
-          "note": { "type": "string", "nullable": true },
+          "number": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "is_latest": {
+            "type": "boolean"
+          },
+          "file_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_money": {
+            "type": "number"
+          },
+          "total_bonus": {
+            "type": "number"
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -695,27 +1494,49 @@
       },
       "AdminOrderDocumentsRes": {
         "type": "object",
-        "required": ["documents"],
+        "required": [
+          "documents"
+        ],
         "properties": {
           "documents": {
             "type": "array",
-            "items": { "$ref": "#/components/schemas/AdminOrderDocument" }
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderDocument"
+            }
           }
         }
       },
       "AdminOrderDocumentExport": {
         "type": "object",
-        "required": ["type", "number", "version"],
+        "required": [
+          "type",
+          "number",
+          "version"
+        ],
         "properties": {
           "type": {
             "type": "string",
-            "enum": ["invoice", "waybill", "internal_avr"]
+            "enum": [
+              "invoice",
+              "waybill",
+              "internal_avr"
+            ]
           },
-          "number": { "type": "string" },
-          "version": { "type": "integer" },
-          "total_money": { "type": "number" },
-          "total_bonus": { "type": "number" },
-          "currency_code": { "type": "string" },
+          "number": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "total_money": {
+            "type": "number"
+          },
+          "total_bonus": {
+            "type": "number"
+          },
+          "currency_code": {
+            "type": "string"
+          },
           "snapshot": {
             "type": "object",
             "additionalProperties": true,
@@ -725,14 +1546,179 @@
       },
       "AdminOrderDocumentsExportRes": {
         "type": "object",
-        "required": ["order_id", "documents"],
+        "required": [
+          "order_id",
+          "documents"
+        ],
         "properties": {
-          "order_id": { "type": "string" },
+          "order_id": {
+            "type": "string"
+          },
           "documents": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/AdminOrderDocumentExport"
             }
+          }
+        }
+      },
+      "AdminOrderCardDispute": {
+        "type": "object",
+        "description": "Активная претензия по заказу (модуль reviews).",
+        "required": [
+          "id",
+          "category",
+          "status",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AdminOrderAssignee": {
+        "type": "object",
+        "description": "Ответственный за заказ: на стадиях сборки — сборщики, взявшие задания своих категорий, в остальных статусах — сотрудник, последним переведший статус. null — из сотрудников заказа ещё никто не касался («не взят»).",
+        "required": [
+          "name",
+          "role"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "picker",
+              "operator"
+            ]
+          }
+        }
+      },
+      "AdminRescheduleOrder": {
+        "type": "object",
+        "required": [
+          "slot_date",
+          "slot_window",
+          "reason"
+        ],
+        "properties": {
+          "slot_date": {
+            "type": "string",
+            "description": "Дата слота в астанинских сутках, `YYYY-MM-DD`."
+          },
+          "slot_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "description": "Почему подвинули — обязательна, попадает в лог заказа."
+          }
+        }
+      },
+      "AdminOrderSlotOption": {
+        "type": "object",
+        "required": [
+          "date",
+          "window"
+        ],
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ]
+          }
+        }
+      },
+      "AdminOrderRescheduleOptionsRes": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "can_reschedule",
+          "current",
+          "slots"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "can_reschedule": {
+            "type": "boolean",
+            "description": "false — заказ уже отгружен, вручён или отменён: двигать нечего."
+          },
+          "current": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "nullable": true
+              },
+              "window": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminOrderSlotOption"
+            }
+          }
+        }
+      },
+      "AdminOrderSlotRes": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "delivery_date",
+          "delivery_window"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "delivery_date": {
+            "type": "string"
+          },
+          "delivery_window": {
+            "type": "string",
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ]
           }
         }
       }

@@ -3,9 +3,9 @@ import { AdminOrder, DetailWidgetProps } from "@medusajs/framework/types"
 import {
   Bolt,
   CheckCircleSolid,
+  Clock,
   EllipsisHorizontal,
   MapPin,
-  SquaresPlus,
   TruckFast,
   XCircleSolid,
 } from "@medusajs/icons"
@@ -20,16 +20,22 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import CancelOrderPrompt from "../components/cancel-order-prompt"
 import DeliverOrderPrompt from "../components/deliver-order-prompt"
+import RescheduleDeliveryPrompt from "../components/reschedule-delivery-prompt"
 import { useOrderLifecycle } from "../hooks/use-order-lifecycle"
+import { formatDateTime } from "../lib/date"
+import { formatDeliverySlot } from "../lib/delivery-slot"
 import {
   AdminOrderLifecycleResponse,
-  ORDER_DELIVERY_METHOD_META,
-  ORDER_LIFECYCLE_STATUS_META,
-  ORDER_TRANSITIONS,
+  OrderLifecycleEvent,
   OrderLifecycleStatus,
   OrderTransition,
+  canRescheduleDelivery,
+  orderDeliveryMethodMeta,
+  orderStatusMeta,
+  orderTransitions,
 } from "../lib/order"
 import { sdk } from "../lib/sdk"
 
@@ -37,21 +43,32 @@ import { sdk } from "../lib/sdk"
 const TRANSITION_ICONS: Record<OrderTransition["path"], React.ReactNode> = {
   confirm: <CheckCircleSolid className="text-ui-fg-subtle" />,
   "start-assembly": <Bolt className="text-ui-fg-subtle" />,
-  "complete-assembly": <SquaresPlus className="text-ui-fg-subtle" />,
   ship: <TruckFast className="text-ui-fg-subtle" />,
   deliver: <MapPin className="text-ui-fg-subtle" />,
   close: <CheckCircleSolid className="text-ui-fg-subtle" />,
   cancel: <XCircleSolid className="text-ui-fg-subtle" />,
 }
 
-const formatDateTime = (value: string) =>
-  new Date(value).toLocaleString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+// Откуда пришла запись лога: у перехода — прежний статус, у переноса доставки —
+// прежнее окно («с 6 сент., 13:00–17:00»). Разделитель добавляется тут же,
+// чтобы строка «откуда · кто · почему» собиралась одинаково для обоих родов.
+const eventSource = (
+  event: OrderLifecycleEvent,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string => {
+  if (event.kind === "slot") {
+    return event.from_slot_date
+      ? t("order.reschedule.logFrom", {
+          slot: formatDeliverySlot(event.from_slot_date, event.from_slot_window),
+        }) + " · "
+      : ""
+  }
+  return event.from_status
+    ? t("order.widget.fromStatus", {
+        status: t(orderStatusMeta(event.from_status).label),
+      }) + " · "
+    : ""
+}
 
 // Widget жизненного цикла заказа на ядровой странице заказа: текущий бизнес-
 // статус ТЗ (StatusBadge), доступные из него переходы (в «...»-меню, идиома
@@ -59,8 +76,12 @@ const formatDateTime = (value: string) =>
 // (GET /admin/orders/:id/lifecycle); позиции и fulfillment для переходов
 // сборки/отгрузки/доставки берём из данных ядровой страницы заказа (prop data).
 const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
-  const { transitionMutation } = useOrderLifecycle()
+  const { t } = useTranslation()
+  const { transitionMutation, rescheduleMutation } = useOrderLifecycle()
   const [cancelOpen, setCancelOpen] = useState(false)
+  // Перенос доставки (T5.6b): статус не меняется, поэтому это не переход —
+  // отдельный пункт меню и свой диалог.
+  const [rescheduleOpen, setRescheduleOpen] = useState(false)
   // Вручение по коду: диалог хранит fulfillment, выбранный при открытии.
   const [deliverFulfillmentId, setDeliverFulfillmentId] = useState<
     string | null
@@ -76,13 +97,14 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
 
   const status = detail?.status ?? null
   const history = detail?.history ?? []
-  // Карта переходов зависит от способа получения (delivery/pickup/counter).
+  // Способ получения после пивота всегда delivery (см. lib/order.ts), но у
+  // заказов до пивота в базе остались pickup/counter — читаем через словарь с
+  // фолбэком, иначе виджет уронил бы всю страницу заказа.
   const method = detail?.delivery_method ?? "delivery"
-  const transitions = status ? ORDER_TRANSITIONS[method][status] : []
-  const statusMeta = status ? ORDER_LIFECYCLE_STATUS_META[status] : null
+  const transitions = orderTransitions(method, status)
+  const statusMeta = status ? orderStatusMeta(status) : null
 
-  const meta = (value: OrderLifecycleStatus) =>
-    ORDER_LIFECYCLE_STATUS_META[value]
+  const meta = (value: OrderLifecycleStatus) => orderStatusMeta(value)
 
   // Позиции заказа для сборки/отгрузки — все позиции (полная сборка/отгрузка).
   const orderItems = () =>
@@ -121,7 +143,7 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
     if (transition.needsItems) {
       const items = orderItems()
       if (!items.length) {
-        toast.error("This order has no items to fulfill.")
+        toast.error(t("order.widget.noItems"))
         return
       }
       body.items = items
@@ -130,7 +152,7 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
     if (transition.needsFulfillment) {
       const fulfillment = pickFulfillment(transition.path)
       if (!fulfillment) {
-        toast.error("No fulfillment found. Complete assembly first.")
+        toast.error(t("order.widget.noFulfillment"))
         return
       }
       body.fulfillment_id = fulfillment.id
@@ -152,23 +174,29 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-x-3">
-          <Heading level="h2">Order lifecycle</Heading>
+          <Heading level="h2">{t("order.widget.title")}</Heading>
           {statusMeta && (
             <StatusBadge color={statusMeta.color}>
-              {statusMeta.label}
+              {t(statusMeta.label)}
             </StatusBadge>
           )}
           {detail?.delivery_method && (
             <StatusBadge color="grey">
-              {ORDER_DELIVERY_METHOD_META[detail.delivery_method].label}
+              {t(orderDeliveryMethodMeta(detail.delivery_method).label)}
             </StatusBadge>
           )}
         </div>
         {/* Действия — в «...»-меню, как у секций стандартных страниц ядра. */}
-        {transitions.length > 0 && (
+        {(transitions.length > 0 || canRescheduleDelivery(method, status)) && (
           <DropdownMenu>
             <DropdownMenu.Trigger asChild>
-              <IconButton size="small" variant="transparent">
+              {/* Метка для скриншотера гейта U: селектор не должен зависеть от
+                  языка подписи (идиома data-sm-action карточек-drawer'ов). */}
+              <IconButton
+                size="small"
+                variant="transparent"
+                data-sm-action="lifecycle-menu"
+              >
                 <EllipsisHorizontal />
               </IconButton>
             </DropdownMenu.Trigger>
@@ -181,9 +209,23 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                   disabled={transitionMutation.isPending}
                 >
                   {TRANSITION_ICONS[transition.path]}
-                  {transition.label}
+                  {t(transition.label)}
                 </DropdownMenu.Item>
               ))}
+              {canRescheduleDelivery(method, status) && (
+                <DropdownMenu.Item
+                  className="gap-x-2"
+                  onClick={() => setRescheduleOpen(true)}
+                  disabled={rescheduleMutation.isPending}
+                >
+                  <Clock className="text-ui-fg-subtle" />
+                  {t(
+                    detail?.delivery_date
+                      ? "order.reschedule.action"
+                      : "order.reschedule.assignAction"
+                  )}
+                </DropdownMenu.Item>
+              )}
             </DropdownMenu.Content>
           </DropdownMenu>
         )}
@@ -192,16 +234,16 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
       {status === null ? (
         <div className="px-6 py-4">
           <Text size="small" className="text-ui-fg-subtle">
-            {isLoading
-              ? "Loading…"
-              : "This order has no lifecycle record (it was not placed through the marketplace flow)."}
+            {isLoading ? t("common.loading") : t("order.widget.empty")}
           </Text>
         </div>
       ) : (
-        <div className="flex flex-col">
+        // Метка секции — для кадров гейта U: селектор не должен зависеть от
+        // языка подписи (идиома data-sm-section карточек-drawer'ов).
+        <div className="flex flex-col" data-sm-section="lifecycle-history">
           <div className="px-6 py-4">
             <Text size="small" weight="plus" className="text-ui-fg-subtle">
-              History
+              {t("order.widget.history")}
             </Text>
           </div>
           {history.length ? (
@@ -209,38 +251,60 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
               {history
                 .slice()
                 .reverse()
-                .map((event) => (
-                  <li
-                    key={event.id}
-                    className="flex flex-col gap-y-1 border-t px-6 py-3"
-                  >
-                    <div className="flex items-center gap-x-2">
-                      <div
-                        className={`size-2 rounded-full ${
-                          meta(event.to_status).dotClass
-                        }`}
-                      />
-                      <Text size="small" weight="plus">
-                        {meta(event.to_status).label}
+                .map((event) => {
+                  // Перенос доставки (T5.6b) — тот же лог, но не переход:
+                  // заголовком идёт новое окно, а не статус (он не менялся).
+                  const slotEvent = event.kind === "slot"
+                  return (
+                    <li
+                      key={event.id}
+                      className="flex flex-col gap-y-1 border-t px-6 py-3"
+                    >
+                      <div className="flex items-center gap-x-2">
+                        <div
+                          className={`size-2 rounded-full ${
+                            slotEvent
+                              ? "bg-ui-tag-neutral-icon"
+                              : meta(event.to_status).dotClass
+                          }`}
+                        />
+                        <Text size="small" weight="plus">
+                          {slotEvent
+                            ? t("order.reschedule.logTitle", {
+                                slot: formatDeliverySlot(
+                                  event.to_slot_date,
+                                  event.to_slot_window
+                                ),
+                              })
+                            : t(meta(event.to_status).label)}
+                        </Text>
+                        <Text size="small" className="text-ui-fg-muted">
+                          {formatDateTime(event.created_at)}
+                        </Text>
+                      </div>
+                      <Text size="small" className="text-ui-fg-subtle">
+                        {eventSource(event, t)}
+                        {/* Имя человека, а не одна роль: «администратор» на
+                            вопрос «кто перевёл» не отвечает, а лог статусов ТЗ
+                            ведёт именно ради этого (T4.12). */}
+                        {event.actor_name
+                          ? t("order.widget.byPerson", {
+                              name: event.actor_name,
+                              actor: t(`order.actor.${event.actor_type}`),
+                            })
+                          : t("order.widget.by", {
+                              actor: t(`order.actor.${event.actor_type}`),
+                            })}
+                        {event.reason ? ` · ${event.reason}` : ""}
                       </Text>
-                      <Text size="small" className="text-ui-fg-muted">
-                        {formatDateTime(event.created_at)}
-                      </Text>
-                    </div>
-                    <Text size="small" className="text-ui-fg-subtle">
-                      {event.from_status
-                        ? `from ${meta(event.from_status).label} · `
-                        : ""}
-                      by {event.actor_type}
-                      {event.reason ? ` · ${event.reason}` : ""}
-                    </Text>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
             </ul>
           ) : (
             <div className="border-t px-6 py-4">
               <Text size="small" className="text-ui-fg-subtle">
-                No transitions yet.
+                {t("order.widget.noTransitions")}
               </Text>
             </div>
           )}
@@ -266,6 +330,20 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
           )
         }}
         isPending={transitionMutation.isPending}
+      />
+
+      <RescheduleDeliveryPrompt
+        order={
+          rescheduleOpen ? { id: data.id, display_id: data.display_id } : null
+        }
+        onClose={() => setRescheduleOpen(false)}
+        onSubmit={(id, slot, reason) =>
+          rescheduleMutation.mutate(
+            { orderId: id, slot, reason },
+            { onSuccess: () => setRescheduleOpen(false) }
+          )
+        }
+        isPending={rescheduleMutation.isPending}
       />
 
       <DeliverOrderPrompt

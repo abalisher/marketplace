@@ -12,15 +12,14 @@ export type DeliverOrderWorkflowInput = {
   fulfillment_id: string
   actor_type: StatusActorType
   actor_id?: string | null
-  // Код получения от покупателя — обязателен для способа delivery
-  // («передан по коду» — способ подтвердить delivered, не статус);
-  // pickup подтверждается накладной, код не нужен.
+  // Код получения от покупателя — обязателен при вручении («передан по коду» —
+  // способ подтвердить delivered, не статус).
   delivery_code?: string | null
 }
 
 // Вручение заказа: наш переход → delivered идёт ПЕРВЫМ — он проверяет
-// инвариант приёмки (код получения для delivery; для pickup — переход
-// assembled → delivered без кода) и умеет компенсироваться. Затем ядровый
+// инвариант приёмки (код получения от покупателя) и умеет компенсироваться.
+// Затем ядровый
 // markOrderFulfillmentAsDelivered фиксирует физику (fulfillment → delivered);
 // его сбой откатывает наш переход, событие status_changed не эмитится.
 export const deliverOrderWorkflow = createWorkflow(

@@ -5,11 +5,12 @@ import { z } from "@medusajs/framework/zod"
 
 // Оформление заказа: покупатель завершает свою корзину. Сквозная логика
 // (completeCart + резерв + жизненный цикл) — в placeOrderWorkflow.
-// Способ получения — доставка или самовывоз; counter (продажа у окна)
-// покупателю недоступен — оформляется продавцом через admin API.
+// После пивота 2026-07-22 единственный способ получения — доставка (самовывоз
+// и продажа у окна сняты). Поле оставлено с фиксированным enum как точка
+// расширения; всегда defaults to "delivery".
 export const StorePlaceOrder = z.object({
   cart_id: z.string().min(1),
-  delivery_method: z.enum(["delivery", "pickup"]).default("delivery"),
+  delivery_method: z.enum(["delivery"]).default("delivery"),
 })
 export type StorePlaceOrderType = z.infer<typeof StorePlaceOrder>
 

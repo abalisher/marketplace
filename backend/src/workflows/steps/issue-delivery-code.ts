@@ -1,6 +1,6 @@
-import { randomInt } from "crypto"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { ORDER_LIFECYCLE_MODULE } from "../../modules/order-lifecycle"
+import { generateDeliveryCode } from "../../modules/order-lifecycle/delivery-code"
 import OrderLifecycleModuleService from "../../modules/order-lifecycle/service"
 
 export type IssueDeliveryCodeStepInput = {
@@ -25,7 +25,7 @@ export const issueDeliveryCodeStep = createStep(
       return new StepResponse({ delivery_code: lifecycle.delivery_code }, null)
     }
 
-    const code = randomInt(0, 1_000_000).toString().padStart(6, "0")
+    const code = generateDeliveryCode()
     await service.updateOrderLifecycles({
       id: input.order_lifecycle_id,
       delivery_code: code,

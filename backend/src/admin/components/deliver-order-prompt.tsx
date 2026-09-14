@@ -1,5 +1,6 @@
 import { Input, Label, Prompt } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 type DeliverOrderPromptProps = {
   // null — диалог закрыт
@@ -18,6 +19,7 @@ const DeliverOrderPrompt = ({
   onSubmit,
   isPending,
 }: DeliverOrderPromptProps) => {
+  const { t } = useTranslation()
   const [code, setCode] = useState("")
 
   useEffect(() => {
@@ -35,34 +37,34 @@ const DeliverOrderPrompt = ({
     >
       <Prompt.Content>
         <Prompt.Header>
-          <Prompt.Title>Mark delivered</Prompt.Title>
+          <Prompt.Title>{t("order.transition.markDelivered")}</Prompt.Title>
           <Prompt.Description>
             {order
-              ? `Enter the delivery code the buyer provides to confirm ${
-                  order.display_id
-                    ? `order #${order.display_id}`
-                    : "this order"
-                } was handed over.`
+              ? order.display_id
+                ? t("order.deliver.descNamed", { id: order.display_id })
+                : t("order.deliver.descGeneric")
               : ""}
           </Prompt.Description>
         </Prompt.Header>
         <div className="flex flex-col gap-y-2 px-6 py-4">
-          <Label htmlFor="deliver-order-code">Delivery code</Label>
+          <Label htmlFor="deliver-order-code">
+            {t("order.deliver.codeLabel")}
+          </Label>
           <Input
             id="deliver-order-code"
             value={code}
             onChange={(event) => setCode(event.target.value)}
-            placeholder="e.g. 123456"
+            placeholder={t("order.deliver.codePlaceholder")}
             autoComplete="off"
           />
         </div>
         <Prompt.Footer>
-          <Prompt.Cancel>Cancel</Prompt.Cancel>
+          <Prompt.Cancel>{t("common.cancel")}</Prompt.Cancel>
           <Prompt.Action
             disabled={isPending || !code.trim()}
             onClick={() => order && onSubmit(order.id, code.trim())}
           >
-            Mark delivered
+            {t("order.transition.markDelivered")}
           </Prompt.Action>
         </Prompt.Footer>
       </Prompt.Content>

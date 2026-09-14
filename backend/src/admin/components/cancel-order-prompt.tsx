@@ -1,5 +1,6 @@
 import { Label, Prompt, Textarea } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 type CancelOrderPromptProps = {
   // null — диалог закрыт
@@ -18,6 +19,7 @@ const CancelOrderPrompt = ({
   onSubmit,
   isPending,
 }: CancelOrderPromptProps) => {
+  const { t } = useTranslation()
   const [reason, setReason] = useState("")
 
   useEffect(() => {
@@ -36,33 +38,35 @@ const CancelOrderPrompt = ({
     >
       <Prompt.Content>
         <Prompt.Header>
-          <Prompt.Title>Cancel order</Prompt.Title>
+          <Prompt.Title>{t("order.transition.cancel")}</Prompt.Title>
           <Prompt.Description>
             {order
-              ? `${
-                  order.display_id ? `Order #${order.display_id}` : "This order"
-                } will be canceled. This cannot be undone.`
+              ? order.display_id
+                ? t("order.cancel.titleNamed", { id: order.display_id })
+                : t("order.cancel.titleGeneric")
               : ""}
           </Prompt.Description>
         </Prompt.Header>
         <div className="flex flex-col gap-y-2 px-6 py-4">
-          <Label htmlFor="cancel-order-reason">Reason (optional)</Label>
+          <Label htmlFor="cancel-order-reason">
+            {t("order.cancel.reasonLabel")}
+          </Label>
           <Textarea
             id="cancel-order-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="e.g. Buyer requested cancellation"
+            placeholder={t("order.cancel.reasonPlaceholder")}
           />
         </div>
         <Prompt.Footer>
-          <Prompt.Cancel>Keep order</Prompt.Cancel>
+          <Prompt.Cancel>{t("order.cancel.keep")}</Prompt.Cancel>
           <Prompt.Action
             disabled={isPending}
             onClick={() =>
               order && onSubmit(order.id, reason.trim() || null)
             }
           >
-            Cancel order
+            {t("order.cancel.confirm")}
           </Prompt.Action>
         </Prompt.Footer>
       </Prompt.Content>

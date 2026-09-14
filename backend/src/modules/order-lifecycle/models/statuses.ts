@@ -21,14 +21,42 @@ export const ORDER_STATUSES = [
 export type OrderStatusValue = (typeof ORDER_STATUSES)[number]
 
 // Кто инициировал переход (для лога и уведомлений): покупатель, продавец,
-// админ платформы или система (джобы — например авто-закрытие после окна возврата).
-export const STATUS_ACTOR_TYPES = ["buyer", "seller", "admin", "system"] as const
+// водитель-gig, админ платформы или система (джобы — например авто-закрытие
+// после окна возврата).
+//
+// `driver` добавлен в T5.2b: вручение отмечает водитель из своего приложения, и
+// в логе заказа должен стоять он, а не «администратор» — иначе продавец не
+// поймёт, кто именно закрыл заказ, а имя актора не найдётся (водитель живёт в
+// модуле driver, а не в ядровом user).
+export const STATUS_ACTOR_TYPES = [
+  "buyer",
+  "seller",
+  "driver",
+  "admin",
+  "system",
+] as const
 export type StatusActorType = (typeof STATUS_ACTOR_TYPES)[number]
 
-// Способ получения заказа (поправка владельца 2026-07-15, docs/modules/order.md
-// «Дополнение»). Определяет и путь по стейт-машине, и механизм приёмки:
-// delivery — полный путь, приёмка кодом получения; pickup — самовывоз у окна,
-// без in_delivery, приёмка накладной; counter — продажа у окна (POS),
-// свёрнутый путь new → delivered → closed.
-export const DELIVERY_METHODS = ["delivery", "pickup", "counter"] as const
+// Способ получения заказа. После пивота 2026-07-22 остался единственный способ —
+// доставка: покупатель оформляет заказ через приложение, заказ проходит полный
+// путь стейт-машины, приёмка — по коду получения. Самовывоз (pickup) и продажа
+// у окна (counter/POS) сняты вместе с моделью «магазин у окна» (DECISIONS
+// 2026-07-22). Константа-массив сохранена как точка расширения на будущее.
+export const DELIVERY_METHODS = ["delivery"] as const
 export type DeliveryMethod = (typeof DELIVERY_METHODS)[number]
+
+// Окно доставки в слоте (T5.6). Слот заказа — это дата + одно из этих окон;
+// магазин возит по Астане тремя сменами, а не «когда получится». Значения —
+// идентификаторы, часы окон и правила доступности живут в
+// `src/lib/logistics/delivery-slots.ts` (домен слота), здесь только контракт
+// хранения: enum колонки `delivery_window` у OrderLifecycle.
+export const DELIVERY_WINDOWS = ["morning", "day", "evening"] as const
+export type DeliveryWindow = (typeof DELIVERY_WINDOWS)[number]
+
+// Вид записи лога заказа (T5.6b). До переноса слота лог знал только переходы
+// статуса, и «кто и почему подвинул доставку» записать было некуда: слот —
+// не статус, стейт-машина его не двигает. Вид разделяет два рода записей
+// явно, а не по заполненности полей: `status` — переход стейт-машины,
+// `slot` — перенос окна доставки (статус при этом не меняется).
+export const ORDER_EVENT_KINDS = ["status", "slot"] as const
+export type OrderEventKind = (typeof ORDER_EVENT_KINDS)[number]

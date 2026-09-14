@@ -28,6 +28,8 @@ export async function requireOwnOrder(
       "order_lifecycle.note",
       "order_lifecycle.delivery_method",
       "order_lifecycle.delivery_code",
+      "order_lifecycle.delivery_date",
+      "order_lifecycle.delivery_window",
     ],
     filters: { id: orderId, customer_id: customerId },
   })

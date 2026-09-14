@@ -15,17 +15,18 @@ import { ORDER_LIFECYCLE_MODULE } from "../modules/order-lifecycle"
 import { COMPANY_MODULE } from "../modules/company"
 import { BONUS_MODULE } from "../modules/bonus"
 import { BONUS_SPENT_EVENT } from "../modules/bonus/events"
+import { captureOrderPaymentStep } from "./steps/capture-order-payment"
 import { createOrderLifecycleStep } from "./steps/create-order-lifecycle"
 import { ensureCartPaymentAuthorizedStep } from "./steps/ensure-cart-payment-authorized"
+import { resolveCartDeliverySlotStep } from "./steps/resolve-cart-delivery-slot"
 import { resolveOrderCompanyStep } from "./steps/resolve-order-company"
 import { spendCartBonusStep } from "./steps/spend-cart-bonus"
 
 export type PlaceOrderWorkflowInput = {
   cart_id: string
-  // Способ получения выбирает покупатель при оформлении: доставка или
-  // самовывоз. counter сюда не входит — продажа у окна оформляется отдельным
-  // workflow place-counter-order (сторона продавца).
-  delivery_method?: "delivery" | "pickup"
+  // После пивота 2026-07-22 единственный способ получения — доставка (самовывоз
+  // и продажа у окна сняты). Поле оставлено как точка расширения.
+  delivery_method?: "delivery"
 }
 
 // Сквозное оформление заказа. Обёртка над ядровым completeCartWorkflow (он
@@ -38,12 +39,21 @@ export type PlaceOrderWorkflowInput = {
 // Списание бонусных лотов — строго после проверки оплаты и до completeCart:
 // его компенсация (revertSpend) откатит списание при упавшем завершении.
 // Цепочка ensure → spend → completeCart закреплена зависимостями по данным.
+// После создания заказа платёж СПИСЫВАЕТСЯ (capture): при QR-оплате авторизация
+// и есть оплата, а несписанный платёж оставлял заказу второе состояние денег
+// (см. steps/capture-order-payment.ts).
 export const placeOrderWorkflow = createWorkflow(
   "place-order",
   (input: WorkflowData<PlaceOrderWorkflowInput>) => {
     const payment = ensureCartPaymentAuthorizedStep({
       cart_id: input.cart_id,
     })
+
+    // Слот доставки снимаем с корзины ДО completeCart: после завершения корзина
+    // больше не источник — заказ создаёт ядро, а слот живёт в нашем lifecycle.
+    const slot = resolveCartDeliverySlotStep(
+      transform({ payment }, (d) => ({ cart_id: d.payment.cart_id }))
+    )
 
     const spent = spendCartBonusStep(
       transform({ payment }, (d) => ({ cart_id: d.payment.cart_id }))
@@ -55,9 +65,13 @@ export const placeOrderWorkflow = createWorkflow(
       })),
     })
 
-    const lifecycle = createOrderLifecycleStep({
-      delivery_method: input.delivery_method,
-    })
+    const lifecycle = createOrderLifecycleStep(
+      transform({ input, slot }, (d) => ({
+        delivery_method: d.input.delivery_method,
+        delivery_date: d.slot.delivery_date,
+        delivery_window: d.slot.delivery_window,
+      }))
+    )
 
     const { company_id } = resolveOrderCompanyStep({ order_id: order.id })
 
@@ -93,6 +107,11 @@ export const placeOrderWorkflow = createWorkflow(
       }
     )
     createRemoteLinkStep(links)
+
+    // Оплата Kaspi QR авторизована ⇒ деньги переведены: списываем сразу, чтобы
+    // у заказа не было второго состояния оплаты, которое кто-то должен
+    // подтверждать руками (T4.14).
+    captureOrderPaymentStep({ order_id: order.id })
 
     when(
       "bonus-was-spent",

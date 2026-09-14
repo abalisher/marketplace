@@ -18,9 +18,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/StorePlaceOrder" }
-            }
+            "application/json": { "schema": { "$ref": "#/components/schemas/StorePlaceOrder" } }
           }
         },
         "responses": {
@@ -49,21 +47,14 @@
             "required": true,
             "schema": { "type": "string" }
           },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {
             "description": "Статус заказа и история переходов.",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StoreOrderLifecycleRes"
-                }
+                "schema": { "$ref": "#/components/schemas/StoreOrderLifecycleRes" }
               }
             }
           }
@@ -84,21 +75,14 @@
             "required": true,
             "schema": { "type": "string" }
           },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {
             "description": "Документы заказа для покупателя.",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StoreOrderDocumentsRes"
-                }
+                "schema": { "$ref": "#/components/schemas/StoreOrderDocumentsRes" }
               }
             }
           }
@@ -113,13 +97,20 @@
         "tags": ["Reviews"],
         "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
         "parameters": [
-          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {
             "description": "Отзывы покупателя по заказу.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreReviewsRes" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/StoreReviewsRes" } }
+            }
           }
         }
       },
@@ -130,17 +121,26 @@
         "tags": ["Reviews"],
         "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
         "parameters": [
-          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreCreateReview" } } }
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/StoreCreateReview" } }
+          }
         },
         "responses": {
           "201": {
             "description": "Созданный отзыв.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreReviewRes" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/StoreReviewRes" } }
+            }
           }
         }
       }
@@ -153,13 +153,20 @@
         "tags": ["Reviews"],
         "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
         "parameters": [
-          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "responses": {
           "200": {
             "description": "Диспуты покупателя по заказу.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreDisputesRes" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/StoreDisputesRes" } }
+            }
           }
         }
       },
@@ -170,17 +177,26 @@
         "tags": ["Reviews"],
         "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
         "parameters": [
-          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
           { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreOpenDispute" } } }
+          "content": {
+            "application/json": { "schema": { "$ref": "#/components/schemas/StoreOpenDispute" } }
+          }
         },
         "responses": {
           "201": {
             "description": "Открытый диспут.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreDisputeRes" } } }
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/StoreDisputeRes" } }
+            }
           }
         }
       }
@@ -199,19 +215,12 @@
             "required": true,
             "schema": { "type": "string" }
           },
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string" }
-          }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
         ],
         "requestBody": {
           "required": false,
           "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/StoreCancelOrder" }
-            }
+            "application/json": { "schema": { "$ref": "#/components/schemas/StoreCancelOrder" } }
           }
         },
         "responses": {
@@ -219,9 +228,7 @@
             "description": "Заказ отменён; новый бизнес-статус.",
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StoreOrderStatusRes"
-                }
+                "schema": { "$ref": "#/components/schemas/StoreOrderStatusRes" }
               }
             }
           }
@@ -241,9 +248,9 @@
           },
           "delivery_method": {
             "type": "string",
-            "enum": ["delivery", "pickup"],
+            "enum": ["delivery"],
             "default": "delivery",
-            "description": "Способ получения: доставка (приёмка по коду получения) или самовывоз у окна склада (по накладной). Продажа у окна (counter) покупателю недоступна — оформляется продавцом."
+            "description": "Способ получения заказа. После пивота 2026-07-22 единственный способ — доставка (приёмка по коду получения)."
           }
         }
       },
@@ -280,7 +287,7 @@
           "note": { "type": "string", "nullable": true },
           "delivery_method": {
             "type": "string",
-            "enum": ["delivery", "pickup", "counter"],
+            "enum": ["delivery"],
             "description": "Способ получения заказа."
           }
         }
@@ -292,31 +299,39 @@
           "id": { "type": "string" },
           "from_status": { "type": "string", "nullable": true },
           "to_status": { "type": "string" },
-          "actor_type": {
-            "type": "string",
-            "enum": ["buyer", "seller", "admin", "system"]
-          },
+          "actor_type": { "type": "string", "enum": ["buyer", "seller", "admin", "system"] },
           "actor_id": { "type": "string", "nullable": true },
           "reason": { "type": "string", "nullable": true },
-          "created_at": {
+          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+          "kind": {
             "type": "string",
-            "format": "date-time",
-            "nullable": true
+            "enum": ["status", "slot"],
+            "description": "Род записи: переход статуса или перенос окна доставки (T5.6b)."
+          },
+          "to_slot_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Дата слота после переноса (kind=slot)."
+          },
+          "to_slot_window": {
+            "type": "string",
+            "enum": ["morning", "day", "evening"],
+            "nullable": true,
+            "description": "Окно после переноса (kind=slot)."
           }
         }
+      },
+      "StorePlacedOrderRef": {
+        "type": "object",
+        "description": "Заказ ядра (schema StoreOrder базовой спеки).",
+        "properties": { "id": { "type": "string" } }
       },
       "StorePlaceOrderRes": {
         "type": "object",
         "required": ["order", "lifecycle"],
         "properties": {
-          "order": {
-            "type": "object",
-            "description": "Заказ ядра (schema StoreOrder базовой спеки).",
-            "properties": { "id": { "type": "string" } }
-          },
-          "lifecycle": {
-            "$ref": "#/components/schemas/StoreOrderLifecycleSummary"
-          }
+          "order": { "$ref": "#/components/schemas/StorePlacedOrderRef" },
+          "lifecycle": { "$ref": "#/components/schemas/StoreOrderLifecycleSummary" }
         }
       },
       "StoreOrderLifecycleRes": {
@@ -329,7 +344,7 @@
           "note": { "type": "string", "nullable": true },
           "delivery_method": {
             "type": "string",
-            "enum": ["delivery", "pickup", "counter"],
+            "enum": ["delivery"],
             "nullable": true,
             "description": "Способ получения заказа."
           },
@@ -338,21 +353,28 @@
             "nullable": true,
             "description": "Код получения (только delivery, после отгрузки): покупатель называет его водителю при вручении. Виден только владельцу заказа."
           },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). null — заказ оформлен до появления слотов."
+          },
+          "delivery_window": {
+            "type": "string",
+            "enum": ["morning", "day", "evening"],
+            "nullable": true,
+            "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00."
+          },
           "history": {
             "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/StoreOrderLifecycleEvent"
-            }
+            "items": { "$ref": "#/components/schemas/StoreOrderLifecycleEvent" }
           }
         }
       },
       "StoreOrderStatusRes": {
         "type": "object",
         "required": ["order_id", "status"],
-        "properties": {
-          "order_id": { "type": "string" },
-          "status": { "type": "string" }
-        }
+        "properties": { "order_id": { "type": "string" }, "status": { "type": "string" } }
       },
       "StoreOrderDocument": {
         "type": "object",
@@ -377,11 +399,7 @@
           "total_money": { "type": "number" },
           "total_bonus": { "type": "number" },
           "currency_code": { "type": "string" },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true
-          }
+          "created_at": { "type": "string", "format": "date-time", "nullable": true }
         }
       },
       "StoreOrderDocumentsRes": {
@@ -429,10 +447,7 @@
         "type": "object",
         "required": ["reviews"],
         "properties": {
-          "reviews": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/StoreReview" }
-          }
+          "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/StoreReview" } }
         }
       },
       "StoreOpenDispute": {
@@ -457,10 +472,7 @@
             "enum": ["not_delivered", "damaged", "wrong_item", "quality", "other"]
           },
           "description": { "type": "string" },
-          "status": {
-            "type": "string",
-            "enum": ["open", "in_review", "resolved", "rejected"]
-          },
+          "status": { "type": "string", "enum": ["open", "in_review", "resolved", "rejected"] },
           "resolution": { "type": "string", "nullable": true },
           "created_at": { "type": "string", "format": "date-time", "nullable": true }
         }
@@ -474,10 +486,7 @@
         "type": "object",
         "required": ["disputes"],
         "properties": {
-          "disputes": {
-            "type": "array",
-            "items": { "$ref": "#/components/schemas/StoreDispute" }
-          }
+          "disputes": { "type": "array", "items": { "$ref": "#/components/schemas/StoreDispute" } }
         }
       }
     }

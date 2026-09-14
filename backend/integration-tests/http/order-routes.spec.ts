@@ -331,7 +331,11 @@ medusaIntegrationTestRunner({
         const cartId = await prepareCart(buyer.customerId, buyer.email)
 
         const res = await call(
-          api.post("/store/orders", { cart_id: cartId }, { headers: buyer.headers })
+          api.post(
+            "/store/orders",
+            { cart_id: cartId },
+            { headers: buyer.headers }
+          )
         )
 
         expect(res.status).toEqual(201)
@@ -399,6 +403,121 @@ medusaIntegrationTestRunner({
       })
     })
 
+    describe("GET /store/carts/me", () => {
+      it("finds the buyer's unfinished cart and forgets it once the order is placed", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+
+        const before = await call(
+          api.get("/store/carts/me", { headers: buyer.headers })
+        )
+        expect(before.status).toEqual(200)
+        expect(before.data.cart_id).toEqual(cartId)
+
+        await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+
+        const after = await call(
+          api.get("/store/carts/me", { headers: buyer.headers })
+        )
+        expect(after.status).toEqual(200)
+        expect(after.data.cart_id).toBeNull()
+      })
+
+      it("does not hand out another buyer's cart", async () => {
+        const owner = await createCustomer()
+        await prepareCart(owner.customerId, owner.email)
+
+        const stranger = await createCustomer()
+        const res = await call(
+          api.get("/store/carts/me", { headers: stranger.headers })
+        )
+
+        expect(res.status).toEqual(200)
+        expect(res.data.cart_id).toBeNull()
+      })
+
+      it("rejects an unauthenticated request (401)", async () => {
+        const res = await call(
+          api.get("/store/carts/me", { headers: storeHeaders })
+        )
+        expect(res.status).toEqual(401)
+      })
+    })
+
+    describe("GET /store/order-lifecycles", () => {
+      it("returns the stages of all buyer orders in one request", async () => {
+        const buyer = await createCustomer()
+        const firstCartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: first } = await api.post(
+          "/store/orders",
+          { cart_id: firstCartId },
+          { headers: buyer.headers }
+        )
+        const secondCartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: second } = await api.post(
+          "/store/orders",
+          { cart_id: secondCartId },
+          { headers: buyer.headers }
+        )
+
+        const res = await call(
+          api.get("/store/order-lifecycles", { headers: buyer.headers })
+        )
+
+        expect(res.status).toEqual(200)
+        const byOrder = new Map<
+          string,
+          { status: string; delivery_method: string }
+        >(
+          res.data.lifecycles.map(
+            (l: {
+              order_id: string
+              status: string
+              delivery_method: string
+            }) => [l.order_id, l]
+          )
+        )
+        expect(byOrder.get(first.order.id)?.status).toEqual("new")
+        expect(byOrder.get(second.order.id)?.status).toEqual("new")
+        expect(byOrder.get(second.order.id)?.delivery_method).toEqual(
+          "delivery"
+        )
+      })
+
+      it("does not leak another buyer's orders", async () => {
+        const owner = await createCustomer()
+        const cartId = await prepareCart(owner.customerId, owner.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: owner.headers }
+        )
+
+        const stranger = await createCustomer()
+        const res = await call(
+          api.get("/store/order-lifecycles", { headers: stranger.headers })
+        )
+
+        expect(res.status).toEqual(200)
+        expect(
+          res.data.lifecycles.some(
+            (l: { order_id: string }) => l.order_id === placed.order.id
+          )
+        ).toBe(false)
+      })
+
+      it("rejects an unauthenticated request (401)", async () => {
+        const res = await call(
+          api.get("/store/order-lifecycles", { headers: storeHeaders })
+        )
+        expect(res.status).toEqual(401)
+      })
+    })
+
     describe("POST /store/orders/:id/cancel", () => {
       it("lets the buyer cancel their new order with a reason", async () => {
         const buyer = await createCustomer()
@@ -440,9 +559,50 @@ medusaIntegrationTestRunner({
           })
         )
         expect(queue.status).toEqual(200)
+        const queued = queue.data.order_lifecycles.find(
+          (l: { order?: { id?: string } }) => l.order?.id === orderId
+        )
+        expect(queued).toBeTruthy()
+        // Строка очереди приходит готовой к отрисовке (экран ничего не считает):
+        // плательщик, число позиций, итог с валютой, оплата, адрес.
+        expect(queued.order).toMatchObject({
+          id: orderId,
+          display_id: expect.any(Number),
+          customer_name: expect.any(String),
+          is_company: false,
+          item_count: expect.any(Number),
+          currency_code: expect.any(String),
+        })
+        expect(queued.order.item_count).toBeGreaterThan(0)
+        expect(queued.order.total).toBeGreaterThan(0)
+        // Время и ответственный (T4.12): свежий заказ стоит в «Новом» нулевые
+        // часы, срок стадии у него есть, просрочки нет, и из сотрудников его
+        // никто не взял.
+        expect(queued).toMatchObject({
+          age_hours: 0,
+          status_hours: 0,
+          sla_hours: expect.any(Number),
+          overdue: false,
+          assignee: null,
+        })
+
+        // Счётчики для чипов-фильтров: наш заказ попал в «новые».
+        expect(queue.data.counts.total).toBeGreaterThan(0)
+        expect(queue.data.counts.by_status.new).toBeGreaterThan(0)
+        // Счётчик просрочки — в том же ответе, что и чипы: шапка экрана
+        // говорит числом, сколько заказов вышли за срок стадии.
+        expect(typeof queue.data.counts.overdue).toEqual("number")
+
+        // Фильтр статуса принимает список (чип «Сборка» = два статуса).
+        const multi = await call(
+          api.get("/admin/order-lifecycles?status=new,confirmed", {
+            headers: adminHeaders,
+          })
+        )
+        expect(multi.status).toEqual(200)
         expect(
-          queue.data.order_lifecycles.some(
-            (l: { order?: { id?: string } }) => l.order?.id === orderId
+          multi.data.order_lifecycles.every((l: { status: string }) =>
+            ["new", "confirmed"].includes(l.status)
           )
         ).toBe(true)
 
@@ -455,6 +615,21 @@ medusaIntegrationTestRunner({
         )
         expect(confirm.status).toEqual(200)
         expect(confirm.data.status).toEqual("confirmed")
+
+        // После перехода ответственным стал тот, кто его сделал: строка очереди
+        // отвечает на «с кого спросить» (T4.12).
+        const afterConfirm = await call(
+          api.get("/admin/order-lifecycles?status=confirmed", {
+            headers: adminHeaders,
+          })
+        )
+        const confirmed = afterConfirm.data.order_lifecycles.find(
+          (l: { order?: { id?: string } }) => l.order?.id === orderId
+        )
+        expect(confirmed.assignee).toMatchObject({
+          name: expect.any(String),
+          role: "operator",
+        })
 
         await api.post(
           `/admin/orders/${orderId}/lifecycle/start-assembly`,
@@ -548,6 +723,12 @@ medusaIntegrationTestRunner({
         )
         expect(lifecycle.data.status).toEqual("closed")
         expect(lifecycle.data.history).toHaveLength(6)
+        // Автор перехода — человек, а не одна роль «администратор» (T4.12):
+        // переходы покупателя подписаны его именем, переходы панели — учёткой.
+        const closedEvent = lifecycle.data.history.at(-1)
+        expect(closedEvent.actor_type).toEqual("admin")
+        expect(typeof closedEvent.actor_name).toEqual("string")
+        expect(closedEvent.actor_name.length).toBeGreaterThan(0)
       })
 
       it("rejects an illegal transition (start-assembly on a new order) with 400", async () => {
@@ -568,6 +749,298 @@ medusaIntegrationTestRunner({
         )
         expect(res.status).toEqual(400)
         expect(res.data.message).toContain("not allowed")
+      })
+    })
+
+    // Карточка заказа для drawer'а очереди (T4.2c): бэкенд отдаёт ОДНИМ ответом
+    // всё, что рисует карточка, — экран ничего не считает и не выбирает
+    // fulfillment сам.
+    // Перенос доставки из панели (T5.6b): продавец двигает окно по звонку
+    // покупателя. Роут отдельный от переходов — статус заказа не меняется.
+    describe("admin reschedule delivery", () => {
+      it("отдаёт доступные окна и переносит доставку с записью в лог", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+        const orderId = placed.order.id as string
+
+        const options = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/reschedule`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(options.status).toEqual(200)
+        expect(options.data).toMatchObject({
+          order_id: orderId,
+          status: "new",
+          can_reschedule: true,
+        })
+        // Окна приходят КОДАМИ — подпись собирает панель на своём языке.
+        expect(options.data.slots.length).toBeGreaterThan(0)
+        expect(options.data.slots[0]).toEqual({
+          date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          window: expect.stringMatching(/^(morning|day|evening)$/),
+        })
+
+        // Берём не первое окно, а последнее: первое может наступить сегодня.
+        const target = options.data.slots[options.data.slots.length - 1]
+        const moved = await call(
+          api.post(
+            `/admin/orders/${orderId}/lifecycle/reschedule`,
+            {
+              slot_date: target.date,
+              slot_window: target.window,
+              reason: "покупатель просит другой день",
+            },
+            { headers: adminHeaders }
+          )
+        )
+        expect(moved.status).toEqual(200)
+        expect(moved.data).toEqual({
+          order_id: orderId,
+          delivery_date: target.date,
+          delivery_window: target.window,
+        })
+
+        // Карточка заказа показывает новое окно, а статус остался прежним.
+        const card = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/card`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(card.data.order_card.status).toEqual("new")
+        expect(card.data.order_card.delivery).toMatchObject({
+          slot_date: target.date,
+          slot_window: target.window,
+        })
+
+        // Запись лога отвечает на «кто и почему подвинул».
+        const slotEvents = card.data.order_card.history.filter(
+          (event: { kind: string }) => event.kind === "slot"
+        )
+        expect(slotEvents).toHaveLength(1)
+        expect(slotEvents[0]).toMatchObject({
+          actor_type: "admin",
+          reason: "покупатель просит другой день",
+          to_slot_date: target.date,
+          to_slot_window: target.window,
+        })
+        // Имя сотрудника, а не одна роль (T4.12) — лог заказа ведут ради этого.
+        expect(slotEvents[0].actor_name).toEqual(expect.any(String))
+      })
+
+      it("не переносит доставку без причины (400)", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+        const orderId = placed.order.id as string
+
+        const options = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/reschedule`, {
+            headers: adminHeaders,
+          })
+        )
+        const target = options.data.slots[options.data.slots.length - 1]
+
+        const res = await call(
+          api.post(
+            `/admin/orders/${orderId}/lifecycle/reschedule`,
+            { slot_date: target.date, slot_window: target.window },
+            { headers: adminHeaders }
+          )
+        )
+        expect(res.status).toEqual(400)
+      })
+
+      it("отклоняет окно вне горизонта выбора (400)", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+        const orderId = placed.order.id as string
+
+        // Через месяц — за горизонтом недели: правило доступности одно на чат
+        // покупателя и на панель продавца.
+        const far = new Date(Date.now() + 30 * 24 * 3600_000)
+          .toISOString()
+          .slice(0, 10)
+        const res = await call(
+          api.post(
+            `/admin/orders/${orderId}/lifecycle/reschedule`,
+            { slot_date: far, slot_window: "morning", reason: "по звонку" },
+            { headers: adminHeaders }
+          )
+        )
+        expect(res.status).toEqual(400)
+      })
+    })
+
+    describe("GET /admin/orders/:id/lifecycle/card", () => {
+      it("returns a ready-to-render card: buyer, items, adding-up totals, delivery", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+        const orderId = placed.order.id as string
+
+        const res = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/card`, {
+            headers: adminHeaders,
+          })
+        )
+
+        expect(res.status).toEqual(200)
+        const card = res.data.order_card
+        expect(card).toMatchObject({
+          order_id: orderId,
+          display_id: expect.any(Number),
+          status: "new",
+          delivery_method: "delivery",
+        })
+        expect(card.customer).toMatchObject({
+          name: expect.any(String),
+          email: buyer.email,
+          is_company: false,
+          company_id: null,
+        })
+        // Заказ физлица: лимита отсрочки нет вовсе.
+        expect(card.credit).toBeNull()
+
+        expect(card.items).toHaveLength(1)
+        expect(card.items[0]).toMatchObject({
+          id: expect.stringMatching(/^ordli_/),
+          quantity: 2,
+          unit_price: expect.any(Number),
+          total: expect.any(Number),
+        })
+
+        // Деньги ДОЛЖНЫ сходиться: «Товары» + «Доставка» = «Итого».
+        expect(card.totals.item_total).toBeGreaterThan(0)
+        expect(card.totals.total).toEqual(
+          card.totals.item_total + card.totals.shipping_total
+        )
+        expect(card.totals.currency_code).toEqual("usd")
+
+        expect(card.delivery).toMatchObject({
+          recipient: "Test Buyer",
+          address: "1 Test St",
+          city: "Astana",
+        })
+
+        // Позиции к сборке готовы, fulfillment'ов ещё нет.
+        expect(card.transition_targets.items).toEqual([
+          { id: card.items[0].id, quantity: 2 },
+        ])
+        expect(card.transition_targets.ship_fulfillment_id).toBeNull()
+        expect(card.transition_targets.deliver_fulfillment_id).toBeNull()
+      })
+
+      it("fills the timeline and picks the fulfillment for ship and deliver", async () => {
+        const buyer = await createCustomer()
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        const { data: placed } = await api.post(
+          "/store/orders",
+          { cart_id: cartId },
+          { headers: buyer.headers }
+        )
+        const orderId = placed.order.id as string
+
+        await api.post(
+          `/admin/orders/${orderId}/lifecycle/confirm`,
+          {},
+          { headers: adminHeaders }
+        )
+        await api.post(
+          `/admin/orders/${orderId}/lifecycle/start-assembly`,
+          {},
+          { headers: adminHeaders }
+        )
+        await api.post(
+          `/admin/orders/${orderId}/lifecycle/complete-assembly`,
+          { items: await orderItems(orderId) },
+          { headers: adminHeaders }
+        )
+
+        const assembled = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/card`, {
+            headers: adminHeaders,
+          })
+        )
+        const fulfillmentId = await orderFulfillmentId(orderId)
+        // Собран, но не отгружен: цель отгрузки — этот fulfillment.
+        expect(assembled.data.order_card.status).toEqual("assembled")
+        expect(
+          assembled.data.order_card.transition_targets.ship_fulfillment_id
+        ).toEqual(fulfillmentId)
+
+        // Лог переходов приходит в форме контракта: служебных полей модели
+        // (order_lifecycle_id, updated_at, deleted_at) в нём нет.
+        expect(assembled.data.order_card.history).toHaveLength(3)
+        expect(
+          Object.keys(assembled.data.order_card.history[0]).sort()
+        ).toEqual([
+          "actor_id",
+          // Имя автора перехода (T4.12) — часть контракта: экран подписывает
+          // переход человеком, а не одной ролью.
+          "actor_name",
+          "actor_type",
+          "created_at",
+          "from_slot_date",
+          "from_slot_window",
+          "from_status",
+          "id",
+          // Род записи и слот до/после (T5.6b): тем же логом ведётся перенос
+          // доставки, и панель обязана различать его от перехода статуса.
+          "kind",
+          "reason",
+          "to_slot_date",
+          "to_slot_window",
+          "to_status",
+        ])
+
+        await api.post(
+          `/admin/orders/${orderId}/lifecycle/ship`,
+          { fulfillment_id: fulfillmentId, items: await orderItems(orderId) },
+          { headers: adminHeaders }
+        )
+
+        const shipped = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/card`, {
+            headers: adminHeaders,
+          })
+        )
+        // Отгружен, но не вручён: цель вручения — тот же fulfillment.
+        expect(shipped.data.order_card.status).toEqual("in_delivery")
+        expect(
+          shipped.data.order_card.transition_targets.deliver_fulfillment_id
+        ).toEqual(fulfillmentId)
+        // Код получения в карточке НЕ приходит — он секрет покупателя.
+        expect(JSON.stringify(shipped.data.order_card)).not.toContain(
+          "delivery_code"
+        )
+      })
+
+      it("returns 404 for an unknown order", async () => {
+        const res = await call(
+          api.get("/admin/orders/order_missing/lifecycle/card", {
+            headers: adminHeaders,
+          })
+        )
+        expect(res.status).toEqual(404)
       })
     })
   },

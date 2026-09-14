@@ -2,9 +2,17 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { RemoteQueryFunction } from "@medusajs/framework/types"
+import { ASSEMBLY_MODULE } from "../../../modules/assembly"
+import AssemblyModuleService from "../../../modules/assembly/service"
+import { ORDER_LIFECYCLE_MODULE } from "../../../modules/order-lifecycle"
+import OrderLifecycleModuleService from "../../../modules/order-lifecycle/service"
+import { OrderStatusValue } from "../../../modules/order-lifecycle/models/statuses"
 import { AdminGetOrderLifecyclesParamsType } from "../orders/validators"
+import { loadOrderAssignees } from "./assignees"
+import { countByStatus, emptyCounts, loadRowOrders } from "./rows"
+import { countOverdueOrders, orderQueueTiming, orderSlaHours } from "./sla"
 
 // GET /admin/order-lifecycles — очередь заказов по бизнес-статусу ТЗ. Отдельный
 // ресурс, а НЕ переопределение ядрового GET /admin/orders (оно обслуживает
@@ -13,6 +21,14 @@ import { AdminGetOrderLifecyclesParamsType } from "../orders/validators"
 // Читаем через query.graph по нашей сущности order_lifecycle + link-поля order
 // (номер/почта/дата), фильтры по статусу и способу получения, поиск `q`,
 // сортировка, пагинация.
+//
+// С T4.2a каждая запись несёт всё, что рисует строка экрана «Заказы» (покупатель,
+// число позиций, сумма, оплата, адрес — сборка в rows.ts), а ответ — счётчики по
+// статусам для чипов-фильтров: экран остаётся тонким и ничего не пересчитывает.
+// С T4.12 к записи добавлены время (возраст заказа, часы в текущем статусе,
+// срок статуса и признак просрочки — sla.ts) и ответственный (assignees.ts):
+// управляющий читает очередь как «что стоит дольше нормы и у кого», а раньше
+// не видел ни того, ни другого.
 
 // Кросс-модульный фильтр по полям заказа query.graph не умеет — поиск идёт
 // вторым запросом со стороны order (link-поле order_lifecycle.id читается в обе
@@ -65,47 +81,102 @@ export async function GET(
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
-  const filters: Record<string, unknown> = {}
-  if (status) {
-    filters.status = status
-  }
+  // База для счётчиков чипов — всё, кроме самого статуса: чипы показывают,
+  // сколько заказов в каждом статусе при текущем поиске и способе получения.
+  const baseFilters: Record<string, unknown> = {}
   if (delivery_method) {
-    filters.delivery_method = delivery_method
+    baseFilters.delivery_method = delivery_method
   }
   if (q) {
     const ids = await findLifecycleIdsByOrderSearch(query, q)
     if (!ids.length) {
-      res.json({ order_lifecycles: [], count: 0, offset, limit })
+      res.json({
+        order_lifecycles: [],
+        counts: emptyCounts(),
+        count: 0,
+        offset,
+        limit,
+      })
       return
     }
-    filters.id = ids
+    baseFilters.id = ids
   }
 
-  const { data, metadata } = await query.graph({
-    entity: "order_lifecycle",
-    fields: [
-      "id",
-      "status",
-      "previous_status",
-      "note",
-      "delivery_method",
-      "created_at",
-      "updated_at",
-      "order.id",
-      "order.display_id",
-      "order.email",
-      "order.created_at",
-    ],
-    filters,
-    pagination: {
-      skip: offset,
-      take: limit,
-      order: { [field]: direction },
-    },
-  })
+  const filters: Record<string, unknown> = { ...baseFilters }
+  if (status) {
+    filters.status = status
+  }
+
+  const [{ data, metadata }, counts, overdue] = await Promise.all([
+    query.graph({
+      entity: "order_lifecycle",
+      fields: [
+        "id",
+        "status",
+        "previous_status",
+        "note",
+        "delivery_method",
+        "delivery_date",
+        "delivery_window",
+        "created_at",
+        "updated_at",
+        "order.id",
+      ],
+      filters,
+      pagination: {
+        skip: offset,
+        take: limit,
+        order: { [field]: direction },
+      },
+    }),
+    countByStatus(query, baseFilters),
+    countOverdueOrders(query, baseFilters),
+  ])
+
+  const lifecycles = data as {
+    id: string
+    status: OrderStatusValue
+    created_at?: string | null
+    updated_at?: string | null
+    order?: { id: string } | null
+  }[]
+  const orderIds = lifecycles
+    .map((lifecycle) => lifecycle.order?.id)
+    .filter((id): id is string => !!id)
+
+  const [rows, assignees] = await Promise.all([
+    loadRowOrders(query, req.scope.resolve(Modules.ORDER), orderIds),
+    loadOrderAssignees(
+      {
+        assembly: req.scope.resolve<AssemblyModuleService>(ASSEMBLY_MODULE),
+        lifecycle: req.scope.resolve<OrderLifecycleModuleService>(
+          ORDER_LIFECYCLE_MODULE
+        ),
+        users: req.scope.resolve(Modules.USER),
+      },
+      lifecycles
+        .filter((lifecycle) => !!lifecycle.order?.id)
+        .map((lifecycle) => ({
+          lifecycle_id: lifecycle.id,
+          order_id: lifecycle.order!.id,
+          status: lifecycle.status,
+        }))
+    ),
+  ])
+
+  const sla = orderSlaHours()
+  const now = Date.now()
 
   res.json({
-    order_lifecycles: data,
+    order_lifecycles: lifecycles.map((lifecycle) => ({
+      ...lifecycle,
+      ...orderQueueTiming(lifecycle, sla, now),
+      assignee: lifecycle.order?.id
+        ? (assignees.get(lifecycle.order.id) ?? null)
+        : null,
+      order: lifecycle.order?.id ? (rows.get(lifecycle.order.id) ?? null) : null,
+    })),
+    counts: { ...counts, overdue },
     count: metadata?.count ?? data.length,
     offset,
     limit,

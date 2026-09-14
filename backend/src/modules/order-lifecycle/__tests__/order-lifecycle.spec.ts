@@ -3,6 +3,7 @@ import { ORDER_LIFECYCLE_MODULE } from ".."
 import OrderLifecycleModuleService, {
   assertDeliveryConfirmation,
   assertOrderStatusTransition,
+  assertSlotRescheduleAllowed,
 } from "../service"
 import OrderLifecycle from "../models/order-lifecycle"
 import OrderLifecycleEvent from "../models/order-lifecycle-event"
@@ -47,35 +48,28 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
         expect(() => assertOrderStatusTransition("canceled", "new")).toThrow()
       })
 
-      it("varies allowed transitions by delivery method", () => {
-        // pickup: выдача у окна без этапа доставки, частичной выдачи нет.
+      it("enforces the delivery path: delivered only via in_delivery", () => {
+        // После пивота 2026-07-22 единственный способ — delivery (полный путь).
+        // Сразу delivered из assembled нельзя — только через in_delivery.
         expect(() =>
-          assertOrderStatusTransition("assembled", "delivered", "pickup")
+          assertOrderStatusTransition("assembled", "delivered", "delivery")
+        ).toThrow("not allowed")
+        expect(() =>
+          assertOrderStatusTransition("assembled", "in_delivery", "delivery")
         ).not.toThrow()
         expect(() =>
-          assertOrderStatusTransition("assembled", "in_delivery", "pickup")
-        ).toThrow("not allowed")
+          assertOrderStatusTransition("in_delivery", "delivered", "delivery")
+        ).not.toThrow()
         expect(() =>
           assertOrderStatusTransition(
             "partially_assembled",
             "in_delivery",
-            "pickup"
+            "delivery"
           )
-        ).toThrow("not allowed")
-        // counter: свёрнутый путь new → delivered → closed.
-        expect(() =>
-          assertOrderStatusTransition("new", "delivered", "counter")
         ).not.toThrow()
-        expect(() =>
-          assertOrderStatusTransition("new", "confirmed", "counter")
-        ).toThrow("not allowed")
-        // delivery: сразу delivered нельзя — только через in_delivery.
-        expect(() =>
-          assertOrderStatusTransition("assembled", "delivered", "delivery")
-        ).toThrow("not allowed")
       })
 
-      it("requires a valid delivery code only for the delivery method", () => {
+      it("requires a valid delivery code for the delivery method", () => {
         // delivery: код обязателен и должен совпасть.
         expect(() =>
           assertDeliveryConfirmation({
@@ -105,13 +99,6 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             provided_code: "123456",
           })
         ).toThrow("no delivery code")
-        // pickup/counter: приёмка по накладной, код не требуется.
-        expect(() =>
-          assertDeliveryConfirmation({ method: "pickup", stored_code: null })
-        ).not.toThrow()
-        expect(() =>
-          assertDeliveryConfirmation({ method: "counter", stored_code: null })
-        ).not.toThrow()
       })
 
       it("records a transition: updates status, sets previous, appends log", async () => {
@@ -159,6 +146,114 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
           order_lifecycle_id: lc.id,
         })
         expect(count[1]).toEqual(0)
+      })
+
+      it("разрешает перенос слота до отгрузки и запрещает после", () => {
+        // Инвариант переноса — чистая функция (без БД), как и стейт-машина.
+        expect(() =>
+          assertSlotRescheduleAllowed({ status: "new", method: "delivery" })
+        ).not.toThrow()
+        expect(() =>
+          assertSlotRescheduleAllowed({ status: "assembled", method: "delivery" })
+        ).not.toThrow()
+        // Машина уже в пути — двигать окно нечего.
+        expect(() =>
+          assertSlotRescheduleAllowed({
+            status: "in_delivery",
+            method: "delivery",
+          })
+        ).toThrow("cannot be rescheduled")
+        expect(() =>
+          assertSlotRescheduleAllowed({ status: "delivered", method: "delivery" })
+        ).toThrow("cannot be rescheduled")
+        expect(() =>
+          assertSlotRescheduleAllowed({ status: "canceled", method: "delivery" })
+        ).toThrow("cannot be rescheduled")
+      })
+
+      it("переносит слот: пишет запись kind=slot и обновляет заказ", async () => {
+        const lc = await service.createOrderLifecycles({
+          delivery_date: "2026-09-06",
+          delivery_window: "day",
+        })
+
+        const { lifecycle: moved, event, from } =
+          await service.rescheduleDeliverySlot({
+            order_lifecycle_id: lc.id,
+            date: "2026-09-07",
+            window: "morning",
+            actor_type: "admin",
+            actor_id: "user_555",
+            reason: "покупатель просит четверг, утро",
+          })
+
+        expect(moved.delivery_date).toEqual("2026-09-07")
+        expect(moved.delivery_window).toEqual("morning")
+        // Статус переносом не двигается — иначе заказ уехал бы по стейт-машине.
+        expect(moved.status).toEqual("new")
+        expect(moved.previous_status).toBeNull()
+        // note хранит причину последнего ПЕРЕХОДА — причина переноса её не трёт.
+        expect(moved.note).toBeNull()
+        expect(from).toEqual({ date: "2026-09-06", window: "day" })
+
+        expect(event.kind).toEqual("slot")
+        const [events] = await service.listAndCountOrderLifecycleEvents({
+          order_lifecycle_id: lc.id,
+        })
+        expect(events).toHaveLength(1)
+        expect(events[0].from_slot_date).toEqual("2026-09-06")
+        expect(events[0].from_slot_window).toEqual("day")
+        expect(events[0].to_slot_date).toEqual("2026-09-07")
+        expect(events[0].to_slot_window).toEqual("morning")
+        expect(events[0].actor_id).toEqual("user_555")
+        expect(events[0].reason).toEqual("покупатель просит четверг, утро")
+        // Оба статуса — текущий: запись лога не притворяется переходом.
+        expect(events[0].from_status).toEqual("new")
+        expect(events[0].to_status).toEqual("new")
+      })
+
+      it("не переносит слот на то же окно (пустая запись в логе)", async () => {
+        const lc = await service.createOrderLifecycles({
+          delivery_date: "2026-09-06",
+          delivery_window: "day",
+        })
+
+        await expect(
+          service.rescheduleDeliverySlot({
+            order_lifecycle_id: lc.id,
+            date: "2026-09-06",
+            window: "day",
+            actor_type: "admin",
+            reason: "по звонку",
+          })
+        ).rejects.toThrow("already scheduled")
+
+        const count = await service.listAndCountOrderLifecycleEvents({
+          order_lifecycle_id: lc.id,
+        })
+        expect(count[1]).toEqual(0)
+      })
+
+      it("не переносит слот у отгруженного заказа", async () => {
+        const lc = await service.createOrderLifecycles({
+          status: "in_delivery",
+          delivery_date: "2026-09-06",
+          delivery_window: "day",
+        })
+
+        await expect(
+          service.rescheduleDeliverySlot({
+            order_lifecycle_id: lc.id,
+            date: "2026-09-07",
+            window: "morning",
+            actor_type: "admin",
+            reason: "по звонку",
+          })
+        ).rejects.toThrow("cannot be rescheduled")
+
+        const after = await service.retrieveOrderLifecycle(lc.id)
+        expect(after.delivery_date).toEqual("2026-09-06")
+        expect(after.delivery_window).toEqual("day")
       })
 
       it("logs the reason on a transition (e.g. cancellation)", async () => {

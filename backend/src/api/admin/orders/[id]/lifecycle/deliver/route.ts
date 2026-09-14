@@ -6,9 +6,8 @@ import { deliverOrderWorkflow } from "../../../../../../workflows/deliver-order"
 import { AdminDeliverOrderType } from "../../../validators"
 
 // POST /admin/orders/:id/lifecycle/deliver — вручение: наш статус → delivered
-// (для delivery — только с верным кодом получения от покупателя; для pickup —
-// выдача у окна по накладной), затем ядровый markOrderFulfillmentAsDelivered.
-// Дальше — окно возврата, затем закрытие (close).
+// (только с верным кодом получения от покупателя), затем ядровый
+// markOrderFulfillmentAsDelivered. Дальше — окно возврата, затем закрытие (close).
 export async function POST(
   req: AuthenticatedMedusaRequest<AdminDeliverOrderType>,
   res: MedusaResponse

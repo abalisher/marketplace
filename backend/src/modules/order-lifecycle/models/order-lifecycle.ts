@@ -1,6 +1,10 @@
 import { model } from "@medusajs/framework/utils"
 import OrderLifecycleEvent from "./order-lifecycle-event"
-import { DELIVERY_METHODS, ORDER_STATUSES } from "./statuses"
+import {
+  DELIVERY_METHODS,
+  DELIVERY_WINDOWS,
+  ORDER_STATUSES,
+} from "./statuses"
 
 // Кастомный жизненный цикл заказа из ТЗ (source of truth для клиентов и
 // уведомлений). Привязка к order ядра — через module link (см.
@@ -24,6 +28,12 @@ const OrderLifecycle = model.define("order_lifecycle", {
   // переход в delivered валиден только с верным кодом. Код знает покупатель
   // (ЛК + SMS позже); в admin-ответы не отдаём.
   delivery_code: model.text().nullable(),
+  // Слот доставки (T5.6): астанинские сутки `YYYY-MM-DD` + окно приезда.
+  // Выбирает покупатель при оформлении, дальше слот не меняется — по нему
+  // продавец планирует день, а покупатель знает, когда ждать машину. Nullable:
+  // у заказов, оформленных до появления слотов, его нет.
+  delivery_date: model.text().nullable(),
+  delivery_window: model.enum([...DELIVERY_WINDOWS]).nullable(),
   events: model.hasMany(() => OrderLifecycleEvent, {
     mappedBy: "order_lifecycle",
   }),

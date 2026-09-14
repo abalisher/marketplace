@@ -29,6 +29,8 @@ export async function GET(
         note: string | null
         delivery_method: string
         delivery_code: string | null
+        delivery_date: string | null
+        delivery_window: string | null
       }
     }
   ).order_lifecycle
@@ -43,6 +45,8 @@ export async function GET(
       note: null,
       delivery_method: null,
       delivery_code: null,
+      delivery_date: null,
+      delivery_window: null,
       history: [],
     })
     return
@@ -64,6 +68,10 @@ export async function GET(
     note: lifecycle.note,
     delivery_method: lifecycle.delivery_method,
     delivery_code: lifecycle.delivery_code,
+    // Слот доставки (T5.6): покупатель видит в кабинете, когда ждать машину.
+    // Дата и окно — кодами; подпись собирает клиент на своём языке.
+    delivery_date: lifecycle.delivery_date,
+    delivery_window: lifecycle.delivery_window,
     history,
   })
 }

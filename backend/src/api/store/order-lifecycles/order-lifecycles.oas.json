@@ -1,0 +1,81 @@
+{
+  "paths": {
+    "/store/order-lifecycles": {
+      "get": {
+        "operationId": "StoreListMyOrderLifecycles",
+        "summary": "List My Order Lifecycles",
+        "description": "Бизнес-стадии всех заказов текущего покупателя одним запросом (кабинет клиента): ядровый GET /store/orders не знает про order-lifecycle, а список заказов показывает стадию. Заказ без заведённого цикла в ответ не попадает.",
+        "tags": ["Orders"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Стадии заказов покупателя.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreMyOrderLifecyclesRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreMyOrderLifecycle": {
+        "type": "object",
+        "required": ["order_id", "status", "delivery_method"],
+        "properties": {
+          "order_id": { "type": "string" },
+          "status": {
+            "type": "string",
+            "description": "Бизнес-статус заказа (ТЗ): new, paid, assembling, ready, shipping, delivered, closed, cancelled."
+          },
+          "previous_status": { "type": "string", "nullable": true },
+          "delivery_method": {
+            "type": "string",
+            "enum": ["pickup", "delivery"],
+            "description": "Способ получения заказа."
+          },
+          "delivery_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Код получения: покупатель называет его при вручении."
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "nullable": true,
+            "description": "Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). null — заказ оформлен до появления слотов."
+          },
+          "delivery_window": {
+            "type": "string",
+            "enum": ["morning", "day", "evening"],
+            "nullable": true,
+            "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00."
+          }
+        }
+      },
+      "StoreMyOrderLifecyclesRes": {
+        "type": "object",
+        "required": ["lifecycles"],
+        "properties": {
+          "lifecycles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/StoreMyOrderLifecycle" }
+          }
+        }
+      }
+    }
+  }
+}
