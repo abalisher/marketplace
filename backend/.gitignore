@@ -12,6 +12,10 @@ coverage
 
 !src/**
 
+# Отладочные прогоны и генераторы примеров — только локально (после !src/**, иначе не сработает)
+src/scripts/smoke-*.ts
+src/scripts/make-sample-invoice.ts
+
 ./tsconfig.tsbuildinfo
 medusa-db.sql
 build

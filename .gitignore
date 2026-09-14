@@ -2,7 +2,7 @@
 .env
 .env.*
 !.env.example
-!.env.template
+
 # креды временной тест-БД (локальный docker) — намеренно в репо
 !.env.test
 
@@ -40,3 +40,23 @@ Thumbs.db
 # --- Артефакты источников ---
 *.docx
 ~$*
+
+# --- Артефакты прод-стенда: наполняются скриптом развёртывания на сервере. ---
+infra/prod/picker/
+infra/prod/media/
+
+# Сертификат стенда: приватный ключ в репозиторий не попадает.
+infra/prod/tls/
+
+# --- Рабочие материалы: ТЗ, макеты, отчёты приёмки, скриншоты, отладка (живут только локально) ---
+*standalone.html
+*.dc.html
+mobile/design/
+docs/qa/
+docs/guide/
+docs/archive/
+backend/scripts/shots/
+backend/scripts/admin-screenshots.mjs
+backend/scripts/demo-rehearsal.mjs
+storefront/scripts/
+mobile/apps/*/test/screenshots/
