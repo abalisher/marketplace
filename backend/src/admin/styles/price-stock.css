@@ -1,0 +1,401 @@
+/*
+ * Экран «Цены и остатки» (T10.14b): таблица с правкой прямо в клетке.
+ *
+ * Почему свои классы, а не утилиты Tailwind: дашборд Medusa поставляется уже
+ * собранным CSS — произвольных утилит в нём нет (см. styles/dashboard.css).
+ * Цвета — ТОЛЬКО токены бренда (styles/brand.css).
+ *
+ * Метрики: строки 56 px (в клетке поле ввода, а не текст — в ядровые 40 px оно
+ * не встаёт и тап-таргет уходит ниже 48), числа tabular-nums вправо, панель
+ * правок — 40 px пилюля снизу по центру (вид ядрового CommandBar).
+ */
+
+/* Таблица не сжимается ниже своих колонок: на узком экране контейнер уезжает
+   в горизонтальную прокрутку, а не превращает поле ввода в щель (ядровые
+   клетки несут overflow:hidden и min-width 20px, поэтому автораскладка иначе
+   давит колонку с полем до нуля — поймано на кадре 1024 px). */
+.sm-ps table {
+  min-width: 1080px;
+}
+
+.sm-ps table tbody tr td {
+  height: 56px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* Строку не подсвечиваем по ховеру: она не кликается целиком (правка идёт в
+   клетке), и «активная» подсветка обещала бы переход, которого нет. */
+.sm-ps table tbody tr:hover {
+  background: transparent;
+}
+
+/* --- Клетки --- */
+
+/* Числовая клетка: значение и подпись под ним, прижаты вправо. */
+.sm-ps-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.sm-ps-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-ps-strong {
+  font-weight: 600;
+  color: rgb(var(--sm-ink));
+}
+
+.sm-ps-sub {
+  font-size: 11px;
+  line-height: 14px;
+  color: rgb(var(--sm-ink-muted));
+}
+
+/* Название товара: две строки — товар и приписка (артикул, категория, статус).
+   Ширину названия ОГРАНИЧИВАЕМ: раскладка таблицы здесь авторастяжная (fixed
+   даёт разъезд ядровых sticky-колонок — их клетка шире слота и накрывает
+   соседнюю), а без ограничения длинное название раздувает свою колонку и
+   отжимает клетки с полями ввода до нечитаемой ширины. */
+.sm-ps-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 340px;
+}
+
+.sm-ps-title-text {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: rgb(var(--sm-ink));
+}
+
+/* Приписка под названием тоже не должна раздувать колонку. */
+.sm-ps-title .sm-ps-sub {
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- Поле ввода в клетке --- */
+
+.sm-ps-field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  /* Клетка не сжимается ниже поля с единицей: без этого автораскладка на узком
+     экране давила поле ввода до щели (ядровый reset ставит полям min-width: 0,
+     и минимальная ширина колонки считалась без них). */
+  min-width: 108px;
+}
+
+.sm-ps-input {
+  width: 84px;
+  flex: 0 0 84px;
+  min-width: 84px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Набранное, но не записанное число — акцентной обводкой: продавец должен
+   видеть, что цифра в каталог ещё не ушла. Селектор с элементом: ядровый CSS
+   поля попадает в бандл позже нашего, обводку берём специфичностью. */
+input.sm-ps-input-dirty {
+  border-color: rgb(var(--sm-accent));
+  background: rgb(var(--sm-accent-container));
+  color: rgb(var(--sm-ink));
+}
+
+/* Позиция, которую ресурс не принял: обводка ошибки до следующей попытки. */
+input.sm-ps-input-failed {
+  border-color: rgb(var(--sm-error));
+  background: rgb(var(--sm-error) / 0.08);
+}
+
+.sm-ps-unit {
+  font-size: 12px;
+  color: rgb(var(--sm-ink-muted));
+}
+
+/* Клетку править нельзя (цена по правилам, остаток не ведётся, склад не
+   выбран) — прочерк и причина, а не пустое поле: продавец обязан понять,
+   почему именно здесь ввод не работает. */
+.sm-ps-lock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: rgb(var(--sm-ink-muted));
+}
+
+/* Выбор склада сверху: 220 px — длинное имя площадки («Склад Астана —
+   Центр») в ядровую ширину триггера не встаёт. */
+.sm-ps-location {
+  width: 220px;
+}
+
+/* Кнопка журнала: подпись в одну строку и без сжатия — «Журнал / правок» в две
+   строки ломает высоту шапки, а сжатая кнопка режет подпись. */
+.sm-ps-log {
+  white-space: nowrap;
+  flex: none;
+}
+
+/* Контролы шапки (склад, журнал, поиск) держатся одной строкой и не
+   сжимаются: на узком экране строка целиком переезжает под заголовок (перенос
+   разрешён у самой шапки), а не режет подписи. */
+.sm-ps-controls {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+/* --- Чипы: категории и остаток в одном ряду --- */
+
+.sm-ps-chips-sep {
+  width: 1px;
+  align-self: stretch;
+  margin: 0 4px;
+  background: rgb(var(--sm-border));
+}
+
+/* --- Отказ партии --- */
+
+.sm-ps-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 24px;
+  border-top: 1px solid rgb(var(--sm-border));
+  background: rgb(var(--sm-error) / 0.06);
+}
+
+.sm-ps-issue {
+  font-size: 12px;
+  line-height: 18px;
+  color: rgb(var(--sm-ink));
+}
+
+.sm-ps-issue-reason {
+  color: rgb(var(--sm-error));
+}
+
+/* --- Панель правок ---
+   Вид ядрового CommandBar (тёмная пилюля снизу по центру), но своя: ядровая
+   вешает КЛАВИАТУРНЫЕ сокращения глобально, а на этом экране руки продавца
+   всё время в полях ввода — одна буква мимо поля стирала бы набранное.
+   Здесь роль сокращения играет Enter в самой клетке. */
+
+.sm-ps-bar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgb(var(--sm-ink));
+  box-shadow: 0 8px 24px rgb(var(--sm-scrim) / 0.24);
+}
+
+.sm-ps-bar-value {
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgb(var(--sm-surface) / 0.72);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Приписка «вне экрана: N» — тем же размером, но ярче счёта: цветом на тёмной
+   плашке контраста не набрать, а яркостью — да. */
+.sm-ps-bar-note {
+  color: rgb(var(--sm-surface));
+  font-weight: 600;
+}
+
+.sm-ps-bar-sep {
+  width: 1px;
+  height: 24px;
+  background: rgb(var(--sm-surface) / 0.2);
+}
+
+.sm-ps-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--sm-surface));
+  cursor: pointer;
+}
+
+.sm-ps-bar-btn:hover {
+  background: rgb(var(--sm-surface) / 0.12);
+}
+
+.sm-ps-bar-btn:disabled {
+  color: rgb(var(--sm-surface) / 0.4);
+  cursor: default;
+}
+
+/* Тёмная тема: пилюля ядрового CommandBar остаётся тёмной, но поверхность
+   панели уже тёмная — берём контрастную заливку от текста. */
+html.dark .sm-ps-bar {
+  background: rgb(var(--sm-surface-dim));
+  border: 1px solid rgb(var(--sm-border-strong));
+}
+
+html.dark .sm-ps-bar-value {
+  color: rgb(var(--sm-ink-muted));
+}
+
+html.dark .sm-ps-bar-note {
+  color: rgb(var(--sm-ink));
+}
+
+html.dark .sm-ps-bar-btn {
+  color: rgb(var(--sm-ink));
+}
+
+html.dark .sm-ps-bar-btn:hover {
+  background: rgb(var(--sm-ink) / 0.12);
+}
+
+html.dark .sm-ps-bar-btn:disabled {
+  color: rgb(var(--sm-ink-muted) / 0.6);
+}
+
+/* --- Предпросмотр импорта (T10.14c) ---
+   Своя таблица, а не DataTable ядра: строки здесь не сортируются, не
+   выделяются и не листаются — это лист сверки перед записью, и ядровая
+   обвязка добавила бы к нему обещания, которых он не выполняет. */
+
+/* Лист сверки шире обычного drawer'а: в строке четыре колонки, и две из них —
+   пары «было → станет» с валютой и единицей («450 000 ₸ → 450 150 ₸»,
+   «38 тонна»). В ядровую ширину они не встают, и колонка остатка уезжала за
+   край (поймано на кадре предпросмотра). Селектор с элементом: ядровый CSS
+   drawer'а попадает в бандл позже нашего. */
+div.sm-ps-imp {
+  width: 760px;
+  max-width: calc(100vw - 48px);
+}
+
+.sm-ps-imp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sm-ps-imp-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgb(var(--sm-ink-muted));
+  border-bottom: 1px solid rgb(var(--sm-border));
+}
+
+.sm-ps-imp-table th:nth-child(3),
+.sm-ps-imp-table th:nth-child(4),
+.sm-ps-imp-table td:nth-child(3),
+.sm-ps-imp-table td:nth-child(4) {
+  text-align: right;
+}
+
+.sm-ps-imp-table th:nth-child(3),
+.sm-ps-imp-table th:nth-child(4) {
+  white-space: nowrap;
+}
+
+/* Пара «было → станет» переносится целиком, а не рвётся посреди числа. */
+.sm-ps-imp-table td:nth-child(3),
+.sm-ps-imp-table td:nth-child(4) {
+  min-width: 150px;
+}
+
+.sm-ps-imp-old,
+.sm-ps-imp-new {
+  white-space: nowrap;
+}
+
+/* Номер строки файла — узкой колонкой слева: по нему продавец находит строку
+   в Excel. */
+.sm-ps-imp-table th:first-child,
+.sm-ps-imp-table td:first-child {
+  width: 44px;
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-ps-imp-table td {
+  padding: 8px;
+  font-size: 13px;
+  vertical-align: top;
+  border-bottom: 1px solid rgb(var(--sm-border));
+}
+
+.sm-ps-imp-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 260px;
+}
+
+.sm-ps-imp-title .sm-ps-title-text,
+.sm-ps-imp-title .sm-ps-sub {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Строка, которую принять нельзя: подложка ошибки — её продавец ищет глазами
+   в первую очередь. */
+.sm-ps-imp-row-bad td {
+  background: rgb(var(--sm-error) / 0.06);
+}
+
+.sm-ps-imp-row-bad .sm-ps-sub {
+  color: rgb(var(--sm-error));
+}
+
+/* Пара «было → станет»: старое число приглушено и зачёркнуто, новое — акцент. */
+.sm-ps-imp-old {
+  color: rgb(var(--sm-ink-muted));
+  text-decoration: line-through;
+}
+
+.sm-ps-imp-new {
+  font-weight: 600;
+  color: rgb(var(--sm-ink));
+}
+
+/* Величина, которой файл не касался. */
+.sm-ps-imp-idle {
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-ps-imp-warn {
+  color: rgb(var(--sm-error));
+}

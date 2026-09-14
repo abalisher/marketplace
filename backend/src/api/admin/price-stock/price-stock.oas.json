@@ -1,0 +1,955 @@
+{
+  "paths": {
+    "/admin/price-stock": {
+      "get": {
+        "operationId": "GetPriceStock",
+        "summary": "List Prices And Stock",
+        "description": "Срез экрана «Цены и остатки»: цена и остаток одной таблицей, без ядровой цепочки «вариант → price set → цена» и «inventory item → level → остаток». Строка — покупаемый вариант товара; поиск идёт по названию товара и по артикулу, фильтр — по одной из четырёх категорий каталога. «Мало» и «нет в наличии» считаются от СВОБОДНОГО остатка (лежит минус зарезервировано), поэтому срез читается до потолка scan_cap и режется на страницы в памяти, а счётчики чипов остаются полными.",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Поиск по названию товара или артикулу варианта.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Ограничить срез одной категорией каталога (handle) либо мешком «вне ассортимента» (other: категория вне четвёрки или её нет).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "finishing",
+                "electrical",
+                "plumbing",
+                "fasteners",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "stock",
+            "in": "query",
+            "required": false,
+            "description": "Чип остатка: zero — нечего продавать, low — на исходе (порог в ответе, low_threshold).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "zero",
+                "low"
+              ]
+            }
+          },
+          {
+            "name": "location_id",
+            "in": "query",
+            "required": false,
+            "description": "Склад, который смотрит экран: остаток и резерв в строках — его. У магазина с одним складом параметр не нужен — срез берёт единственный. Без разреза при нескольких складах строка показывает сумму, и правка остатка требует назвать склад.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Статус товара. По умолчанию — все: цену назначают и до публикации.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "proposed",
+                "published",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Строки цен и остатков со счётчиками чипов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceStockRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostPriceStock",
+        "summary": "Apply Price And Stock Changes",
+        "description": "Партия правок цены и остатка. Правка прямо в строке — партия из одной позиции, массовая правка выделенных — из нескольких: путь записи один. Партия применяется целиком либо не применяется вовсе: сначала все правки сверяются с текущим состоянием каталога, и при первой негодной приходит 400 со списком проблемных позиций (по строке, с названием). Правки, где число совпало с текущим, не пишутся ни в ядро, ни в журнал (skipped). Остаток задаётся абсолютным числом; склад можно не называть, если позиция лежит на одном.",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminApplyPriceStockReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Правки применены; в ответе — свежие строки задетых позиций.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminApplyPriceStockRes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Часть правок применить нельзя — партия не записана.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceStockIssuesRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/price-stock/history": {
+      "get": {
+        "operationId": "GetPriceStockHistory",
+        "summary": "List Price And Stock Changes",
+        "description": "Журнал правок цены и остатка: кто, когда, было → стало. Ядро истории не хранит (price set перезаписывается, уровень остатка знает только текущее число), поэтому факт правки пишется отдельно. Без фильтра — лента экрана, с variant_id — история одной позиции.",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "variant_id",
+            "in": "query",
+            "required": false,
+            "description": "История одной позиции каталога.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Записи журнала, свежие сверху.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceStockHistoryRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/price-stock/export": {
+      "get": {
+        "operationId": "ExportPriceStock",
+        "summary": "Export Prices And Stock",
+        "description": "Выгрузка среза экрана «Цены и остатки» файлом CSV: тот же склад, поиск и чипы, что на экране, но ЦЕЛИКОМ, а не страницей. Разделитель «;» и BOM — так файл открывает русский Excel двойным щелчком; ключ строки — артикул, технических id в файле нет. Правленый файл возвращается через POST /admin/price-stock/import.",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Поиск по названию товара или артикулу варианта.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "Ограничить срез одной категорией каталога (handle) либо мешком «вне ассортимента» (other: категория вне четвёрки или её нет).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "finishing",
+                "electrical",
+                "plumbing",
+                "fasteners",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "stock",
+            "in": "query",
+            "required": false,
+            "description": "Чип остатка: zero — нечего продавать, low — на исходе (порог в ответе, low_threshold).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "zero",
+                "low"
+              ]
+            }
+          },
+          {
+            "name": "location_id",
+            "in": "query",
+            "required": false,
+            "description": "Склад, который смотрит экран: остаток и резерв в строках — его. У магазина с одним складом параметр не нужен — срез берёт единственный. Без разреза при нескольких складах строка показывает сумму, и правка остатка требует назвать склад.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Статус товара. По умолчанию — все: цену назначают и до публикации.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "proposed",
+                "published",
+                "rejected"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV-файл среза (UTF-8 с BOM, разделитель «;»).",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/price-stock/import": {
+      "post": {
+        "operationId": "PreviewPriceStockImport",
+        "summary": "Preview Prices And Stock Import",
+        "description": "ПРЕДПРОСМОТР загруженного файла: что именно поменяется, если применить. Ресурс ничего не пишет — он сверяет строки файла с каталогом по артикулу и отдаёт готовую партию, которую применяет POST /admin/price-stock с source=import (путь записи один, партия по-прежнему пишется целиком либо не пишется вовсе). Файл принимается в UTF-8 (с BOM и без), windows-1251 и UTF-16; разделитель определяется сам. Строку, которую принять нельзя, ресурс называет номером в файле.",
+        "tags": [
+          "Catalog"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminImportPriceStockReq"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Предпросмотр: строки с правкой и строки с проблемой, сводка и готовая партия.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceStockImportRes"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Файл не принят целиком (нет колонок, чужой склад, слишком много правок) — ни предпросмотра, ни записи.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPriceStockFileErrorRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminPriceStockRow": {
+        "type": "object",
+        "description": "Строка экрана «Цены и остатки» — покупаемый вариант товара: цена, остаток и то, что вообще можно править.",
+        "required": [
+          "variant_id",
+          "product_id",
+          "title",
+          "currency_code",
+          "stocked",
+          "reserved",
+          "available",
+          "stocked_total",
+          "locations_count",
+          "stock_editable",
+          "price_editable"
+        ],
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "product_id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Название товара."
+          },
+          "variant_title": {
+            "type": "string",
+            "nullable": true,
+            "description": "Вариант (фасовка, размер, цвет) — у односортных товаров не показывается."
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true,
+            "description": "Единица измерения из карточки товара (мешок, м², шт)."
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "category_handle": {
+            "type": "string",
+            "nullable": true
+          },
+          "category_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "number",
+            "nullable": true,
+            "description": "Цена в рабочей валюте; null — цена ещё не назначена."
+          },
+          "currency_code": {
+            "type": "string"
+          },
+          "stocked": {
+            "type": "number",
+            "description": "Сколько лежит на складах."
+          },
+          "reserved": {
+            "type": "number",
+            "description": "Сколько зарезервировано под заказы."
+          },
+          "available": {
+            "type": "number",
+            "description": "Свободный остаток: лежит минус зарезервировано."
+          },
+          "stocked_total": {
+            "type": "number",
+            "description": "Сколько лежит на ВСЕХ складах — чтобы в разрезе одного было видно «9 из 49»."
+          },
+          "location_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Куда пишется правка остатка. null — позиция лежит на нескольких складах либо ни на одном: склад надо назвать в правке."
+          },
+          "location_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "locations_count": {
+            "type": "number"
+          },
+          "stock_editable": {
+            "type": "boolean",
+            "description": "Остаток можно править: он ведётся и у варианта одна складская позиция."
+          },
+          "price_editable": {
+            "type": "boolean",
+            "description": "Цену можно править здесь: она не задана правилами (регион, канал, количество)."
+          }
+        }
+      },
+      "AdminPriceStockCounts": {
+        "type": "object",
+        "required": [
+          "total",
+          "zero",
+          "low"
+        ],
+        "properties": {
+          "total": {
+            "type": "number"
+          },
+          "zero": {
+            "type": "number"
+          },
+          "low": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminPriceStockRes": {
+        "type": "object",
+        "required": [
+          "price_rows",
+          "counts",
+          "category_counts",
+          "count",
+          "offset",
+          "limit",
+          "low_threshold",
+          "scan_cap",
+          "locations"
+        ],
+        "properties": {
+          "price_rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceStockRow"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AdminPriceStockCounts"
+          },
+          "category_counts": {
+            "type": "object",
+            "description": "Счётчики чипов категорий: по позиции на каждую из четырёх категорий плюс other — вне ассортимента. Считаются по срезу без фильтра категории и без чипа остатка.",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "count": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "low_threshold": {
+            "type": "number",
+            "description": "Порог «на исходе» в единицах хранения."
+          },
+          "scan_cap": {
+            "type": "number",
+            "description": "Потолок просмотра каталога: позиций может быть больше — экран честно об этом говорит."
+          },
+          "location_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Склад разреза; null — числа в строках суммарные по всем складам."
+          },
+          "locations": {
+            "type": "array",
+            "description": "Склады магазина — экран рисует выбор склада без второго запроса.",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "AdminPriceStockChange": {
+        "type": "object",
+        "description": "Одна правка. Отсутствие поля — «не трогали»; цена и остаток — целые числа.",
+        "required": [
+          "variant_id"
+        ],
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "stock": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Абсолютный остаток на складе, а не изменение."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Обязателен, если позиция лежит на нескольких складах или ни на одном."
+          }
+        }
+      },
+      "AdminApplyPriceStockReq": {
+        "type": "object",
+        "required": [
+          "changes"
+        ],
+        "properties": {
+          "changes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceStockChange"
+            }
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "import"
+            ],
+            "default": "manual",
+            "description": "Чем правили: руками в строке или загрузкой файла — видно в журнале."
+          }
+        }
+      },
+      "AdminApplyPriceStockRes": {
+        "type": "object",
+        "required": [
+          "applied",
+          "skipped",
+          "price_rows"
+        ],
+        "properties": {
+          "applied": {
+            "type": "number"
+          },
+          "skipped": {
+            "type": "number",
+            "description": "Сколько правок совпало с текущими числами и не записывалось."
+          },
+          "price_rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceStockRow"
+            }
+          }
+        }
+      },
+      "AdminPriceStockIssue": {
+        "type": "object",
+        "required": [
+          "variant_id",
+          "code"
+        ],
+        "properties": {
+          "variant_id": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "unknown_variant",
+              "empty_change",
+              "price_rules",
+              "stock_not_managed",
+              "location_required",
+              "unknown_location",
+              "duplicate_change"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "nullable": true,
+            "description": "Название позиции — в массовой правке иначе непонятно, какая помешала."
+          }
+        }
+      },
+      "AdminPriceStockIssuesRes": {
+        "type": "object",
+        "required": [
+          "message",
+          "issues"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceStockIssue"
+            }
+          }
+        }
+      },
+      "AdminPriceChange": {
+        "type": "object",
+        "description": "Запись журнала: было → стало. Пустая пара значит «не трогали» — правка одной цены оставляет остаток пустым.",
+        "required": [
+          "id",
+          "variant_id",
+          "product_title",
+          "source",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "variant_id": {
+            "type": "string"
+          },
+          "product_title": {
+            "type": "string"
+          },
+          "variant_title": {
+            "type": "string",
+            "nullable": true
+          },
+          "sku": {
+            "type": "string",
+            "nullable": true
+          },
+          "currency_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "old_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "new_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "old_stock": {
+            "type": "number",
+            "nullable": true
+          },
+          "new_stock": {
+            "type": "number",
+            "nullable": true
+          },
+          "location_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Склад правки остатка; у правки цены склада нет (цена в магазине одна)."
+          },
+          "location_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Название склада правки; null — склада больше нет в магазине."
+          },
+          "changed_by_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Кто правил — имя учётки на момент правки; у учётки без имени — логин из почты без домена."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "import"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AdminPriceStockHistoryRes": {
+        "type": "object",
+        "required": [
+          "price_changes",
+          "count",
+          "offset",
+          "limit"
+        ],
+        "properties": {
+          "price_changes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceChange"
+            }
+          },
+          "count": {
+            "type": "number"
+          },
+          "offset": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "number"
+          }
+        }
+      },
+      "AdminImportPriceStockReq": {
+        "type": "object",
+        "description": "Загруженный файл: содержимое base64 (multipart ради одного экрана не заводим) и разрез склада, для которого набраны остатки.",
+        "required": [
+          "content_base64"
+        ],
+        "properties": {
+          "file_name": {
+            "type": "string",
+            "description": "Имя файла — для сообщения об отказе."
+          },
+          "content_base64": {
+            "type": "string",
+            "description": "Содержимое файла CSV в base64."
+          },
+          "location_id": {
+            "type": "string",
+            "description": "Склад, который смотрит экран: на него уедут остатки, если в файле нет своей колонки «Склад». Если файл называет ДРУГОЙ склад — отказ (location_mismatch)."
+          }
+        }
+      },
+      "AdminPriceStockImportRow": {
+        "type": "object",
+        "description": "Строка предпросмотра: номер строки В ФАЙЛЕ (её продавец правит в Excel), найденная позиция и пара «было → станет». new_* = null — эту величину файл не трогает.",
+        "required": [
+          "line",
+          "sku"
+        ],
+        "properties": {
+          "line": {
+            "type": "integer",
+            "description": "Номер строки файла (заголовок — первая)."
+          },
+          "sku": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "variant_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "old_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "new_price": {
+            "type": "number",
+            "nullable": true
+          },
+          "old_stock": {
+            "type": "number",
+            "nullable": true
+          },
+          "new_stock": {
+            "type": "number",
+            "nullable": true
+          },
+          "issue": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "missing_sku",
+              "unknown_sku",
+              "duplicate_sku",
+              "bad_price",
+              "fraction_price",
+              "bad_stock",
+              "fraction_stock",
+              "price_rules",
+              "stock_not_managed",
+              "location_required"
+            ],
+            "description": "Почему строку принять нельзя; null — строка идёт в партию."
+          }
+        }
+      },
+      "AdminPriceStockImportRes": {
+        "type": "object",
+        "required": [
+          "rows",
+          "changes",
+          "summary"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "description": "Только строки с правкой и строки с проблемой: «не изменилось» перечислять незачем.",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceStockImportRow"
+            }
+          },
+          "changes": {
+            "type": "array",
+            "description": "Готовая партия для POST /admin/price-stock.",
+            "items": {
+              "$ref": "#/components/schemas/AdminPriceStockChange"
+            }
+          },
+          "summary": {
+            "type": "object",
+            "required": [
+              "rows",
+              "changes",
+              "unchanged",
+              "issues"
+            ],
+            "properties": {
+              "rows": {
+                "type": "integer"
+              },
+              "changes": {
+                "type": "integer"
+              },
+              "unchanged": {
+                "type": "integer"
+              },
+              "issues": {
+                "type": "integer"
+              }
+            }
+          },
+          "rows_truncated": {
+            "type": "boolean",
+            "description": "Строк с правками больше, чем показано: остальные посчитаны в сводке."
+          },
+          "location_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Склад, на который уедут остатки."
+          },
+          "location_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "scan_capped": {
+            "type": "boolean",
+            "description": "Каталог упёрся в потолок просмотра: «нет в каталоге» в такой сверке — не приговор."
+          }
+        }
+      },
+      "AdminPriceStockFileErrorRes": {
+        "type": "object",
+        "description": "Файл не принят целиком: ни предпросмотра, ни записи.",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "file_error": {
+            "type": "string",
+            "enum": [
+              "empty_file",
+              "no_columns",
+              "too_many_rows",
+              "mixed_locations",
+              "unknown_location",
+              "location_mismatch",
+              "too_many_changes"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
