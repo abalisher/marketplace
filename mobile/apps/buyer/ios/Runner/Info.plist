@@ -26,6 +26,16 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Голосовое сообщение ассистенту (T10.3): без этой строки iOS не покажет
+	     системный запрос и запись молча не начнётся. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Микрофон нужен, чтобы надиктовать сообщение ассистенту вместо набора текста.</string>
+	<!-- Вложения композера (T10.4c): без этих строк iOS не покажет системный
+	     запрос и снимет приложение при первом обращении к камере и галерее. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Камера нужна, чтобы снять список материалов или объект и отправить снимок ассистенту.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Доступ к фото нужен, чтобы приложить к сообщению уже сделанный снимок списка или сметы.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

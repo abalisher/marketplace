@@ -13,11 +13,29 @@ dependencies:
   core:
   ui_kit:
   api_client:
+  dio: ^5.7.0
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  # Локальное хранение истории диалогов на устройстве (T2.5, экран 1d).
+  shared_preferences: ^2.3.3
+  # Открытие PDF документов заказа (счёт/акт) во внешнем приложении (T2.8).
+  url_launcher: ^6.3.1
+  # Выбор учредительных документов при подаче заявки юрлица (T2.12) и
+  # произвольного файла-вложения в композере чата (T10.4c).
+  file_picker: ^10.1.9
+  # Камера и галерея для вложений композера чата (T10.4c): file_picker камеру не
+  # умеет, а снять лист от прораба прямо в диалоге — основной путь таска.
+  image_picker: ^1.2.3
+  # Запись голосового сообщения в композере чата (T10.3): один API на Android,
+  # iOS и web, разрешение микрофона спрашивает сам (hasPermission).
+  record: ^7.1.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Скриншот-генератор гейта U: явная загрузка IBM Plex из ассетов ui_kit.
+  google_fonts: ^6.2.1
 
 flutter:
   uses-material-design: true
