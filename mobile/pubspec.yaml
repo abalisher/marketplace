@@ -9,7 +9,6 @@ environment:
 workspace:
   - apps/buyer
   - apps/partner
-  - apps/driver
   - packages/core
   - packages/ui_kit
   - packages/api_client
