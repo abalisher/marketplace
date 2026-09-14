@@ -13,11 +13,19 @@ dependencies:
   core:
   ui_kit:
   api_client:
+  dio: ^5.7.0
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+  # Очередь неотправленных отметок сборщика (T10.12): склад бывает без сети,
+  # отметки обязаны пережить и потерю связи, и перезапуск приложения.
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  # Скриншот-генератор гейта U: явная загрузка IBM Plex из ассетов ui_kit.
+  google_fonts: ^6.2.1
 
 flutter:
   uses-material-design: true
