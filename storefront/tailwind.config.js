@@ -20,21 +20,36 @@ module.exports = {
         visibility: "visibility",
         padding: "padding-top padding-right padding-bottom padding-left",
       },
+      // Токены бренда «СтройМаркет» (зеркало ui_kit). Значения — CSS-переменные
+      // из src/styles/tokens.css, каналами: работают модификаторы прозрачности
+      // (bg-accent/10) и обе темы. Палитра стартера (grey) снята — цвета только
+      // из дизайн-системы.
       colors: {
-        grey: {
-          0: "#FFFFFF",
-          5: "#F9FAFB",
-          10: "#F3F4F6",
-          20: "#E5E7EB",
-          30: "#D1D5DB",
-          40: "#9CA3AF",
-          50: "#6B7280",
-          60: "#4B5563",
-          70: "#374151",
-          80: "#1F2937",
-          90: "#111827",
+        ink: {
+          DEFAULT: "rgb(var(--sm-ink) / <alpha-value>)",
+          secondary: "rgb(var(--sm-ink-secondary) / <alpha-value>)",
         },
+        // `line` — токен `border` дизайн-системы (обводки и делители);
+        // имя не `border`, чтобы не путать с утилитой толщины рамки.
+        line: "rgb(var(--sm-border) / <alpha-value>)",
+        accent: {
+          DEFAULT: "rgb(var(--sm-accent) / <alpha-value>)",
+          pressed: "rgb(var(--sm-accent-pressed) / <alpha-value>)",
+          container: "rgb(var(--sm-accent-container) / <alpha-value>)",
+        },
+        "on-accent": "rgb(var(--sm-on-accent) / <alpha-value>)",
+        success: "rgb(var(--sm-success) / <alpha-value>)",
+        warning: "rgb(var(--sm-warning) / <alpha-value>)",
+        error: "rgb(var(--sm-error) / <alpha-value>)",
+        kaspi: "rgb(var(--sm-kaspi) / <alpha-value>)",
+        surface: {
+          DEFAULT: "rgb(var(--sm-surface) / <alpha-value>)",
+          dim: "rgb(var(--sm-surface-dim) / <alpha-value>)",
+        },
+        scrim: "rgb(var(--sm-scrim) / <alpha-value>)",
       },
+      // Скругления дизайн-системы (chip/card/bubble/field) + значения стартера,
+      // на которых ещё держатся непереведённые экраны.
       borderRadius: {
         none: "0px",
         soft: "2px",
@@ -42,6 +57,12 @@ module.exports = {
         rounded: "8px",
         large: "16px",
         circle: "9999px",
+        chip: "8px",
+        card: "14px",
+        bubble: "16px",
+        field: "25px",
+        // Композер чата по эталону Gemini (бриф T10.1a раздел 5).
+        composer: "28px",
       },
       maxWidth: {
         "8xl": "100rem",
@@ -55,18 +76,55 @@ module.exports = {
         xlarge: "1680px",
         "2xlarge": "1920px",
       },
+      // Типошкала дизайн-системы (макет 2026-07-24, зеркало AppTypography
+      // ui_kit) — рядом с дефолтной шкалой Tailwind, на которой ещё держатся
+      // непереведённые экраны стартера.
       fontSize: {
         "3xl": "2rem",
+        "heading-large": ["28px", { lineHeight: "34px", fontWeight: "600" }],
+        "heading-medium": ["22px", { lineHeight: "28px", fontWeight: "600" }],
+        "title-medium": ["17px", { lineHeight: "24px", fontWeight: "600" }],
+        "body-large": ["15px", { lineHeight: "22px", fontWeight: "400" }],
+        "body-medium": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+        overline: [
+          "11px",
+          { lineHeight: "16px", fontWeight: "600", letterSpacing: "0.5px" },
+        ],
+        price: ["15px", { lineHeight: "20px", fontWeight: "600" }],
+        button: ["15px", { lineHeight: "20px", fontWeight: "600" }],
+        // Разговорный экран покупателя: размеры сняты с эталона Gemini
+        // (решение владельца 2026-09-14 — «вид и особенно шрифт как у
+        // Gemini»). Общая шкала витрины мельче на шаг, и в чате это читалось
+        // как «мелкий текст в крупной оболочке»: реплики 15px против 16px
+        // эталона, приветствие жирным 28px против обычного веса 40px.
+        "assistant-greeting": [
+          "28px",
+          { lineHeight: "36px", fontWeight: "400" },
+        ],
+        "assistant-greeting-large": [
+          "32px",
+          { lineHeight: "40px", fontWeight: "400" },
+        ],
+        // Строки рельса истории на десктопе — кегль и шаг эталона (замер по
+        // живым скриншотам 2026-09-14: пункты Gemini 14px с шагом ~32–36px,
+        // наши были 15px с шагом 44px — «шрифт конского размера»).
+        rail: ["14px", { lineHeight: "20px", fontWeight: "400" }],
+        "assistant-body": ["16px", { lineHeight: "26px", fontWeight: "400" }],
+        "assistant-chip": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+        "assistant-caption": [
+          "12px",
+          { lineHeight: "16px", fontWeight: "400" },
+        ],
       },
       fontFamily: {
         sans: [
-          "Inter",
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
+          "var(--font-roboto)",
+          // Знак тенге: в Roboto его нет, поэтому сразу за ним стоит вырезка
+          // ровно с этим символом (src/lib/fonts/roboto-tenge.ts).
+          "var(--font-roboto-tenge)",
           "Roboto",
-          "Helvetica Neue",
-          "Ubuntu",
+          "system-ui",
+          "Segoe UI",
           "sans-serif",
         ],
       },
@@ -140,6 +198,12 @@ module.exports = {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(0)" },
         },
+        // Индикатор «печатает…» ассистента: три точки каскадом (зеркало
+        // AppTypingBubble из ui_kit).
+        "typing-dot": {
+          "0%, 60%, 100%": { opacity: "0.25", transform: "translateY(0)" },
+          "30%": { opacity: "1", transform: "translateY(-2px)" },
+        },
       },
       animation: {
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
@@ -155,6 +219,7 @@ module.exports = {
         enter: "enter 200ms ease-out",
         "slide-in": "slide-in 1.2s cubic-bezier(.41,.73,.51,1.02)",
         leave: "leave 150ms ease-in forwards",
+        "typing-dot": "typing-dot 1.2s ease-in-out infinite",
       },
     },
   },

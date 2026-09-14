@@ -26,6 +26,7 @@
     @apply left-0;
   }
 
+  /* Автозаполнение браузера — на токенах, иначе поля выпадают из темы. */
   input:-webkit-autofill,
   input:-webkit-autofill:hover,
   input:-webkit-autofill:focus,
@@ -35,9 +36,9 @@
   select:-webkit-autofill,
   select:-webkit-autofill:hover,
   select:-webkit-autofill:focus {
-    border: 1px solid #212121;
-    -webkit-text-fill-color: #212121;
-    -webkit-box-shadow: 0 0 0px 1000px #fff inset;
+    border: 1px solid rgb(var(--sm-border));
+    -webkit-text-fill-color: rgb(var(--sm-ink));
+    -webkit-box-shadow: 0 0 0px 1000px rgb(var(--sm-surface)) inset;
     transition: background-color 5000s ease-in-out 0s;
   }
 
@@ -55,7 +56,7 @@
   }
 
   .contrast-btn {
-    @apply px-4 py-2 border border-black rounded-full hover:bg-black hover:text-white transition-colors duration-200 ease-in;
+    @apply px-4 py-2 border border-ink rounded-full hover:bg-ink hover:text-surface transition-colors duration-200 ease-in;
   }
 
   .text-xsmall-regular {
