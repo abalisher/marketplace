@@ -1,126 +1,233 @@
 import { defineRouteConfig } from "@medusajs/admin-sdk"
-import { EllipseMiniSolid, ExclamationCircle, XMarkMini } from "@medusajs/icons"
+import { ExclamationCircle } from "@medusajs/icons"
 import {
+  Badge,
   Button,
-  clx,
   Container,
   createDataTableColumnHelper,
   DataTable,
   DataTablePaginationState,
   Heading,
-  Popover,
   Text,
+  clx,
   useDataTable,
 } from "@medusajs/ui"
-import { useQuery } from "@tanstack/react-query"
-import { useState } from "react"
-import DisputeTransitionDrawer from "../../components/dispute-transition-drawer"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
+import DisputeCardDrawer from "../../components/dispute-card-drawer"
+import { DataTableListError } from "../../components/data-table-list-error"
+import DisputeRegisterDrawer from "../../components/dispute-register-drawer"
+import { dataTableRow } from "../../lib/data-table-row"
+import { formatAmount } from "../../lib/money"
 import {
-  AdminDispute,
   AdminDisputeQueueResponse,
-  DISPUTE_CATEGORY_META,
-  DISPUTE_STATUS_META,
-  DISPUTE_STATUSES,
-  DisputeStatus,
+  AdminDisputeRow,
+  DISPUTE_CLOSED,
+  DISPUTE_QUEUE_CHIPS,
+  DisputeQueueChip,
+  disputeCategoryMeta,
+  disputeOutcomeMeta,
+  disputeQueueChipCount,
+  disputeStatusMeta,
 } from "../../lib/reviews"
+import { routeLabel } from "../../lib/route-label"
+import { waitingUnit } from "../../lib/waiting"
 import { sdk } from "../../lib/sdk"
+import "../../styles/orders.css"
 
 const PAGE_SIZE = 20
 
-const MENU_ITEM_CLASSES =
-  "bg-ui-bg-base hover:bg-ui-bg-base-hover focus-visible:bg-ui-bg-base-pressed text-ui-fg-base txt-compact-small relative flex cursor-pointer select-none items-center rounded-md px-2 py-1.5 outline-none transition-colors"
+const columnHelper = createDataTableColumnHelper<AdminDisputeRow>()
 
-const columnHelper = createDataTableColumnHelper<AdminDispute>()
-
-const formatDate = (value: string | null) =>
-  value
-    ? new Date(value).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      })
-    : "—"
-
-// Очередь диспутов оператора. Данные — GET /admin/disputes (дефолт — активные).
-// Вид/флоу фильтра — копия внутреннего DataTableFilter ядра (как order-queue).
-// Клик по строке открывает drawer ведения по стейт-машине (диспут не имеет
-// ядровой страницы, в отличие от заказа).
+// Экран «Претензии» панели продавца (T4.11). Идиома экрана «Заказы» (T4.2a/1b):
+// плотная таблица, чипы-фильтры со счётчиками, поиск, клик по строке открывает
+// рабочее место претензии drawer'ом поверх очереди — фильтр и место в списке не
+// теряются.
+//
+// Порядок — всегда FIFO по created_at (старые сверху): это очередь на разбор, а
+// не журнал; они же первыми уходят в просрочку.
+//
+// Ф-прогон 2026-08-18 (Асель, 1/5) ловил здесь четыре блокера: строка несла
+// только внутренний id заказа (по нему панель сама ничего не находила), суть
+// жалобы была спрятана внизу карточки заказа, срок и возраст обращения не
+// показывались вовсе, а завести претензию по звонку было негде. Строку целиком
+// собирает GET /admin/disputes — экран ничего не пересчитывает.
 const DisputesQueuePage = () => {
+  const { t } = useTranslation()
+  const [disputeId, setDisputeId] = useState<string | null>(null)
+  const [registerOpen, setRegisterOpen] = useState(false)
+
   const [pagination, setPagination] = useState<DataTablePaginationState>({
     pageIndex: 0,
     pageSize: PAGE_SIZE,
   })
-  const [selected, setSelected] = useState<AdminDispute | null>(null)
+  const [search, setSearch] = useState("")
+  const [chipKey, setChipKey] = useState("active")
+  const chip =
+    DISPUTE_QUEUE_CHIPS.find((entry) => entry.key === chipKey) ??
+    DISPUTE_QUEUE_CHIPS[0]
 
-  const [filterActive, setFilterActive] = useState(false)
-  const [chipOpen, setChipOpen] = useState(false)
-  const [addOpen, setAddOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<DisputeStatus | null>(null)
+  const q = search.trim()
 
-  const setStatus = (value: DisputeStatus | null) => {
-    setStatusFilter(value)
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
-  }
-  const addStatusFilter = () => {
-    setAddOpen(false)
-    setFilterActive(true)
-    setChipOpen(true)
-  }
-  const handleChipOpenChange = (open: boolean) => {
-    setChipOpen(open)
-    if (!open && !statusFilter) {
-      setFilterActive(false)
-    }
-  }
-  const removeStatusFilter = () => {
-    setFilterActive(false)
-    setChipOpen(false)
-    if (statusFilter) {
-      setStatus(null)
-    }
-  }
-
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: [
       "dispute-queue",
       pagination.pageIndex,
       pagination.pageSize,
-      statusFilter,
+      chip.key,
+      q,
     ],
     queryFn: () =>
       sdk.client.fetch<AdminDisputeQueueResponse>("/admin/disputes", {
         query: {
           limit: pagination.pageSize,
           offset: pagination.pageIndex * pagination.pageSize,
-          ...(statusFilter ? { status: statusFilter } : {}),
+          status: chip.statuses.join(","),
+          ...(q ? { q } : {}),
         },
       }),
+    // Прежняя страница остаётся на экране, пока едет новая: чипы и поиск не
+    // мигают скелетом на каждый клик.
+    placeholderData: keepPreviousData,
   })
 
+  const selectChip = (entry: DisputeQueueChip) => {
+    setChipKey(entry.key)
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+  }
+
+  // Страховка пагинации: count может усесться под текущей страницей без смены
+  // фильтров (решённые претензии уходят из активных) — возвращаемся на первую.
+  useEffect(() => {
+    if (
+      data &&
+      pagination.pageIndex > 0 &&
+      pagination.pageIndex * pagination.pageSize >= data.count
+    ) {
+      setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [data, pagination.pageIndex, pagination.pageSize])
+
   const columns = [
-    columnHelper.accessor("order_id", {
-      header: "Order",
-      cell: ({ getValue }) => getValue(),
-    }),
-    columnHelper.accessor("category", {
-      header: "Category",
-      cell: ({ getValue }) => DISPUTE_CATEGORY_META[getValue()].label,
-    }),
-    columnHelper.accessor("status", {
-      header: "Status",
-      cell: ({ getValue }) => {
-        const meta = DISPUTE_STATUS_META[getValue()]
+    columnHelper.display({
+      id: "order",
+      size: 90,
+      header: t("reviews.disputes.colOrder"),
+      cell: ({ row }) => {
+        const id = row.original.order?.display_id
         return (
-          <div className="flex items-center gap-x-2">
-            <div className={`size-2 rounded-full ${meta.dotClass}`} />
-            <span>{meta.label}</span>
-          </div>
+          <span className="sm-cell-strong">
+            {id == null ? "—" : t("orderQueue.orderNo", { id })}
+          </span>
         )
       },
     }),
-    columnHelper.accessor("created_at", {
-      header: "Opened",
-      cell: ({ getValue }) => formatDate(getValue()),
+    columnHelper.display({
+      id: "customer",
+      size: 170,
+      header: t("orderQueue.colCustomer"),
+      cell: ({ row }) => {
+        const order = row.original.order
+        if (!order?.customer_name) {
+          return "—"
+        }
+        return (
+          <span className="flex items-center gap-x-2">
+            <span className="truncate">{order.customer_name}</span>
+            {order.is_company && (
+              <Badge size="2xsmall" color="blue">
+                {t("orderQueue.companyBadge")}
+              </Badge>
+            )}
+          </span>
+        )
+      },
+    }),
+    columnHelper.accessor("category", {
+      size: 120,
+      header: t("reviews.disputes.colCategory"),
+      cell: ({ getValue }) => t(disputeCategoryMeta(getValue()).label),
+    }),
+    // Суть жалобы прямо в очереди: до T4.11 её можно было прочитать только
+    // пролистав карточку заказа до дна.
+    columnHelper.accessor("description", {
+      size: 200,
+      header: t("reviews.disputes.colComplaint"),
+      cell: ({ getValue }) => (
+        <span className="truncate" title={getValue()}>
+          {getValue()}
+        </span>
+      ),
+    }),
+    columnHelper.accessor((row) => row.order?.total ?? null, {
+      id: "total",
+      size: 120,
+      header: t("orderQueue.colTotal"),
+      headerAlign: "right",
+      cell: ({ row }) => {
+        const order = row.original.order
+        return (
+          <span className="sm-cell-num sm-cell-strong">
+            {order?.total == null
+              ? "—"
+              : formatAmount(order.total, order.currency_code)}
+          </span>
+        )
+      },
+    }),
+    // Возраст обращения и просрочка: «что висит третий день» — первый вопрос
+    // утром (МЕШАЕТ 8 Ф-прогона). У закрытых претензий счётчик молчит: ничего
+    // они уже не ждут, а тикающие «408 ч» рядом со «Решён» врут оператору.
+    columnHelper.accessor("age_hours", {
+      size: 150,
+      header: t("reviews.disputes.colAge"),
+      cell: ({ row }) => {
+        if (DISPUTE_CLOSED.includes(row.original.status)) {
+          return "—"
+        }
+        const waiting = waitingUnit(row.original.age_hours)
+        return (
+          <span className="flex items-center gap-x-2">
+            <span className="shrink-0">
+              {waiting.unit === "days"
+                ? t("reviews.disputes.ageDays", { count: waiting.value })
+                : t("reviews.disputes.ageHours", { count: waiting.value })}
+            </span>
+            {/* shrink-0: без него длинная подпись «просрочено» сжималась и
+                вылезала под колонку статуса. */}
+            {row.original.overdue && (
+              <Badge size="2xsmall" color="red" className="shrink-0">
+                {t("reviews.card.overdue")}
+              </Badge>
+            )}
+          </span>
+        )
+      },
+    }),
+    columnHelper.accessor("status", {
+      size: 170,
+      header: t("common.status"),
+      // Точка + текст — идиома StatusCell стандартных списков ядра.
+      cell: ({ getValue }) => {
+        const meta = disputeStatusMeta(getValue())
+        return (
+          <span className="flex items-center gap-x-2">
+            {/* shrink-0: во flex длинная подпись статуса сжимала точку до нуля
+                («На рассмотрении» шёл без метки). */}
+            <span className={`size-2 shrink-0 rounded-full ${meta.dotClass}`} />
+            <span className="truncate">{t(meta.label)}</span>
+          </span>
+        )
+      },
+    }),
+    // Последствие решения: по закрытым видно, что покупатель получил, без
+    // открытия карточки.
+    columnHelper.accessor("outcome", {
+      size: 180,
+      header: t("reviews.disputes.colOutcome"),
+      cell: ({ getValue }) =>
+        getValue() ? t(disputeOutcomeMeta(getValue()).label) : "—",
     }),
   ]
 
@@ -130,150 +237,136 @@ const DisputesQueuePage = () => {
     rowCount: data?.count ?? 0,
     isLoading,
     getRowId: (row) => row.id,
-    onRowClick: (_, row) => setSelected(row),
+    // Распаковка строки — через dataTableRow: ядровый DataTable отдаёт в колбэк
+    // обёртку TanStack, и прямое чтение полей РОНЯЛО этот экран (T4.11a).
+    onRowClick: (_, row) => setDisputeId(dataTableRow(row).id),
     pagination: { state: pagination, onPaginationChange: setPagination },
+    search: {
+      state: search,
+      onSearchChange: (value) => {
+        setSearch(value)
+        setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+      },
+      debounce: 400,
+    },
   })
 
-  const statusLabel = statusFilter
-    ? DISPUTE_STATUS_META[statusFilter].label
-    : null
+  const overdue = data?.counts.overdue ?? 0
+  // «Ничего не нашлось» вместо «претензий нет»: пустой список под чипом или
+  // поиском ничего не говорит о том, пуста ли очередь целиком.
+  const filtered = q !== "" || chip.key !== "all"
 
   return (
-    <Container className="divide-y p-0">
+    <Container className="sm-orders divide-y p-0">
       <DataTable instance={table}>
-        <div className="flex items-center justify-between px-6 py-4">
-          <Heading level="h1">Disputes</Heading>
-        </div>
-        <div className="flex items-center justify-between gap-x-4 px-6 py-4">
-          <div className="max-w-2/3 flex flex-wrap items-center gap-2">
-            {filterActive && (
-              <Popover open={chipOpen} onOpenChange={handleChipOpenChange}>
-                <div className="bg-ui-bg-field transition-fg shadow-borders-base text-ui-fg-subtle flex cursor-default select-none items-stretch overflow-hidden rounded-md">
-                  {!statusFilter && <Popover.Anchor />}
-                  <div
-                    className={clx(
-                      "flex items-center justify-center whitespace-nowrap px-2 py-1",
-                      { "border-r": !!statusFilter }
-                    )}
-                  >
-                    <Text size="small" weight="plus" leading="compact">
-                      Status
-                    </Text>
-                  </div>
-                  {statusFilter && (
-                    <div className="flex w-full items-center overflow-hidden">
-                      <div className="border-r p-1 px-2">
-                        <Text
-                          size="small"
-                          weight="plus"
-                          leading="compact"
-                          className="text-ui-fg-muted"
-                        >
-                          is
-                        </Text>
-                      </div>
-                      <Popover.Trigger
-                        asChild
-                        className="hover:bg-ui-bg-field-hover data-[state=open]:bg-ui-bg-field-hover flex-1 cursor-pointer overflow-hidden border-r p-1 px-2"
-                      >
-                        <Text
-                          size="small"
-                          leading="compact"
-                          weight="plus"
-                          className="truncate text-nowrap"
-                        >
-                          {statusLabel}
-                        </Text>
-                      </Popover.Trigger>
-                    </div>
-                  )}
-                  {statusFilter && (
-                    <button
-                      onClick={removeStatusFilter}
-                      className="text-ui-fg-muted transition-fg hover:bg-ui-bg-subtle-hover active:bg-ui-bg-subtle-pressed active:text-ui-fg-base flex items-center justify-center p-1"
-                    >
-                      <XMarkMini />
-                    </button>
-                  )}
-                </div>
-                <Popover.Content
-                  align="start"
-                  sideOffset={8}
-                  collisionPadding={8}
-                  className="max-h-[200px] w-[300px] overflow-auto p-1"
-                >
-                  {DISPUTE_STATUSES.map((value) => {
-                    const isSelected = statusFilter === value
-                    return (
-                      <div
-                        key={value}
-                        role="menuitem"
-                        className={clx(MENU_ITEM_CLASSES, "gap-x-2")}
-                        onClick={() => setStatus(isSelected ? null : value)}
-                      >
-                        <div
-                          className={clx(
-                            "transition-fg flex h-5 w-5 items-center justify-center",
-                            { "[&_svg]:invisible": !isSelected }
-                          )}
-                        >
-                          <EllipseMiniSolid />
-                        </div>
-                        {DISPUTE_STATUS_META[value].label}
-                      </div>
-                    )
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-6 py-4">
+          <div className="flex flex-col gap-y-1">
+            <Heading level="h1">{t("reviews.disputes.title")}</Heading>
+            <Text size="small" className="text-ui-fg-subtle">
+              {overdue > 0
+                ? t("reviews.disputes.overdueHint", {
+                    count: overdue,
+                    hours: data?.sla_hours ?? 24,
+                  })
+                : t("reviews.disputes.slaHint", {
+                    hours: data?.sla_hours ?? 24,
                   })}
-                </Popover.Content>
-              </Popover>
-            )}
-            {!filterActive && (
-              <Popover open={addOpen} onOpenChange={setAddOpen}>
-                <Popover.Trigger asChild>
-                  <Button size="small" variant="secondary">
-                    Add filter
-                  </Button>
-                </Popover.Trigger>
-                <Popover.Content
-                  align="start"
-                  sideOffset={8}
-                  collisionPadding={8}
-                  className="max-h-[200px] w-[300px] overflow-auto p-1"
-                >
-                  <div
-                    role="menuitem"
-                    className={MENU_ITEM_CLASSES}
-                    onClick={addStatusFilter}
-                  >
-                    Status
-                  </div>
-                </Popover.Content>
-              </Popover>
-            )}
-            {filterActive && (
-              <button
-                type="button"
-                onClick={removeStatusFilter}
-                className="text-ui-fg-muted transition-fg txt-compact-small-plus hover:text-ui-fg-subtle focus-visible:shadow-borders-focus rounded-md px-2 py-1"
-              >
-                Clear all
-              </button>
-            )}
+            </Text>
+          </div>
+          <div className="flex items-center gap-x-2">
+            <DataTable.Search
+              placeholder={t("reviews.disputes.searchPlaceholder")}
+            />
+            <Button
+              size="small"
+              data-sm-action="register-claim"
+              onClick={() => setRegisterOpen(true)}
+            >
+              {t("reviews.register.action")}
+            </Button>
           </div>
         </div>
-        <DataTable.Table />
-        <DataTable.Pagination />
+        <div className="sm-chips px-6 py-3">
+          {DISPUTE_QUEUE_CHIPS.map((entry) => (
+            <button
+              key={entry.key}
+              type="button"
+              // Метка чипа для скриншотера гейта U: выбор фильтра в кадре не
+              // должен зависеть от языка подписи (идиома data-sm-section).
+              data-sm-chip={entry.key}
+              aria-pressed={entry.key === chip.key}
+              className={clx("sm-chip", {
+                "sm-chip-active": entry.key === chip.key,
+              })}
+              onClick={() => selectChip(entry)}
+            >
+              {t(entry.label)}
+              {data && (
+                <span className="sm-chip-count">
+                  {disputeQueueChipCount(data.counts, entry)}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+        {isError ? (
+          <DataTableListError
+            message={t("reviews.disputes.error")}
+            onRetry={refetch}
+          />
+        ) : (
+          <>
+            {/* Фильтр у нас свой (чипы), и ядровый DataTable про него не
+                знает: без этой подмены пустой чип «Отклонён» обещал «претензий
+                нет», хотя в очереди их пять. */}
+            <DataTable.Table
+              emptyState={{
+                empty: filtered
+                  ? {
+                      heading: t("reviews.disputes.filteredHeading"),
+                      description: t("reviews.disputes.filteredDescription"),
+                    }
+                  : {
+                      heading: t("reviews.disputes.emptyHeading"),
+                      description: t("reviews.disputes.emptyDescription"),
+                    },
+                filtered: {
+                  heading: t("reviews.disputes.filteredHeading"),
+                  description: t("reviews.disputes.filteredDescription"),
+                },
+              }}
+            />
+            {/* Подписи пагинации у компонента свои (не из i18n ядра) —
+                переводим сами, иначе в русской панели «1 of 1 pages». */}
+            <DataTable.Pagination
+              translations={{
+                of: t("common.pagination.of"),
+                results: t("common.pagination.results"),
+                pages: t("common.pagination.pages"),
+                prev: t("common.pagination.prev"),
+                next: t("common.pagination.next"),
+              }}
+            />
+          </>
+        )}
       </DataTable>
 
-      <DisputeTransitionDrawer
-        dispute={selected}
-        onClose={() => setSelected(null)}
+      <DisputeCardDrawer
+        disputeId={disputeId}
+        onClose={() => setDisputeId(null)}
+      />
+      <DisputeRegisterDrawer
+        open={registerOpen}
+        onClose={() => setRegisterOpen(false)}
       />
     </Container>
   )
 }
 
+// «Претензии», не «Споры»/«Диспуты»: слово «диспут» в работе не используют
+// (Асель, КОСМЕТИКА 11 Ф-прогона — в меню было одно слово, в заголовке другое).
 export const config = defineRouteConfig({
-  label: "Disputes",
+  label: routeLabel({ en: "Claims", ru: "Претензии" }),
   icon: ExclamationCircle,
 })
 

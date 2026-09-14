@@ -132,18 +132,61 @@ moduleIntegrationTestRunner<ReviewsModuleService>({
         })
         expect(inReview.status).toEqual("in_review")
 
+        // Удовлетворение без последствия решения запрещено (T4.11).
+        await expect(
+          service.recordDisputeTransition({
+            id: dispute.id,
+            to: "resolved",
+            resolution: "Компенсация начислена бонусами",
+          })
+        ).rejects.toThrow(/outcome/)
+
         const resolved = await service.recordDisputeTransition({
           id: dispute.id,
           to: "resolved",
           resolution: "Компенсация начислена бонусами",
+          outcome: "bonus",
         })
         expect(resolved.status).toEqual("resolved")
         expect(resolved.resolution).toContain("Компенсация")
+        expect(resolved.outcome).toEqual("bonus")
 
         // Из терминального resolved переходов нет.
         await expect(
           service.recordDisputeTransition({ id: dispute.id, to: "open" })
         ).rejects.toThrow(/not allowed/)
+      })
+
+      it("на отказе фиксирует «без компенсации» и помнит источник обращения", async () => {
+        const byOperator = await service.openDispute({
+          order_id: "order_9",
+          customer_id: "cus_2",
+          category: "not_delivered",
+          description: "Позвонил: не довезли",
+          source: "operator",
+        })
+        expect(byOperator.source).toEqual("operator")
+        expect(byOperator.outcome).toBeNull()
+
+        // Отказ означает отсутствие компенсации — присланное последствие
+        // игнорируется, иначе в журнале осталось бы «отказано, но возврат».
+        const rejected = await service.recordDisputeTransition({
+          id: byOperator.id,
+          to: "rejected",
+          resolution: "Заказ вручён под код получения",
+          outcome: "refund",
+        })
+        expect(rejected.status).toEqual("rejected")
+        expect(rejected.outcome).toEqual("none")
+
+        // Претензия покупателя из чата — источник по умолчанию.
+        const byBuyer = await service.openDispute({
+          order_id: "order_10",
+          customer_id: "cus_2",
+          category: "damaged",
+          description: "Повредили при выгрузке",
+        })
+        expect(byBuyer.source).toEqual("buyer")
       })
 
       it("allows a new dispute after the previous one is closed", async () => {

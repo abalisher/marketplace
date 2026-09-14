@@ -11,27 +11,30 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
-import DisputeTransitionDrawer from "../components/dispute-transition-drawer"
+import { useTranslation } from "react-i18next"
+import DisputeCardDrawer from "../components/dispute-card-drawer"
 import { useReviews } from "../hooks/use-reviews"
 import {
-  AdminDispute,
   AdminDisputesResponse,
   AdminReviewsResponse,
   AdminReviewSummariesResponse,
-  DISPUTE_CATEGORY_META,
-  DISPUTE_STATUS_META,
   REVIEW_TARGET_META,
+  disputeCategoryMeta,
+  disputeOutcomeMeta,
+  disputeStatusMeta,
 } from "../lib/reviews"
 import { sdk } from "../lib/sdk"
 
-// Widget отзывов и диспутов заказа на ядровой странице заказа: отзывы (с
-// модерацией hide/publish в «...»-меню), диспуты (клик → drawer ведения по
-// стейт-машине) и глобальная сводка рейтинга. Данные — admin-роуты reviews.
+// Widget отзывов и претензий заказа на ядровой странице заказа: отзывы (с
+// модерацией hide/publish в «...»-меню), претензии (клик → рабочее место
+// претензии, T4.11) и глобальная сводка рейтинга. Данные — admin-роуты reviews.
+//
+// Полный разбор претензии живёт на экране «Претензии»; здесь — вход в него со
+// страницы заказа, чтобы продавец не искал претензию по номеру.
 const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
+  const { t } = useTranslation()
   const { moderateReview } = useReviews()
-  const [selectedDispute, setSelectedDispute] = useState<AdminDispute | null>(
-    null
-  )
+  const [disputeId, setDisputeId] = useState<string | null>(null)
 
   const { data: reviewsRes } = useQuery({
     queryKey: ["order-reviews", data.id],
@@ -60,7 +63,7 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
   return (
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Reviews & disputes</Heading>
+        <Heading level="h2">{t("reviews.widget.title")}</Heading>
         <div className="flex items-center gap-x-3">
           {summaries.map((s) => (
             <span
@@ -69,7 +72,7 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
             >
               <Star className="text-ui-tag-orange-icon" />
               <Text size="small">
-                {REVIEW_TARGET_META[s.target].label} {s.average} ({s.count})
+                {t(REVIEW_TARGET_META[s.target].label)} {s.average} ({s.count})
               </Text>
             </span>
           ))}
@@ -80,7 +83,7 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
       <div className="flex flex-col">
         <div className="px-6 py-3">
           <Text size="small" weight="plus" className="text-ui-fg-subtle">
-            Reviews
+            {t("reviews.widget.reviews")}
           </Text>
         </div>
         {reviews.length ? (
@@ -93,10 +96,12 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                 <div className="flex flex-col">
                   <div className="flex items-center gap-x-2">
                     <Text size="small" weight="plus">
-                      {REVIEW_TARGET_META[review.target].label} · {review.rating}★
+                      {t(REVIEW_TARGET_META[review.target].label)} · {review.rating}★
                     </Text>
                     {review.status === "hidden" && (
-                      <StatusBadge color="grey">Hidden</StatusBadge>
+                      <StatusBadge color="grey">
+                        {t("reviews.widget.hidden")}
+                      </StatusBadge>
                     )}
                   </div>
                   {review.comment && (
@@ -124,7 +129,7 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                         }
                       >
                         <EyeSlash className="text-ui-fg-subtle" />
-                        Hide
+                        {t("reviews.widget.hide")}
                       </DropdownMenu.Item>
                     ) : (
                       <DropdownMenu.Item
@@ -138,7 +143,7 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                         }
                       >
                         <Eye className="text-ui-fg-subtle" />
-                        Publish
+                        {t("reviews.widget.publish")}
                       </DropdownMenu.Item>
                     )}
                   </DropdownMenu.Content>
@@ -149,38 +154,47 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         ) : (
           <div className="border-t px-6 py-3">
             <Text size="small" className="text-ui-fg-subtle">
-              No reviews yet.
+              {t("reviews.widget.noReviews")}
             </Text>
           </div>
         )}
       </div>
 
-      {/* Диспуты заказа */}
+      {/* Претензии заказа */}
       <div className="flex flex-col">
         <div className="px-6 py-3">
           <Text size="small" weight="plus" className="text-ui-fg-subtle">
-            Disputes
+            {t("reviews.widget.claims")}
           </Text>
         </div>
         {disputes.length ? (
           <ul className="flex flex-col">
             {disputes.map((dispute) => {
-              const meta = DISPUTE_STATUS_META[dispute.status]
+              const meta = disputeStatusMeta(dispute.status)
               return (
                 <li
                   key={dispute.id}
                   className="hover:bg-ui-bg-base-hover flex cursor-pointer items-center justify-between gap-x-4 border-t px-6 py-3"
-                  onClick={() => setSelectedDispute(dispute)}
+                  onClick={() => setDisputeId(dispute.id)}
                 >
                   <div className="flex flex-col">
                     <Text size="small" weight="plus">
-                      {DISPUTE_CATEGORY_META[dispute.category].label}
+                      {t(disputeCategoryMeta(dispute.category).label)}
                     </Text>
                     <Text size="small" className="text-ui-fg-subtle">
                       {dispute.description}
                     </Text>
+                    {/* Последствие решения: что покупатель получил по закрытой
+                        претензии (T4.11). */}
+                    {dispute.outcome && (
+                      <Text size="small" className="text-ui-fg-subtle">
+                        {t("reviews.card.decided", {
+                          outcome: t(disputeOutcomeMeta(dispute.outcome).label),
+                        })}
+                      </Text>
+                    )}
                   </div>
-                  <StatusBadge color={meta.color}>{meta.label}</StatusBadge>
+                  <StatusBadge color={meta.color}>{t(meta.label)}</StatusBadge>
                 </li>
               )
             })}
@@ -188,15 +202,15 @@ const OrderReviewsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
         ) : (
           <div className="border-t px-6 py-3">
             <Text size="small" className="text-ui-fg-subtle">
-              No disputes.
+              {t("reviews.widget.noDisputes")}
             </Text>
           </div>
         )}
       </div>
 
-      <DisputeTransitionDrawer
-        dispute={selectedDispute}
-        onClose={() => setSelectedDispute(null)}
+      <DisputeCardDrawer
+        disputeId={disputeId}
+        onClose={() => setDisputeId(null)}
       />
     </Container>
   )

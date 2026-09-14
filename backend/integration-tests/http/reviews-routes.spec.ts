@@ -318,14 +318,17 @@ medusaIntegrationTestRunner({
     }
 
     // Оформляет заказ покупателем через HTTP и проводит его до delivered.
-    const placeDelivered = async (
-      buyer: { customerId: string; email: string; headers: Record<string, string> },
-      method: "delivery" | "pickup"
-    ) => {
+    // Способ получения в домене один — доставка (DELIVERY_METHODS, пивот
+    // 2026-07-22 убрал самовывоз и продажу за прилавком).
+    const placeDelivered = async (buyer: {
+      customerId: string
+      email: string
+      headers: Record<string, string>
+    }) => {
       const cartId = await prepareCart(buyer.customerId, buyer.email)
       const { data: placed } = await api.post(
         "/store/orders",
-        { cart_id: cartId, delivery_method: method },
+        { cart_id: cartId, delivery_method: "delivery" },
         { headers: buyer.headers }
       )
       const orderId = placed.order.id as string
@@ -341,30 +344,23 @@ medusaIntegrationTestRunner({
         input: { order_id: orderId, items, actor_type: "seller" },
       })
       const fid = await fulfillmentId(orderId)
-      if (method === "delivery") {
-        await shipOrderWorkflow(container).run({
-          input: {
-            order_id: orderId,
-            fulfillment_id: fid,
-            items,
-            actor_type: "seller",
-          },
-        })
-        const code = await deliveryCode(orderId)
-        await deliverOrderWorkflow(container).run({
-          input: {
-            order_id: orderId,
-            fulfillment_id: fid,
-            delivery_code: code,
-            actor_type: "system",
-          },
-        })
-      } else {
-        // pickup: выдача у окна без отгрузки и без кода.
-        await deliverOrderWorkflow(container).run({
-          input: { order_id: orderId, fulfillment_id: fid, actor_type: "seller" },
-        })
-      }
+      await shipOrderWorkflow(container).run({
+        input: {
+          order_id: orderId,
+          fulfillment_id: fid,
+          items,
+          actor_type: "seller",
+        },
+      })
+      const code = await deliveryCode(orderId)
+      await deliverOrderWorkflow(container).run({
+        input: {
+          order_id: orderId,
+          fulfillment_id: fid,
+          delivery_code: code,
+          actor_type: "system",
+        },
+      })
       // Подтверждаем, что заказ доставлен.
       const service =
         container.resolve<OrderLifecycleModuleService>(ORDER_LIFECYCLE_MODULE)
@@ -401,7 +397,7 @@ medusaIntegrationTestRunner({
 
       it("accepts supplier + delivery reviews on a delivered delivery order, blocks duplicates", async () => {
         const buyer = await createCustomer()
-        const orderId = await placeDelivered(buyer, "delivery")
+        const orderId = await placeDelivered(buyer)
 
         const supplier = await call(
           api.post(
@@ -441,32 +437,25 @@ medusaIntegrationTestRunner({
         expect(list.data.reviews).toHaveLength(2)
       })
 
-      it("rejects a delivery review for a pickup order (400)", async () => {
+      it("не принимает заказ с самовывозом: способ получения один — доставка (400)", async () => {
         const buyer = await createCustomer()
-        const orderId = await placeDelivered(buyer, "pickup")
-        // Отзыв о поставщике для самовывоза — можно.
-        const supplier = await call(
+        const cartId = await prepareCart(buyer.customerId, buyer.email)
+        // Пивот 2026-07-22 убрал самовывоз из домена, поэтому гейт «доставку
+        // оценивает только delivery-заказ» через API недостижим: pickup-заказа
+        // не существует. Инвариант способа получения проверяем здесь.
+        const placed = await call(
           api.post(
-            `/store/orders/${orderId}/reviews`,
-            { target: "supplier", rating: 5 },
+            "/store/orders",
+            { cart_id: cartId, delivery_method: "pickup" },
             { headers: buyer.headers }
           )
         )
-        expect(supplier.status).toEqual(201)
-        // Отзыв о доставке для самовывоза — нечего оценивать, 400.
-        const delivery = await call(
-          api.post(
-            `/store/orders/${orderId}/reviews`,
-            { target: "delivery", rating: 5 },
-            { headers: buyer.headers }
-          )
-        )
-        expect(delivery.status).toEqual(400)
+        expect(placed.status).toEqual(400)
       })
 
       it("hides another buyer's order from reviewing (404)", async () => {
         const owner = await createCustomer()
-        const orderId = await placeDelivered(owner, "delivery")
+        const orderId = await placeDelivered(owner)
         const stranger = await createCustomer()
         const res = await call(
           api.post(
@@ -541,7 +530,7 @@ medusaIntegrationTestRunner({
     describe("admin reviews (list, moderate, summary)", () => {
       it("lists order reviews, moderates visibility, and reflects it in the summary", async () => {
         const buyer = await createCustomer()
-        const orderId = await placeDelivered(buyer, "delivery")
+        const orderId = await placeDelivered(buyer)
         const { data: created } = await api.post(
           `/store/orders/${orderId}/reviews`,
           { target: "supplier", rating: 5 },
@@ -622,15 +611,31 @@ medusaIntegrationTestRunner({
         )
         expect(inReview.data.dispute.status).toEqual("in_review")
 
-        const resolved = await call(
+        // Удовлетворение без названного последствия запрещено (T4.11): решение
+        // без него нельзя ни объяснить покупателю, ни проверить через месяц.
+        const noOutcome = await call(
           api.post(
             `/admin/disputes/${disputeId}/transition`,
             { to: "resolved", resolution: "Компенсация выдана" },
             { headers: adminHeaders }
           )
         )
+        expect(noOutcome.status).toEqual(400)
+
+        const resolved = await call(
+          api.post(
+            `/admin/disputes/${disputeId}/transition`,
+            {
+              to: "resolved",
+              resolution: "Компенсация выдана",
+              outcome: "refund",
+            },
+            { headers: adminHeaders }
+          )
+        )
         expect(resolved.data.dispute.status).toEqual("resolved")
         expect(resolved.data.dispute.resolution).toContain("Компенсация")
+        expect(resolved.data.dispute.outcome).toEqual("refund")
 
         // Переход из терминального resolved запрещён — 400.
         const illegal = await call(
@@ -641,6 +646,251 @@ medusaIntegrationTestRunner({
           )
         )
         expect(illegal.status).toEqual(400)
+      })
+
+      it("отдаёт в строке очереди заказ, покупателя, сумму, возраст и счётчики", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeDelivered(buyer)
+        const { data: opened } = await api.post(
+          `/store/orders/${orderId}/disputes`,
+          { category: "damaged", description: "Два мешка порваны" },
+          { headers: buyer.headers }
+        )
+        const disputeId = opened.dispute.id
+
+        const queue = await call(
+          api.get("/admin/disputes", { headers: adminHeaders })
+        )
+        expect(queue.status).toEqual(200)
+        const row = queue.data.disputes.find(
+          (d: { id: string }) => d.id === disputeId
+        )
+        // Строку собирает бэкенд: номер заказа, покупатель и сумма — вместо
+        // одного внутреннего id, который панель сама же не находила.
+        expect(row.order.display_id).toBeGreaterThan(0)
+        expect(row.order.customer_name).toEqual(buyer.email)
+        expect(row.order.total).toBeGreaterThan(0)
+        expect(row.age_hours).toEqual(0)
+        expect(row.overdue).toBe(false)
+        expect(row.source).toEqual("buyer")
+        expect(queue.data.sla_hours).toBeGreaterThan(0)
+        expect(queue.data.counts.by_status.open).toBeGreaterThanOrEqual(1)
+        expect(queue.data.counts.overdue).toEqual(0)
+
+        // Поиск по номеру заказа находит претензию, по чужому тексту — нет.
+        const byNumber = await call(
+          api.get(`/admin/disputes?q=${row.order.display_id}`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(
+          byNumber.data.disputes.some((d: { id: string }) => d.id === disputeId)
+        ).toBe(true)
+
+        const byText = await call(
+          api.get("/admin/disputes?q=мешка", { headers: adminHeaders })
+        )
+        expect(
+          byText.data.disputes.some((d: { id: string }) => d.id === disputeId)
+        ).toBe(true)
+
+        const nothing = await call(
+          api.get("/admin/disputes?q=такого-текста-нет", {
+            headers: adminHeaders,
+          })
+        )
+        expect(nothing.data.disputes).toEqual([])
+        expect(nothing.data.count).toEqual(0)
+      })
+
+      it("собирает рабочее место претензии: заказ, отзывы и историю покупателя", async () => {
+        const buyer = await createCustomer()
+        const firstOrderId = await placeDelivered(buyer)
+        // Прошлое обращение того же покупателя — закрываем, чтобы оно попало в
+        // историю и не мешало открыть второе.
+        const { data: past } = await api.post(
+          `/store/orders/${firstOrderId}/disputes`,
+          { category: "quality", description: "Прошлая жалоба на качество" },
+          { headers: buyer.headers }
+        )
+        await call(
+          api.post(
+            `/admin/disputes/${past.dispute.id}/transition`,
+            { to: "rejected", resolution: "Не подтвердилось" },
+            { headers: adminHeaders }
+          )
+        )
+
+        const orderId = await placeDelivered(buyer)
+        await api.post(
+          `/store/orders/${orderId}/reviews`,
+          { target: "supplier", rating: 2, comment: "Плохо упаковали" },
+          { headers: buyer.headers }
+        )
+        const { data: opened } = await api.post(
+          `/store/orders/${orderId}/disputes`,
+          { category: "damaged", description: "Повредили при выгрузке" },
+          { headers: buyer.headers }
+        )
+
+        const card = await call(
+          api.get(`/admin/disputes/${opened.dispute.id}/card`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(card.status).toEqual(200)
+        const body = card.data.dispute_card
+        expect(body.dispute.description).toContain("выгрузке")
+        expect(body.dispute.overdue).toBe(false)
+        // Заказ приходит той же карточкой, что видит продавец: состав и деньги
+        // должны сходиться с экраном заказа.
+        expect(body.order.order_id).toEqual(orderId)
+        expect(body.order.items.length).toBeGreaterThan(0)
+        expect(body.order.totals.total).toBeGreaterThan(0)
+        expect(body.order.history.length).toBeGreaterThan(0)
+        // Отзыв по этому заказу и история обращений покупателя.
+        expect(body.reviews.length).toEqual(1)
+        expect(body.customer_history.dispute_count).toEqual(2)
+        expect(body.customer_history.rejected_count).toEqual(1)
+        expect(body.customer_history.order_count).toBeGreaterThanOrEqual(2)
+        expect(body.customer_history.others[0].order_display_id).toBeGreaterThan(
+          0
+        )
+      })
+
+      it("отказ фиксирует последствие «без компенсации»", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeDelivered(buyer)
+        const { data: opened } = await api.post(
+          `/store/orders/${orderId}/disputes`,
+          { category: "other", description: "Спорная ситуация" },
+          { headers: buyer.headers }
+        )
+
+        const rejected = await call(
+          api.post(
+            `/admin/disputes/${opened.dispute.id}/transition`,
+            { to: "rejected", resolution: "Доказательств нет" },
+            { headers: adminHeaders }
+          )
+        )
+        expect(rejected.status).toEqual(200)
+        expect(rejected.data.dispute.status).toEqual("rejected")
+        expect(rejected.data.dispute.outcome).toEqual("none")
+      })
+    })
+
+    describe("POST /admin/disputes (претензия по звонку)", () => {
+      it("оператор регистрирует претензию по заказу; второй активной быть не может", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeDelivered(buyer)
+
+        const registered = await call(
+          api.post(
+            "/admin/disputes",
+            {
+              order_id: orderId,
+              category: "not_delivered",
+              description: "Позвонил: не довезли два мешка",
+            },
+            { headers: adminHeaders }
+          )
+        )
+        expect(registered.status).toEqual(201)
+        // Источник помечен: через месяц видно, что претензию записали с чужих слов.
+        expect(registered.data.dispute.source).toEqual("operator")
+        expect(registered.data.dispute.status).toEqual("open")
+        // Покупателя бэкенд взял из самого заказа — оператор его не вводил.
+        expect(registered.data.dispute.customer_id).toEqual(buyer.customerId)
+
+        // Второй активной претензии по заказу быть не может — общий инвариант
+        // домена для обоих входов (чат покупателя и панель оператора).
+        const second = await call(
+          api.post(
+            "/admin/disputes",
+            {
+              order_id: orderId,
+              category: "damaged",
+              description: "Ещё одна жалоба по тому же заказу",
+            },
+            { headers: adminHeaders }
+          )
+        )
+        expect(second.status).toBeGreaterThanOrEqual(400)
+
+        // Претензия видна в карточке заказа: продавец узнаёт о ней, открыв заказ.
+        const orderCard = await call(
+          api.get(`/admin/orders/${orderId}/lifecycle/card`, {
+            headers: adminHeaders,
+          })
+        )
+        expect(orderCard.data.order_card.active_dispute.id).toEqual(
+          registered.data.dispute.id
+        )
+      })
+
+      it("не заводит претензию по несуществующему заказу (404)", async () => {
+        const missing = await call(
+          api.post(
+            "/admin/disputes",
+            {
+              order_id: "order_does_not_exist",
+              category: "other",
+              description: "Проверка несуществующего заказа",
+            },
+            { headers: adminHeaders }
+          )
+        )
+        expect(missing.status).toEqual(404)
+      })
+    })
+
+    describe("GET /admin/reviews (раздел отзывов)", () => {
+      it("отдаёт отзывы с заказом и покупателем, фильтрует по видимости", async () => {
+        const buyer = await createCustomer()
+        const orderId = await placeDelivered(buyer)
+        const { data: created } = await api.post(
+          `/store/orders/${orderId}/reviews`,
+          { target: "delivery", rating: 4, comment: "Привезли вовремя" },
+          { headers: buyer.headers }
+        )
+        const reviewId = created.review.id
+
+        const list = await call(
+          api.get("/admin/reviews", { headers: adminHeaders })
+        )
+        expect(list.status).toEqual(200)
+        const row = list.data.reviews.find(
+          (r: { id: string }) => r.id === reviewId
+        )
+        expect(row.order.display_id).toBeGreaterThan(0)
+        expect(row.order.customer_name).toEqual(buyer.email)
+        expect(list.data.counts.total).toBeGreaterThanOrEqual(1)
+        expect(list.data.summaries.length).toEqual(2)
+
+        // Скрытый отзыв уходит из «Опубликованных» и попадает в «Скрытые».
+        await call(
+          api.post(
+            `/admin/reviews/${reviewId}/moderate`,
+            { status: "hidden" },
+            { headers: adminHeaders }
+          )
+        )
+        const published = await call(
+          api.get("/admin/reviews?status=published", { headers: adminHeaders })
+        )
+        expect(
+          published.data.reviews.some((r: { id: string }) => r.id === reviewId)
+        ).toBe(false)
+
+        const hidden = await call(
+          api.get("/admin/reviews?status=hidden&target=delivery", {
+            headers: adminHeaders,
+          })
+        )
+        expect(
+          hidden.data.reviews.some((r: { id: string }) => r.id === reviewId)
+        ).toBe(true)
       })
     })
   },

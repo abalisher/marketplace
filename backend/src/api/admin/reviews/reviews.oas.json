@@ -5,15 +5,37 @@
         "operationId": "AdminGetOrdersIdReviews",
         "summary": "List Order Reviews (Admin)",
         "description": "Все отзывы заказа (включая скрытые) для админа/продавца. Namespace /reviews не перекрывает ядровые /admin/orders/{id}/{cancel,complete}.",
-        "tags": ["Reviews"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Отзывы заказа.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminReviewsRes" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewsRes"
+                }
+              }
+            }
           }
         }
       }
@@ -23,15 +45,37 @@
         "operationId": "AdminGetOrdersIdDisputes",
         "summary": "List Order Disputes (Admin)",
         "description": "Диспуты заказа для админа/продавца (страница заказа).",
-        "tags": ["Reviews"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Диспуты заказа.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDisputesRes" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputesRes"
+                }
+              }
+            }
           }
         }
       }
@@ -41,12 +85,27 @@
         "operationId": "AdminGetReviewsSummary",
         "summary": "Rating Summary (Admin)",
         "description": "Сводка рейтинга по объектам (поставщик/доставка): среднее и количество опубликованных отзывов.",
-        "tags": ["Reviews"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "responses": {
           "200": {
             "description": "Сводка рейтинга.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminReviewSummariesRes" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewSummariesRes"
+                }
+              }
+            }
           }
         }
       }
@@ -56,19 +115,47 @@
         "operationId": "AdminPostReviewsIdModerate",
         "summary": "Moderate Review",
         "description": "Скрыть/опубликовать отзыв (модерация видимости).",
-        "tags": ["Reviews"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminModerateReview" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminModerateReview"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "Обновлённый отзыв.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminReviewRes" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewRes"
+                }
+              }
+            }
           }
         }
       }
@@ -76,24 +163,111 @@
     "/admin/disputes": {
       "get": {
         "operationId": "AdminGetDisputes",
-        "summary": "List Dispute Queue",
-        "description": "Очередь диспутов: фильтр по статусу (дефолт — активные open+in_review, FIFO), пагинация.",
-        "tags": ["Reviews"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "summary": "List Claim Queue",
+        "description": "Очередь претензий оператора: фильтр по статусу (не задан — активные open+in_review, FIFO по дате обращения), поиск по номеру заказа, почте покупателя и тексту жалобы, пагинация. Строка несёт заказ, покупателя, сумму, возраст обращения и признак просрочки.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
           {
             "name": "status",
             "in": "query",
             "required": false,
-            "schema": { "type": "string", "enum": ["open", "in_review", "resolved", "rejected"] }
+            "schema": {
+              "type": "string"
+            },
+            "description": "Один статус или несколько через запятую (чип «Требуют ответа» — open,in_review)."
           },
-          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 } },
-          { "name": "offset", "in": "query", "required": false, "schema": { "type": "integer", "minimum": 0, "default": 0 } }
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "description": "Поиск по номеру заказа, почте покупателя или тексту жалобы.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
         ],
         "responses": {
           "200": {
             "description": "Страница очереди диспутов.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDisputesListRes" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputesListRes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "AdminRegisterDispute",
+        "summary": "Register Claim From A Call",
+        "description": "Регистрация претензии оператором с чужих слов (звонок, выдача): покупателя определяет заказ, источник — operator. Второй активной претензии по заказу быть не может.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRegisterDispute"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Претензия зарегистрирована.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputeRes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден."
           }
         }
       }
@@ -103,19 +277,175 @@
         "operationId": "AdminPostDisputesIdTransition",
         "summary": "Transition Dispute",
         "description": "Ведение диспута по стейт-машине (in_review/resolved/rejected). Недопустимый из текущего статуса переход → 400.",
-        "tags": ["Reviews"],
-        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "requestBody": {
           "required": true,
-          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminTransitionDispute" } } }
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminTransitionDispute"
+              }
+            }
+          }
         },
         "responses": {
           "200": {
             "description": "Обновлённый диспут.",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminDisputeRes" } } }
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputeRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/disputes/{id}/card": {
+      "get": {
+        "operationId": "AdminGetDisputeCard",
+        "summary": "Get Claim Workspace",
+        "description": "Рабочее место претензии одним ответом: претензия со сроком ответа, заказ целиком (состав, деньги, стадии, документы), отзывы заказа и история обращений покупателя.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Рабочее место претензии.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminDisputeCardRes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Претензия не найдена."
+          }
+        }
+      }
+    },
+    "/admin/reviews": {
+      "get": {
+        "operationId": "AdminGetReviews",
+        "summary": "List Reviews",
+        "description": "Раздел «Отзывы»: список с фильтрами по объекту оценки и видимости, поиск по номеру заказа, почте покупателя и тексту отзыва, пагинация. В ответе — счётчики видимости и сводки рейтинга по опубликованным отзывам.",
+        "tags": [
+          "Reviews"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "target",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "supplier",
+                "delivery"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "published",
+                "hidden"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список отзывов.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminReviewsListRes"
+                }
+              }
+            }
           }
         }
       }
@@ -125,95 +455,563 @@
     "schemas": {
       "AdminReview": {
         "type": "object",
-        "required": ["id", "order_id", "target", "rating", "status"],
+        "required": [
+          "id",
+          "order_id",
+          "target",
+          "rating",
+          "status"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "order_id": { "type": "string" },
-          "customer_id": { "type": "string" },
-          "target": { "type": "string", "enum": ["supplier", "delivery"] },
-          "rating": { "type": "integer" },
-          "comment": { "type": "string", "nullable": true },
-          "status": { "type": "string", "enum": ["published", "hidden"] },
-          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "delivery"
+            ]
+          },
+          "rating": {
+            "type": "integer"
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "hidden"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
         }
       },
       "AdminReviewRes": {
         "type": "object",
-        "required": ["review"],
-        "properties": { "review": { "$ref": "#/components/schemas/AdminReview" } }
+        "required": [
+          "review"
+        ],
+        "properties": {
+          "review": {
+            "$ref": "#/components/schemas/AdminReview"
+          }
+        }
       },
       "AdminReviewsRes": {
         "type": "object",
-        "required": ["reviews"],
+        "required": [
+          "reviews"
+        ],
         "properties": {
-          "reviews": { "type": "array", "items": { "$ref": "#/components/schemas/AdminReview" } }
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReview"
+            }
+          }
         }
       },
       "AdminModerateReview": {
         "type": "object",
-        "required": ["status"],
+        "required": [
+          "status"
+        ],
         "properties": {
-          "status": { "type": "string", "enum": ["published", "hidden"] }
+          "status": {
+            "type": "string",
+            "enum": [
+              "published",
+              "hidden"
+            ]
+          }
         }
       },
       "AdminReviewSummary": {
         "type": "object",
-        "required": ["target", "count", "average"],
+        "required": [
+          "target",
+          "count",
+          "average"
+        ],
         "properties": {
-          "target": { "type": "string", "enum": ["supplier", "delivery"] },
-          "count": { "type": "integer" },
-          "average": { "type": "number" }
+          "target": {
+            "type": "string",
+            "enum": [
+              "supplier",
+              "delivery"
+            ]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "average": {
+            "type": "number"
+          }
         }
       },
       "AdminReviewSummariesRes": {
         "type": "object",
-        "required": ["summaries"],
+        "required": [
+          "summaries"
+        ],
         "properties": {
-          "summaries": { "type": "array", "items": { "$ref": "#/components/schemas/AdminReviewSummary" } }
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReviewSummary"
+            }
+          }
         }
       },
       "AdminDispute": {
         "type": "object",
-        "required": ["id", "order_id", "category", "description", "status"],
+        "required": [
+          "id",
+          "order_id",
+          "category",
+          "description",
+          "status"
+        ],
         "properties": {
-          "id": { "type": "string" },
-          "order_id": { "type": "string" },
-          "customer_id": { "type": "string" },
-          "category": { "type": "string", "enum": ["not_delivered", "damaged", "wrong_item", "quality", "other"] },
-          "description": { "type": "string" },
-          "status": { "type": "string", "enum": ["open", "in_review", "resolved", "rejected"] },
-          "resolution": { "type": "string", "nullable": true },
-          "created_at": { "type": "string", "format": "date-time", "nullable": true }
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "not_delivered",
+              "damaged",
+              "wrong_item",
+              "quality",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "in_review",
+              "resolved",
+              "rejected"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "refund",
+              "redelivery",
+              "replacement",
+              "bonus",
+              "none"
+            ],
+            "description": "Последствие решения: что получает покупатель. До закрытия — null."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "buyer",
+              "operator"
+            ],
+            "description": "Кто завёл претензию: покупатель через чат или оператор с его слов."
+          }
         }
       },
       "AdminDisputeRes": {
         "type": "object",
-        "required": ["dispute"],
-        "properties": { "dispute": { "$ref": "#/components/schemas/AdminDispute" } }
+        "required": [
+          "dispute"
+        ],
+        "properties": {
+          "dispute": {
+            "$ref": "#/components/schemas/AdminDispute"
+          }
+        }
       },
       "AdminDisputesRes": {
         "type": "object",
-        "required": ["disputes"],
+        "required": [
+          "disputes"
+        ],
         "properties": {
-          "disputes": { "type": "array", "items": { "$ref": "#/components/schemas/AdminDispute" } }
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDispute"
+            }
+          }
         }
       },
       "AdminDisputesListRes": {
         "type": "object",
-        "required": ["disputes", "count", "offset", "limit"],
+        "required": [
+          "disputes",
+          "counts",
+          "sla_hours",
+          "count",
+          "offset",
+          "limit"
+        ],
         "properties": {
-          "disputes": { "type": "array", "items": { "$ref": "#/components/schemas/AdminDispute" } },
-          "count": { "type": "integer" },
-          "offset": { "type": "integer" },
-          "limit": { "type": "integer" }
+          "disputes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDisputeRow"
+            }
+          },
+          "counts": {
+            "$ref": "#/components/schemas/AdminDisputeCounts"
+          },
+          "sla_hours": {
+            "type": "integer",
+            "description": "Срок ответа по претензии в часах."
+          },
+          "count": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
         }
       },
       "AdminTransitionDispute": {
         "type": "object",
-        "required": ["to"],
+        "required": [
+          "to"
+        ],
         "properties": {
-          "to": { "type": "string", "enum": ["in_review", "resolved", "rejected"] },
-          "resolution": { "type": "string", "maxLength": 4000 }
+          "to": {
+            "type": "string",
+            "enum": [
+              "in_review",
+              "resolved",
+              "rejected"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "maxLength": 4000
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "refund",
+              "redelivery",
+              "replacement",
+              "bonus",
+              "none"
+            ],
+            "description": "Последствие решения. Обязательно при resolved; при rejected всегда none."
+          }
+        }
+      },
+      "AdminDisputeRow": {
+        "type": "object",
+        "description": "Строка очереди претензий: претензия + заказ, возраст обращения и просрочка.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AdminDispute"
+          },
+          {
+            "type": "object",
+            "required": [
+              "age_hours",
+              "overdue"
+            ],
+            "properties": {
+              "order": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/AdminOrderLifecycleOrder"
+                  }
+                ],
+                "nullable": true
+              },
+              "age_hours": {
+                "type": "integer",
+                "description": "Сколько часов прошло с момента обращения."
+              },
+              "overdue": {
+                "type": "boolean",
+                "description": "Незакрытая претензия старше срока ответа."
+              }
+            }
+          }
+        ]
+      },
+      "AdminDisputeCounts": {
+        "type": "object",
+        "required": [
+          "total",
+          "by_status",
+          "overdue"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "by_status": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "overdue": {
+            "type": "integer"
+          }
+        }
+      },
+      "AdminDisputeHistoryEntry": {
+        "type": "object",
+        "required": [
+          "id",
+          "order_id",
+          "category",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "order_id": {
+            "type": "string"
+          },
+          "order_display_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "category": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          }
+        }
+      },
+      "AdminDisputeCustomerHistory": {
+        "type": "object",
+        "description": "История обращений покупателя: часто ли жалуется и чем закончились прошлые.",
+        "required": [
+          "order_count",
+          "dispute_count",
+          "resolved_count",
+          "rejected_count",
+          "others"
+        ],
+        "properties": {
+          "order_count": {
+            "type": "integer"
+          },
+          "dispute_count": {
+            "type": "integer"
+          },
+          "resolved_count": {
+            "type": "integer"
+          },
+          "rejected_count": {
+            "type": "integer"
+          },
+          "others": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminDisputeHistoryEntry"
+            }
+          }
+        }
+      },
+      "AdminDisputeCard": {
+        "type": "object",
+        "description": "Рабочее место претензии: претензия со сроком, заказ целиком, отзывы заказа и история обращений покупателя.",
+        "required": [
+          "dispute",
+          "sla_hours",
+          "reviews",
+          "customer_history"
+        ],
+        "properties": {
+          "dispute": {
+            "$ref": "#/components/schemas/AdminDisputeRow"
+          },
+          "sla_hours": {
+            "type": "integer"
+          },
+          "order": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AdminOrderCard"
+              }
+            ],
+            "nullable": true,
+            "description": "Заказ претензии; null — заказ недоступен."
+          },
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReview"
+            }
+          },
+          "customer_history": {
+            "$ref": "#/components/schemas/AdminDisputeCustomerHistory"
+          }
+        }
+      },
+      "AdminDisputeCardRes": {
+        "type": "object",
+        "required": [
+          "dispute_card"
+        ],
+        "properties": {
+          "dispute_card": {
+            "$ref": "#/components/schemas/AdminDisputeCard"
+          }
+        }
+      },
+      "AdminRegisterDispute": {
+        "type": "object",
+        "description": "Претензия, записанная оператором с чужих слов (звонок, выдача). Покупателя определяет заказ.",
+        "required": [
+          "order_id",
+          "category",
+          "description"
+        ],
+        "properties": {
+          "order_id": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "not_delivered",
+              "damaged",
+              "wrong_item",
+              "quality",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 1000
+          }
+        }
+      },
+      "AdminReviewRow": {
+        "type": "object",
+        "description": "Строка раздела «Отзывы»: отзыв + заказ, по которому он оставлен.",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/AdminReview"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "order": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/AdminOrderLifecycleOrder"
+                  }
+                ],
+                "nullable": true
+              }
+            }
+          }
+        ]
+      },
+      "AdminReviewsListRes": {
+        "type": "object",
+        "required": [
+          "reviews",
+          "counts",
+          "summaries",
+          "count",
+          "offset",
+          "limit"
+        ],
+        "properties": {
+          "reviews": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReviewRow"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "total",
+              "published",
+              "hidden"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer"
+              },
+              "published": {
+                "type": "integer"
+              },
+              "hidden": {
+                "type": "integer"
+              }
+            }
+          },
+          "summaries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AdminReviewSummary"
+            }
+          },
+          "count": {
+            "type": "integer"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "limit": {
+            "type": "integer"
+          }
         }
       }
     }

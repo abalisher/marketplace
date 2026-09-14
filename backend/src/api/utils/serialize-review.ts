@@ -19,6 +19,8 @@ type DisputeRow = {
   description: string
   status: string
   resolution: string | null
+  outcome?: string | null
+  source?: string | null
   created_at?: Date | string | null
 }
 
@@ -39,6 +41,10 @@ export const serializeDispute = (dispute: DisputeRow) => ({
   description: dispute.description,
   status: dispute.status,
   resolution: dispute.resolution,
+  // Последствие решения (что получает покупатель) и кто завёл претензию —
+  // покупатель через чат или оператор с его слов (T4.11).
+  outcome: dispute.outcome ?? null,
+  source: dispute.source ?? "buyer",
   created_at: dispute.created_at ?? null,
 })
 

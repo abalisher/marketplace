@@ -57,7 +57,7 @@ export const validateReviewEligibilityStep = createStep(
     ) {
       throw new MedusaError(
         MedusaError.Types.NOT_ALLOWED,
-        "Delivery can be reviewed only for delivered (not pickup/counter) orders"
+        "Delivery can be reviewed only for orders with the delivery method"
       )
     }
 

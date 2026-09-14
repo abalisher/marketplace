@@ -3,7 +3,10 @@ import Review from "./models/review"
 import Dispute from "./models/dispute"
 import {
   assertDisputeTransition,
+  disputeOutcomeForTransition,
   DisputeCategory,
+  DisputeOutcome,
+  DisputeSource,
   DisputeStatus,
   MAX_RATING,
   MIN_RATING,
@@ -96,6 +99,7 @@ class ReviewsModuleService extends MedusaService({
     customer_id: string
     category: DisputeCategory
     description: string
+    source?: DisputeSource
   }) {
     const [active] = await this.listDisputes(
       { order_id: input.order_id, status: ["open", "in_review"] },
@@ -114,15 +118,19 @@ class ReviewsModuleService extends MedusaService({
       category: input.category,
       description: input.description,
       status: "open",
+      source: input.source ?? "buyer",
     })
   }
 
   // Перевод диспута по стейт-машине (оператор платформы). При переходе в
-  // resolved/rejected сохраняется текст решения, если передан.
+  // resolved/rejected сохраняется текст решения, если передан, и последствие
+  // решения: удовлетворение требует названного последствия (возврат/довоз/
+  // замена/бонусы/без компенсации), отказ — всегда «без компенсации».
   async recordDisputeTransition(input: {
     id: string
     to: DisputeStatus
     resolution?: string | null
+    outcome?: DisputeOutcome | null
   }) {
     const dispute = await this.retrieveDispute(input.id)
     assertDisputeTransition(dispute.status as DisputeStatus, input.to)
@@ -130,6 +138,7 @@ class ReviewsModuleService extends MedusaService({
       id: input.id,
       status: input.to,
       resolution: input.resolution ?? dispute.resolution ?? null,
+      outcome: disputeOutcomeForTransition(input.to, input.outcome),
     })
   }
 }
