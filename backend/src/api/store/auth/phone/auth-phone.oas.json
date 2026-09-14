@@ -1,0 +1,146 @@
+{
+  "paths": {
+    "/store/auth/phone/otp": {
+      "post": {
+        "operationId": "PostAuthPhoneOtp",
+        "summary": "Request Phone Login Code",
+        "description": "Запрос одноразового кода входа на номер телефона покупателя. Доступен гостю — это и есть вход (и регистрация). Номер принимается в любой записи («8 701…», «+7 (701)…»), в ответе — канон +7XXXXXXXXXX. Пока нет SMS-провайдера, в dev-канале код возвращается полем `dev_code` и пишется в лог сервера. Повторный запрос раньше `resend_after` секунд — 429.",
+        "tags": ["Auth"],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreRequestPhoneOtp" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Код отправлен.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneOtpRes" } } }
+          },
+          "400": {
+            "description": "Номер не является мобильным номером Казахстана.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneAuthError" } } }
+          },
+          "429": {
+            "description": "Код уже отправлен — повторный запрос доступен через `retry_after` секунд.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneAuthError" } } }
+          }
+        }
+      }
+    },
+    "/store/auth/phone/verify": {
+      "post": {
+        "operationId": "PostAuthPhoneVerify",
+        "summary": "Verify Phone Login Code",
+        "description": "Подтверждение кода: один путь и для входа, и для регистрации. Верный код — сессионный токен покупателя (Bearer, как у ядровых роутов /auth) и профиль. Учётки не было — она создаётся с профилем «только телефон» (`created: true`), ФИО и адрес спрашиваются один раз при оформлении. Неверный или истёкший код — 401, исчерпаны попытки — 429 (нужен новый код).",
+        "tags": ["Auth"],
+        "parameters": [
+          { "name": "x-publishable-api-key", "in": "header", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StoreVerifyPhoneOtp" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Сессия покупателя.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneSessionRes" } } }
+          },
+          "400": {
+            "description": "Номер или код неверного формата.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneAuthError" } } }
+          },
+          "401": {
+            "description": "Код неверен или истёк.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneAuthError" } } }
+          },
+          "429": {
+            "description": "Попытки исчерпаны — код аннулирован, нужен новый.",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StorePhoneAuthError" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreRequestPhoneOtp": {
+        "type": "object",
+        "required": ["phone"],
+        "properties": {
+          "phone": {
+            "type": "string",
+            "description": "Мобильный номер покупателя в любой записи: +77012345678, 8 701 234 56 78, 7012345678."
+          }
+        }
+      },
+      "StoreVerifyPhoneOtp": {
+        "type": "object",
+        "required": ["phone", "code"],
+        "properties": {
+          "phone": { "type": "string", "description": "Тот же номер, на который запрашивался код." },
+          "code": { "type": "string", "description": "Код из SMS (в dev-канале — из ответа на запрос кода)." }
+        }
+      },
+      "StorePhoneOtpRes": {
+        "type": "object",
+        "required": ["phone", "expires_in", "resend_after"],
+        "properties": {
+          "phone": { "type": "string", "description": "Номер в каноне +7XXXXXXXXXX." },
+          "expires_in": { "type": "integer", "description": "Сколько секунд живёт код." },
+          "resend_after": { "type": "integer", "description": "Через сколько секунд можно запросить код заново." },
+          "dev_code": {
+            "type": "string",
+            "nullable": true,
+            "description": "Код открытым текстом — только dev-канал стенда (в проде null)."
+          }
+        }
+      },
+      "StorePhoneAuthCustomer": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "phone": { "type": "string", "nullable": true },
+          "first_name": { "type": "string", "nullable": true },
+          "last_name": { "type": "string", "nullable": true },
+          "email": { "type": "string", "nullable": true }
+        }
+      },
+      "StorePhoneSessionRes": {
+        "type": "object",
+        "required": ["token", "customer", "created"],
+        "properties": {
+          "token": { "type": "string", "description": "Bearer-токен сессии покупателя." },
+          "customer": { "$ref": "#/components/schemas/StorePhoneAuthCustomer" },
+          "created": {
+            "type": "boolean",
+            "description": "true — учётка создана этим входом (профиль пока только телефон)."
+          }
+        }
+      },
+      "StorePhoneAuthError": {
+        "type": "object",
+        "required": ["reason", "message"],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "invalid_phone",
+              "too_many_requests",
+              "invalid_code",
+              "code_expired",
+              "too_many_attempts"
+            ]
+          },
+          "message": { "type": "string" },
+          "retry_after": {
+            "type": "integer",
+            "description": "Только для too_many_requests: через сколько секунд повторить запрос кода."
+          }
+        }
+      }
+    }
+  }
+}
