@@ -14,9 +14,13 @@
     "start": "medusa start",
     "dev": "medusa develop",
     "contract:generate": "node scripts/generate-contract.mjs",
+    "kaspi:pay": "node scripts/kaspi-mock-pay.mjs",
     "lint": "medusa lint",
-    "test:integration:http": "cross-env TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit --passWithNoTests",
-    "test:integration:modules": "cross-env TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit --passWithNoTests",
+    "test:clean": "node scripts/test-cleanup.mjs",
+    "test:clean:all": "node scripts/test-cleanup.mjs --all",
+    "pretest:integration:http": "npm run test:clean",
+    "test:integration:http": "cross-env TEST_TYPE=integration:http NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=8192\" jest --silent=false --runInBand --forceExit --passWithNoTests",
+    "test:integration:modules": "cross-env TEST_TYPE=integration:modules NODE_OPTIONS=\"--experimental-vm-modules --max-old-space-size=8192\" jest --silent=false --runInBand --forceExit --passWithNoTests",
     "test:unit": "cross-env TEST_TYPE=unit NODE_OPTIONS=--experimental-vm-modules jest --silent --runInBand --forceExit --passWithNoTests"
   },
   "dependencies": {

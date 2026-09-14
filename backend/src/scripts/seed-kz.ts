@@ -6,7 +6,6 @@ import {
 } from "@medusajs/framework/utils"
 import {
   createInventoryLevelsWorkflow,
-  createProductCategoriesWorkflow,
   createProductsWorkflow,
   createRegionsWorkflow,
   createShippingOptionsWorkflow,
@@ -16,17 +15,21 @@ import {
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
 import { KASPI_PROVIDER_ID } from "../modules/payment-kaspi"
+import { DOCUMENTS_MODULE } from "../modules/documents"
+import DocumentsModuleService from "../modules/documents/service"
+import { CatalogCategoryHandle } from "../lib/catalog/categories"
+import { ensureCatalogCategories } from "../lib/catalog/ensure-catalog-categories"
 import { createProductCardWorkflow } from "../workflows/create-product-card"
 import { submitProductForModerationWorkflow } from "../workflows/submit-product-for-moderation"
 import { approveProductCardWorkflow } from "../workflows/approve-product-card"
 import { ProductSegment } from "../modules/catalog/models/product-card"
 
 // Сид региона Казахстан для витрины: валюта KZT, регион с страной kz, склады
-// в Астане (город = stock_location.address.city), демо-каталог стройматериалов
-// с ценами в тенге и остатками по складам (все статусы модерации → published),
-// доставка региона: fulfillment-набор «Доставка по Астане» (shipping) + наборы
-// самовывоза на каждый склад (pickup — витрина-стартер различает их по
-// fulfillment_set.type и показывает переключатель «Pick up your order»).
+// в Астане (город = stock_location.address.city), четыре категории каталога и
+// по одному стартовому товару в каждой (отделка, электрика, сантехника, метизы)
+// с ценами в тенге и остатками по складам (через реальный флоу → published),
+// доставка региона: fulfillment-набор «Доставка по Астане» (shipping) —
+// единственный способ получения после пивота 2026-07-22 (самовывоз снят).
 // Запуск: npx medusa exec ./src/scripts/seed-kz.ts. Идемпотентен: регион,
 // валюта, склады, товары и доставка создаются только если их ещё нет
 // (проверка по имени).
@@ -39,41 +42,67 @@ export default async function seedKz({ container }: ExecArgs) {
 
   const CITY = "Astana"
   const CURRENCY = "kzt"
+  const STORE_NAME = "СтройМаркет"
 
-  // 1. Валюта KZT в списке поддерживаемых валют магазина (дефолт не трогаем —
-  // регион сам задаёт валюту витрины). supported_currencies — relation,
-  // тянем через query.graph (listStores её не отдаёт → потерялся бы is_default).
+  // 1. Валюта KZT в списке поддерживаемых валют магазина И валюта по умолчанию.
+  //
+  // Дефолт раньше не трогали («регион сам задаёт валюту витрины») — и в панели
+  // продавца висел EUR: «Настройки → Магазин: валюта по умолчанию EUR Euro», в
+  // одном списке заказов «₸ 242 000,00 KZT» рядом с «€ 210,00 EUR». Ф-прогон
+  // T4.6: управляющий и закупщик прямо сказали, что таким цифрам не верят
+  // (T4.8). Магазин в Астане — валюта по умолчанию тенге.
+  // supported_currencies — relation, тянем через query.graph (listStores её не
+  // отдаёт → потерялся бы is_default).
   const { data: stores } = await query.graph({
     entity: "store",
-    fields: ["id", "supported_currencies.currency_code", "supported_currencies.is_default"],
+    fields: [
+      "id",
+      "name",
+      "supported_currencies.currency_code",
+      "supported_currencies.is_default",
+    ],
   })
   const store = stores[0]
   if (!store) {
     throw new Error("Store not found — run core migrations/seed first")
   }
+
+  // Название магазина видно в панели продавца на каждой странице (левый верхний
+  // угол оболочки), поэтому ядровое «Default Store» — не прод-вид.
+  if (store.name !== STORE_NAME) {
+    await updateStoresWorkflow(container).run({
+      input: { selector: { id: store.id }, update: { name: STORE_NAME } },
+    })
+    console.log(`+ магазин переименован в «${STORE_NAME}»`)
+  }
   const currencies = (store.supported_currencies ?? []) as {
     currency_code: string
     is_default: boolean
   }[]
-  const hasKzt = currencies.some((c) => c.currency_code === CURRENCY)
-  if (!hasKzt) {
+  const kztIsDefault = currencies.some(
+    (c) => c.currency_code === CURRENCY && c.is_default
+  )
+  if (!kztIsDefault) {
+    // Пересобираем список: KZT — по умолчанию, прочие валюты остаются
+    // поддерживаемыми (в них лежат старые демо-заказы; их чистка — T7.2).
+    const rest = currencies.filter((c) => c.currency_code !== CURRENCY)
     await updateStoresWorkflow(container).run({
       input: {
         selector: { id: store.id },
         update: {
           supported_currencies: [
-            ...currencies.map((c) => ({
+            { currency_code: CURRENCY, is_default: true },
+            ...rest.map((c) => ({
               currency_code: c.currency_code,
-              is_default: c.is_default,
+              is_default: false,
             })),
-            { currency_code: CURRENCY },
           ],
         },
       },
     })
-    console.log(`+ валюта ${CURRENCY.toUpperCase()} добавлена в магазин`)
+    console.log(`+ валюта по умолчанию — ${CURRENCY.toUpperCase()}`)
   } else {
-    console.log(`— валюта ${CURRENCY.toUpperCase()} уже поддерживается`)
+    console.log(`— валюта по умолчанию уже ${CURRENCY.toUpperCase()}`)
   }
 
   // 2. Регион Казахстан (страна kz, валюта KZT, платёжный провайдер — ядровый
@@ -171,21 +200,12 @@ export default async function seedKz({ container }: ExecArgs) {
     console.log(`+ склад создан: ${def.name} (${created.id})`)
   }
 
-  // 5. Категория каталога.
-  const CATEGORY_NAME = "Строительные материалы"
-  let [category] = await productService.listProductCategories(
-    { name: CATEGORY_NAME },
-    { take: 1 }
+  // 5. Четыре категории каталога (T10.10): отделка, электрика, сантехника,
+  // метизы. У товара ровно одна — по ней ассистент группирует подбор, панель
+  // фильтрует список, заказ распадается на задания сборки.
+  const categoryIds = await ensureCatalogCategories(container, (m) =>
+    console.log(m)
   )
-  if (!category) {
-    const { result } = await createProductCategoriesWorkflow(container).run({
-      input: { product_categories: [{ name: CATEGORY_NAME, is_active: true }] },
-    })
-    category = result[0]
-    console.log(`+ категория создана: ${CATEGORY_NAME}`)
-  } else {
-    console.log(`— категория уже есть: ${CATEGORY_NAME}`)
-  }
 
   // 6. Демо-товары: сегмент, ед. изм., варианты (фасовка) с ценой в KZT и
   // остатками по обоим складам. Создаём черновиком, затем через реальный флоу
@@ -198,6 +218,7 @@ export default async function seedKz({ container }: ExecArgs) {
   }
   type SeedProduct = {
     title: string
+    category: CatalogCategoryHandle
     segment: ProductSegment
     unit: string
     optionTitle: string
@@ -208,6 +229,7 @@ export default async function seedKz({ container }: ExecArgs) {
   const products: SeedProduct[] = [
     {
       title: "Цемент ПЦ 400-Д20",
+      category: "finishing",
       segment: "economy",
       unit: "мешок",
       optionTitle: "Фасовка",
@@ -218,33 +240,39 @@ export default async function seedKz({ container }: ExecArgs) {
       ],
     },
     {
-      title: "Кирпич керамический рядовой М150",
+      title: "Кабель ВВГнг-LS",
+      category: "electrical",
       segment: "comfort",
-      unit: "шт",
-      optionTitle: "Тип",
-      certificates: [{ name: "ГОСТ 530-2012", url: "/files/cert-brick.pdf" }],
+      unit: "м",
+      optionTitle: "Сечение",
+      certificates: [{ name: "ГОСТ 31996-2012", url: "/files/cert-cable.pdf" }],
       variants: [
-        { title: "Полнотелый", sku: "KZ-BRICK-M150", price: 120, stock: [12000, 8000] },
+        { title: "3×1.5 мм²", sku: "KZ-CABLE-3X15", price: 400, stock: [4000, 2500] },
+        { title: "3×2.5 мм²", sku: "KZ-CABLE-3X25", price: 620, stock: [3500, 2000] },
       ],
     },
     {
-      title: "Арматура А500С 12 мм",
-      segment: "business",
-      unit: "тонна",
-      optionTitle: "Диаметр",
-      certificates: [{ name: "ГОСТ 34028-2016", url: "/files/cert-rebar.pdf" }],
-      variants: [
-        { title: "12 мм", sku: "KZ-REBAR-12", price: 450000, stock: [40, 30] },
-      ],
-    },
-    {
-      title: "Песок строительный мытый",
+      title: "Труба полипропиленовая PN20",
+      category: "plumbing",
       segment: "economy",
-      unit: "тонна",
-      optionTitle: "Фракция",
-      certificates: [{ name: "ГОСТ 8736-2014", url: "/files/cert-sand.pdf" }],
+      unit: "м",
+      optionTitle: "Диаметр",
+      certificates: [{ name: "ГОСТ 32415-2013", url: "/files/cert-pipe.pdf" }],
       variants: [
-        { title: "0–2 мм", sku: "KZ-SAND-0-2", price: 8000, stock: [500, 350] },
+        { title: "D20 мм", sku: "KZ-PPR-D20", price: 380, stock: [2000, 1200] },
+        { title: "D25 мм", sku: "KZ-PPR-D25", price: 480, stock: [1800, 1000] },
+      ],
+    },
+    {
+      title: "Саморез по гипсокартону",
+      category: "fasteners",
+      segment: "economy",
+      unit: "упаковка 1000 шт",
+      optionTitle: "Размер",
+      certificates: [{ name: "DIN 18182", url: "/files/cert-screw.pdf" }],
+      variants: [
+        { title: "3.5×25 мм", sku: "KZ-SCREW-35X25", price: 2300, stock: [300, 200] },
+        { title: "3.5×35 мм", sku: "KZ-SCREW-35X35", price: 2900, stock: [250, 150] },
       ],
     },
   ]
@@ -268,7 +296,7 @@ export default async function seedKz({ container }: ExecArgs) {
           {
             title: def.title,
             status: ProductStatus.DRAFT,
-            category_ids: [category.id],
+            category_ids: [categoryIds[def.category]],
             sales_channels: [{ id: salesChannel.id }],
             options: [
               { title: def.optionTitle, values: def.variants.map((v) => v.title) },
@@ -348,11 +376,9 @@ export default async function seedKz({ container }: ExecArgs) {
 
   // 7. Доставка региона KZ (набор из фикстуры order-lifecycle-workflows /
   // seed-demo-order): профиль доставки, link товаров к профилю, провайдер
-  // manual на складах, fulfillment-наборы с сервисной зоной kz и shipping
-  // options. Способы получения покупателя: «Доставка по Астане» (shipping,
-  // 2000 KZT) и «Самовывоз» с каждого склада (pickup, 0 KZT) — тип набора
-  // pickup витрина показывает отдельным переключателем, а оформление мапит
-  // его в delivery_method=pickup.
+  // manual на складах, fulfillment-набор с сервисной зоной kz и shipping
+  // option. После пивота 2026-07-22 единственный способ получения — доставка
+  // («Доставка по Астане», 2000 KZT); самовывоз (pickup) снят.
   const fulfillmentService = container.resolve(Modules.FULFILLMENT)
   const link = container.resolve(ContainerRegistrationKeys.LINK)
   const PROVIDER_ID = "manual_manual"
@@ -409,16 +435,15 @@ export default async function seedKz({ container }: ExecArgs) {
     console.log(`+ провайдер ${PROVIDER_ID} подключён к складу: ${location.name}`)
   }
 
-  // 7d. Fulfillment-наборы + shipping options. Набор → зона kz → опция;
-  // набор линкуется к складу (у pickup-наборов витрина берёт адрес склада
-  // из этого link'а). Идемпотентность — по имени набора и имени опции.
+  // 7d. Fulfillment-набор + shipping option. Набор → зона kz → опция; набор
+  // линкуется к складу. Идемпотентность — по имени набора и имени опции.
   const warehouses = warehouseDefs.map((def, idx) => ({
     ...def,
     id: warehouseIds[idx],
   }))
   const fulfillmentDefs: {
     setName: string
-    setType: "shipping" | "pickup"
+    setType: "shipping"
     locationId: string
     optionName: string
     optionCode: string
@@ -432,14 +457,6 @@ export default async function seedKz({ container }: ExecArgs) {
       optionCode: "delivery",
       amount: 2000,
     },
-    ...warehouses.map((w) => ({
-      setName: `Pickup — ${w.name}`,
-      setType: "pickup" as const,
-      locationId: w.id,
-      optionName: `Самовывоз: ${w.name}`,
-      optionCode: "pickup",
-      amount: 0,
-    })),
   ]
 
   for (const def of fulfillmentDefs) {
@@ -484,11 +501,8 @@ export default async function seedKz({ container }: ExecArgs) {
           service_zone_id: fulfillmentSet.service_zones[0].id,
           shipping_profile_id: shippingProfile.id,
           type: {
-            label: def.setType === "pickup" ? "Pickup" : "Delivery",
-            description:
-              def.setType === "pickup"
-                ? "Самовывоз со склада"
-                : "Доставка по городу",
+            label: "Delivery",
+            description: "Доставка по городу",
             code: def.optionCode,
           },
           prices: [
@@ -503,6 +517,49 @@ export default async function seedKz({ container }: ExecArgs) {
       ],
     })
     console.log(`+ способ получения создан: ${def.optionName} (${def.amount} KZT)`)
+  }
+
+  // 6. Реквизиты продавца для документов (T4.9). Решение владельца 2026-08-11:
+  // MVP делаем на МОК-реквизитах — реальные БИН/адрес/банк подставляются
+  // заменой значений в «Настройки → Реквизиты документов», код не меняется.
+  // Без заполненных реквизитов документы вообще не выпускаются (см.
+  // modules/documents/requisites.ts), поэтому стенд без них нерабочий.
+  // Идемпотентность: заполняем только пустые поля и ядровую заглушку
+  // «Marketplace» — правки владельца в панели не затираем.
+  const documentsService =
+    container.resolve<DocumentsModuleService>(DOCUMENTS_MODULE)
+  const settings = await documentsService.getOrCreateSettings()
+  const mockRequisites: Record<string, string> = {
+    seller_name: 'ТОО «СтройМаркет»',
+    seller_bin: "180540021764",
+    seller_address: "г. Астана, ул. Кабанбай батыра, 53, офис 12",
+    seller_phone: "+7 7172 55-11-22",
+    seller_email: "docs@stroymarket.kz",
+    seller_bank_name: 'АО «Kaspi Bank»',
+    seller_bank_bik: "CASPKZKA",
+    seller_iban: "KZ12 3456 7890 1234 5678",
+    seller_kbe: "17",
+    seller_knp: "710",
+    director_name: "Ержан Смагулов",
+    footer_note:
+      "Демонстрационные реквизиты. Документ сформирован платформой СтройМаркет " +
+      "и не является официальной ЭСФ.",
+  }
+  const patch: Record<string, string> = {}
+  for (const [key, value] of Object.entries(mockRequisites)) {
+    const current = (settings as unknown as Record<string, string | null>)[key]
+    const isPlaceholder = key === "seller_name" && current === "Marketplace"
+    if (!current || `${current}`.trim() === "" || isPlaceholder) {
+      patch[key] = value
+    }
+  }
+  if (Object.keys(patch).length) {
+    await documentsService.updateDocumentSettings({ id: settings.id, ...patch })
+    console.log(
+      `+ реквизиты документов заполнены (демо): ${Object.keys(patch).join(", ")}`
+    )
+  } else {
+    console.log("— реквизиты документов уже заполнены")
   }
 
   console.log("Сид региона Казахстан завершён.")
