@@ -20,13 +20,39 @@ import type {
 const PREFIX = "kaspi_mock"
 const VALID_STATES: readonly KaspiInvoiceState[] = ["pending", "paid", "canceled", "error"]
 
+// Исход, назначенный УЖЕ СОЗДАННОМУ инвойсу (T8.6): сценарий кодируется в
+// invoice_id при создании, а покупатель платит позже — на стенде это единственный
+// способ пройти «чат → оплата → заказ» руками (публичной песочницы Kaspi нет).
+// Живёт в памяти процесса и только в mock-режиме: перезапуск бэкенда сбрасывает,
+// в live-транспорте механизма нет вовсе. Меняется dev-роутом
+// POST /store/carts/:id/payment/kaspi/mock-pay.
+const stateOverrides = new Map<string, KaspiInvoiceState>()
+
+// Назначить инвойсу исход (как будто плательщик подтвердил оплату в Kaspi).
+export function setMockInvoiceState(
+  invoiceId: string,
+  state: KaspiInvoiceState
+): void {
+  stateOverrides.set(invoiceId, state)
+}
+
+// Сброс назначенных исходов (тесты: мок обязан остаться стателесс по умолчанию).
+export function clearMockInvoiceStates(): void {
+  stateOverrides.clear()
+}
+
 function encodeInvoiceId(scenario: KaspiScenario): string {
   return `${PREFIX}_${scenario}_${randomUUID()}`
 }
 
-// Извлекает состояние из invoice_id (`kaspi_mock_<state>_<uuid>`). Незнакомый
-// формат трактуем как ошибку — это признак рассинхрона, а не «оплачено».
+// Извлекает состояние из invoice_id (`kaspi_mock_<state>_<uuid>`); назначенный
+// исход (см. выше) главнее закодированного. Незнакомый формат трактуем как
+// ошибку — это признак рассинхрона, а не «оплачено».
 function decodeState(invoiceId: string): KaspiInvoiceState {
+  const override = stateOverrides.get(invoiceId)
+  if (override) {
+    return override
+  }
   const parts = invoiceId.split("_")
   const candidate = parts[2] as KaspiInvoiceState
   return VALID_STATES.includes(candidate) ? candidate : "error"

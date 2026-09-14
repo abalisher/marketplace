@@ -7,6 +7,7 @@ import { KASPI_PROVIDER_ID } from "../../../../../../modules/payment-kaspi"
 import { initCartKaspiPaymentWorkflow } from "../../../../../../workflows/init-cart-kaspi-payment"
 import { syncCartKaspiPaymentWorkflow } from "../../../../../../workflows/sync-cart-kaspi-payment"
 import { toKaspiPaymentResponse } from "../../../../../utils/kaspi-payment-response"
+import { requireCartPaymentAccess } from "../../../cart-payment-access"
 import { requireOwnCart } from "../../../helpers"
 import { StoreInitKaspiPaymentType } from "../../../validators"
 
@@ -14,6 +15,9 @@ import { StoreInitKaspiPaymentType } from "../../../validators"
 // (чужая → 404), вся логика — в workflows. Механика денег (collection/session/
 // Payment/авторизация) — ядро @medusajs/payment; здесь только Kaspi-точка входа
 // для тонких клиентов (mobile/web): один вызов → QR, второй → статус.
+// GET (поллинг статуса) доступен и ГОСТЮ по капабилити cart_id (T2.4: авто-
+// поллинг оплаты в чате гостевого checkout'а) — requireCartPaymentAccess;
+// POST (инициализация) остаётся только залогиненному владельцу.
 
 // POST /store/carts/:id/payment/kaspi — инициализация оплаты: payment
 // collection на сумму корзины + сессия Kaspi (инвойс + QR). Идемпотентен —
@@ -53,10 +57,10 @@ export async function GET(
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) {
-  const cart = await requireOwnCart(
+  const cart = await requireCartPaymentAccess(
     req.scope,
     req.params.id,
-    req.auth_context.actor_id
+    req.auth_context?.actor_id
   )
 
   const kaspiSession = cart.payment_collection?.payment_sessions?.find(

@@ -1,0 +1,46 @@
+{
+  "paths": {
+    "/store/carts/me": {
+      "get": {
+        "operationId": "StoreGetMyCart",
+        "summary": "Get My Current Cart",
+        "description": "Незавершённая корзина текущего покупателя (кабинет клиента): последняя обновлённая корзина без completed_at. Корзину создаёт ассистент в ходе диалога, поэтому её id нужен клиенту с сервера, а не из состояния диалога. Содержимое читается ядровым GET /store/carts/{id}. Корзины нет — cart_id: null.",
+        "tags": ["Carts"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Идентификатор текущей корзины покупателя.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreMyCartRes" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StoreMyCartRes": {
+        "type": "object",
+        "required": ["cart_id"],
+        "properties": {
+          "cart_id": {
+            "type": "string",
+            "nullable": true,
+            "description": "Идентификатор незавершённой корзины покупателя; null — корзины нет."
+          }
+        }
+      }
+    }
+  }
+}

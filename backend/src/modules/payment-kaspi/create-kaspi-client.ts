@@ -15,7 +15,9 @@ export interface KaspiProviderOptions {
 // Выбор транспорта: явный `mode` из опций → env `KASPI_MODE` → авто (live, если
 // заданы ключи мерчанта, иначе mock). Так оформление и тесты не зависят от
 // наличия реального договора эквайринга (публичной песочницы Kaspi нет).
-function resolveMode(options: KaspiProviderOptions): "mock" | "live" {
+export function resolveMode(
+  options: KaspiProviderOptions = {}
+): "mock" | "live" {
   const explicit = options.mode ?? (process.env.KASPI_MODE as "mock" | "live" | undefined)
   if (explicit === "mock" || explicit === "live") {
     return explicit
