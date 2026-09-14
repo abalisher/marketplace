@@ -1,4 +1,5 @@
 import { MedusaError, MedusaService } from "@medusajs/framework/utils"
+import PriceChange from "./models/price-change"
 import ProductCard from "./models/product-card"
 
 // Сервис домена «каталог». CRUD по ProductCard генерируется MedusaService;
@@ -7,6 +8,7 @@ import ProductCard from "./models/product-card"
 // живут в src/workflows/, не здесь (правило изоляции модулей).
 class CatalogModuleService extends MedusaService({
   ProductCard,
+  PriceChange,
 }) {
   // Отклонение карточки: комментарий обязателен (требование ТЗ).
   async setRejectionReason(cardId: string, reason: string) {

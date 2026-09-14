@@ -15,6 +15,7 @@ import {
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { AdminProduct, DetailWidgetProps } from "@medusajs/framework/types"
 import ProductCardDrawer from "../components/product-card-drawer"
 import RejectProductCardPrompt from "../components/reject-product-card-prompt"
@@ -51,6 +52,7 @@ const CardRow = ({
 const ProductCatalogCardWidget = ({
   data,
 }: DetailWidgetProps<AdminProduct>) => {
+  const { t } = useTranslation()
   const { submitMutation, approveMutation, rejectMutation, approveWithConfirm } =
     useProductModeration()
   const [editOpen, setEditOpen] = useState(false)
@@ -76,7 +78,7 @@ const ProductCatalogCardWidget = ({
   return (
     <Container className="divide-y p-0">
       <div className="flex items-center justify-between px-6 py-4">
-        <Heading level="h2">Catalog card</Heading>
+        <Heading level="h2">{t("productModeration.card.title")}</Heading>
         {/* Действия — в «...»-меню, как у секций стандартных страниц ядра. */}
         <DropdownMenu>
           <DropdownMenu.Trigger asChild>
@@ -91,7 +93,7 @@ const ProductCatalogCardWidget = ({
               disabled={isLoading}
             >
               <PencilSquare className="text-ui-fg-subtle" />
-              {card ? "Edit" : "Create"}
+              {t(card ? "common.edit" : "common.create")}
             </DropdownMenu.Item>
             {card && (status === "draft" || status === "rejected") && (
               <DropdownMenu.Item
@@ -100,7 +102,7 @@ const ProductCatalogCardWidget = ({
                 disabled={actionsPending}
               >
                 <ArrowUpCircleSolid className="text-ui-fg-subtle" />
-                Submit for moderation
+                {t("productModeration.action.submit")}
               </DropdownMenu.Item>
             )}
             {status === "proposed" && (
@@ -112,7 +114,7 @@ const ProductCatalogCardWidget = ({
                 disabled={actionsPending}
               >
                 <CheckCircleSolid className="text-ui-fg-subtle" />
-                Approve
+                {t("productModeration.action.approve")}
               </DropdownMenu.Item>
             )}
             {status === "proposed" && (
@@ -122,7 +124,7 @@ const ProductCatalogCardWidget = ({
                 disabled={actionsPending}
               >
                 <XCircleSolid className="text-ui-fg-subtle" />
-                Reject
+                {t("productModeration.action.reject")}
               </DropdownMenu.Item>
             )}
           </DropdownMenu.Content>
@@ -131,9 +133,11 @@ const ProductCatalogCardWidget = ({
 
       {card ? (
         <>
-          <CardRow label="Segment">{SEGMENT_LABELS[card.segment]}</CardRow>
-          <CardRow label="Unit">{card.unit}</CardRow>
-          <CardRow label="Certificates">
+          <CardRow label={t("productModeration.card.segment")}>
+            {t(SEGMENT_LABELS[card.segment])}
+          </CardRow>
+          <CardRow label={t("productModeration.card.unit")}>{card.unit}</CardRow>
+          <CardRow label={t("productModeration.card.certificates")}>
             {certificates.length ? (
               <span className="flex flex-col gap-y-1">
                 {certificates.map((cert) => (
@@ -153,15 +157,17 @@ const ProductCatalogCardWidget = ({
             )}
           </CardRow>
           {status === "rejected" && card.rejection_reason && (
-            <CardRow label="Rejection reason">{card.rejection_reason}</CardRow>
+            <CardRow label={t("productModeration.card.rejectionReason")}>
+              {card.rejection_reason}
+            </CardRow>
           )}
         </>
       ) : (
         <div className="px-6 py-4">
           <Text size="small" className="text-ui-fg-subtle">
             {isLoading
-              ? "Loading…"
-              : "No catalog card yet. Create one with a segment and unit so the product can be submitted for moderation."}
+              ? t("common.loading")
+              : t("productModeration.card.empty")}
           </Text>
         </div>
       )}

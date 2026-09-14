@@ -3,14 +3,11 @@ import {
   ArrowUpCircleSolid,
   CheckCircle,
   CheckCircleSolid,
-  EllipseMiniSolid,
   Photo,
   XCircleSolid,
-  XMarkMini,
 } from "@medusajs/icons"
 import {
   Button,
-  clx,
   Container,
   createDataTableColumnHelper,
   DataTable,
@@ -19,30 +16,37 @@ import {
   DataTableSortingState,
   Heading,
   Popover,
-  Text,
   useDataTable,
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
+import DataTableFilterChip from "../../components/data-table-filter-chip"
+import { DataTableListError } from "../../components/data-table-list-error"
 import RejectProductCardPrompt from "../../components/reject-product-card-prompt"
 import { useProductModeration } from "../../hooks/use-product-moderation"
 import {
   AdminModerationProduct,
   AdminModerationProductsResponse,
+  AdminProductCategoriesResponse,
   PRODUCT_STATUS_META,
   ProductModerationStatus,
   SEGMENT_LABELS,
 } from "../../lib/catalog"
+import { dataTableRow } from "../../lib/data-table-row"
+import { formatDate } from "../../lib/date"
+import { MENU_ITEM_CLASSES } from "../../lib/menu-item-classes"
 import { sdk } from "../../lib/sdk"
+import { routeLabel } from "../../lib/route-label"
 
 const PAGE_SIZE = 20
 
 const STATUSES = Object.keys(PRODUCT_STATUS_META) as ProductModerationStatus[]
 
-// Классы пунктов поповеров — дословно из внутреннего DataTableFilter ядра.
-const MENU_ITEM_CLASSES =
-  "bg-ui-bg-base hover:bg-ui-bg-base-hover focus-visible:bg-ui-bg-base-pressed text-ui-fg-base txt-compact-small relative flex cursor-pointer select-none items-center rounded-md px-2 py-1.5 outline-none transition-colors"
+// Фильтры страницы. Порядок — порядок чипов и пунктов меню «Добавить фильтр».
+type FilterKey = "status" | "category"
+const FILTER_KEYS: FilterKey[] = ["status", "category"]
 
 const columnHelper = createDataTableColumnHelper<AdminModerationProduct>()
 
@@ -53,6 +57,7 @@ const columnHelper = createDataTableColumnHelper<AdminModerationProduct>()
 // сортировка по updated_at — очередь FIFO); клик по строке ведёт на ядровую
 // страницу товара, где карточкой управляет widget.
 const ProductModerationPage = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { submitMutation, rejectMutation, approveWithConfirm } =
     useProductModeration()
@@ -66,52 +71,85 @@ const ProductModerationPage = () => {
   const [rejectTarget, setRejectTarget] =
     useState<AdminModerationProduct | null>(null)
 
-  // Состояние единственного фильтра (Status): чип предустановлен на Proposed —
-  // страница открывается сразу очередью модерации.
-  const [filterActive, setFilterActive] = useState(true)
-  const [chipOpen, setChipOpen] = useState(false)
+  // Состояние фильтров: статус (чип предустановлен на Proposed — страница
+  // открывается сразу очередью модерации) и категория каталога (T10.10).
+  const [activeFilters, setActiveFilters] = useState<FilterKey[]>(["status"])
+  const [justAdded, setJustAdded] = useState<FilterKey | null>(null)
   const [addOpen, setAddOpen] = useState(false)
   const [statusFilter, setStatusFilter] =
     useState<ProductModerationStatus | null>("proposed")
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null)
 
+  // Любая смена фильтра возвращает на первую страницу: иначе после сужения
+  // выборки список открывается на странице, которой больше нет.
   const setStatus = (value: ProductModerationStatus | null) => {
     setStatusFilter(value)
     setPagination((prev) => ({ ...prev, pageIndex: 0 }))
   }
 
-  const addStatusFilter = () => {
+  const setCategory = (value: string | null) => {
+    setCategoryFilter(value)
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+  }
+
+  const addFilter = (key: FilterKey) => {
     setAddOpen(false)
-    setFilterActive(true)
-    setChipOpen(true)
+    setActiveFilters((prev) => (prev.includes(key) ? prev : [...prev, key]))
+    setJustAdded(key)
   }
 
-  const handleChipOpenChange = (open: boolean) => {
-    setChipOpen(open)
-    // Как в ядре: чип, закрытый без выбранного значения, убирается.
-    if (!open && !statusFilter) {
-      setFilterActive(false)
-    }
-  }
-
-  const removeStatusFilter = () => {
-    setFilterActive(false)
-    setChipOpen(false)
-    if (statusFilter) {
+  const removeFilter = (key: FilterKey) => {
+    setActiveFilters((prev) => prev.filter((k) => k !== key))
+    setJustAdded((prev) => (prev === key ? null : prev))
+    if (key === "status") {
       setStatus(null)
+    } else {
+      setCategory(null)
     }
   }
+
+  const clearFilters = () => {
+    setActiveFilters([])
+    setJustAdded(null)
+    setStatus(null)
+    setCategory(null)
+  }
+
+  // Категории каталога — из ядра, а не из константы: владелец вправе их
+  // переименовать, и фильтр обязан показывать то же имя, что и карточка товара.
+  const { data: categoriesData } = useQuery({
+    queryKey: ["catalog-moderation", "categories"],
+    queryFn: () =>
+      sdk.client.fetch<AdminProductCategoriesResponse>(
+        "/admin/product-categories",
+        {
+          query: {
+            limit: 50,
+            fields: "id,name",
+            order: "name",
+            // Только действующие: категории вне четвёрки погашены
+            // (apply-catalog-categories), и в фильтре им делать нечего.
+            is_active: true,
+          },
+        }
+      ),
+  })
+  const categoryOptions = (categoriesData?.product_categories ?? []).map(
+    (c) => ({ value: c.id, label: c.name })
+  )
 
   const order = sorting
     ? `${sorting.desc ? "-" : ""}${sorting.id}`
     : "updated_at"
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: [
       "catalog-moderation",
       "queue",
       pagination.pageIndex,
       pagination.pageSize,
       statusFilter,
+      categoryFilter,
       search,
       order,
     ],
@@ -121,8 +159,10 @@ const ProductModerationPage = () => {
           limit: pagination.pageSize,
           offset: pagination.pageIndex * pagination.pageSize,
           order,
-          fields: "id,title,thumbnail,status,updated_at,*product_card",
+          fields:
+            "id,title,thumbnail,status,updated_at,*product_card,categories.id,categories.name",
           ...(statusFilter ? { "status[]": statusFilter } : {}),
+          ...(categoryFilter ? { "category_id[]": categoryFilter } : {}),
           ...(search ? { q: search } : {}),
         },
       }),
@@ -130,11 +170,11 @@ const ProductModerationPage = () => {
 
   const columns = [
     columnHelper.accessor("title", {
-      header: "Product",
+      header: t("productModeration.colProduct"),
       enableSorting: true,
-      sortLabel: "Product",
-      sortAscLabel: "A-Z",
-      sortDescLabel: "Z-A",
+      sortLabel: t("productModeration.colProduct"),
+      sortAscLabel: t("common.sortAZAsc"),
+      sortDescLabel: t("common.sortAZDesc"),
       // Миниатюра + название — как в ядровом списке Products.
       cell: ({ row }) => (
         <div className="flex items-center gap-x-3">
@@ -153,39 +193,41 @@ const ProductModerationPage = () => {
         </div>
       ),
     }),
+    columnHelper.accessor((row) => row.categories?.[0]?.name ?? "", {
+      id: "category",
+      header: t("productModeration.colCategory"),
+      // У товара ровно одна категория (T10.10); прочерк — товар ещё не разобран
+      // по категориям, его не увидит ни подбор в чате, ни сборщик.
+      cell: ({ row }) => row.original.categories?.[0]?.name ?? "—",
+    }),
     columnHelper.accessor((row) => row.product_card?.segment ?? "", {
       id: "segment",
-      header: "Segment",
+      header: t("productModeration.colSegment"),
       cell: ({ row }) => {
         const segment = row.original.product_card?.segment
-        return segment ? SEGMENT_LABELS[segment] : "—"
+        return segment ? t(SEGMENT_LABELS[segment]) : "—"
       },
     }),
     columnHelper.accessor("status", {
-      header: "Status",
+      header: t("common.status"),
       // Точка + текст — как StatusCell в списках ядра (не StatusBadge).
       cell: ({ getValue }) => {
         const meta = PRODUCT_STATUS_META[getValue()]
         return (
           <div className="flex items-center gap-x-2">
             <div className={`size-2 rounded-full ${meta.dotClass}`} />
-            <span>{meta.label}</span>
+            <span>{t(meta.label)}</span>
           </div>
         )
       },
     }),
     columnHelper.accessor("updated_at", {
-      header: "Updated",
+      header: t("productModeration.colUpdated"),
       enableSorting: true,
-      sortLabel: "Updated",
-      sortAscLabel: "Oldest first",
-      sortDescLabel: "Newest first",
-      cell: ({ getValue }) =>
-        new Date(getValue()).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
+      sortLabel: t("productModeration.colUpdated"),
+      sortAscLabel: t("common.sortOldest"),
+      sortDescLabel: t("common.sortNewest"),
+      cell: ({ getValue }) => formatDate(getValue()),
     }),
     columnHelper.action({
       actions: (ctx) => {
@@ -196,19 +238,19 @@ const ProductModerationPage = () => {
           (product.status === "draft" || product.status === "rejected")
         ) {
           actions.push({
-            label: "Submit for moderation",
+            label: t("productModeration.action.submit"),
             icon: <ArrowUpCircleSolid />,
             onClick: () => submitMutation.mutate(product.id),
           })
         }
         if (product.status === "proposed") {
           actions.push({
-            label: "Approve",
+            label: t("productModeration.action.approve"),
             icon: <CheckCircleSolid />,
             onClick: () => approveWithConfirm(product),
           })
           actions.push({
-            label: "Reject",
+            label: t("productModeration.action.reject"),
             icon: <XCircleSolid />,
             onClick: () => setRejectTarget(product),
           })
@@ -224,111 +266,59 @@ const ProductModerationPage = () => {
     rowCount: data?.count ?? 0,
     isLoading,
     getRowId: (product) => product.id,
-    onRowClick: (_, product) => navigate(`/products/${product.id}`),
+    onRowClick: (_, product) =>
+      navigate(`/products/${dataTableRow(product).id}`),
     pagination: { state: pagination, onPaginationChange: setPagination },
     sorting: { state: sorting, onSortingChange: setSorting },
     search: { state: search, onSearchChange: setSearch },
   })
 
-  const statusLabel = statusFilter
-    ? PRODUCT_STATUS_META[statusFilter].label
-    : null
+  const inactiveFilters = FILTER_KEYS.filter((k) => !activeFilters.includes(k))
+  const filterLabels: Record<FilterKey, string> = {
+    status: t("common.status"),
+    category: t("productModeration.colCategory"),
+  }
 
   return (
     <Container className="divide-y p-0">
       <DataTable instance={table}>
         <div className="flex items-center justify-between px-6 py-4">
-          <Heading level="h1">Product Moderation</Heading>
+          <Heading level="h1">{t("productModeration.title")}</Heading>
         </div>
         <div className="flex items-center justify-between gap-x-4 px-6 py-4">
           {/* Блок фильтров — разметка и флоу внутреннего DataTableFilter ядра:
               чипы, затем «Add filter», затем «Clear all». */}
           <div className="max-w-2/3 flex flex-wrap items-center gap-2">
-            {filterActive && (
-              <Popover open={chipOpen} onOpenChange={handleChipOpenChange}>
-                <div className="bg-ui-bg-field transition-fg shadow-borders-base text-ui-fg-subtle flex cursor-default select-none items-stretch overflow-hidden rounded-md">
-                  {!statusFilter && <Popover.Anchor />}
-                  <div
-                    className={clx(
-                      "flex items-center justify-center whitespace-nowrap px-2 py-1",
-                      { "border-r": !!statusFilter }
-                    )}
-                  >
-                    <Text size="small" weight="plus" leading="compact">
-                      Status
-                    </Text>
-                  </div>
-                  {statusFilter && (
-                    <div className="flex w-full items-center overflow-hidden">
-                      <div className="border-r p-1 px-2">
-                        <Text
-                          size="small"
-                          weight="plus"
-                          leading="compact"
-                          className="text-ui-fg-muted"
-                        >
-                          is
-                        </Text>
-                      </div>
-                      <Popover.Trigger
-                        asChild
-                        className="hover:bg-ui-bg-field-hover data-[state=open]:bg-ui-bg-field-hover flex-1 cursor-pointer overflow-hidden border-r p-1 px-2"
-                      >
-                        <Text
-                          size="small"
-                          leading="compact"
-                          weight="plus"
-                          className="truncate text-nowrap"
-                        >
-                          {statusLabel}
-                        </Text>
-                      </Popover.Trigger>
-                    </div>
-                  )}
-                  {statusFilter && (
-                    <button
-                      onClick={removeStatusFilter}
-                      className="text-ui-fg-muted transition-fg hover:bg-ui-bg-subtle-hover active:bg-ui-bg-subtle-pressed active:text-ui-fg-base flex items-center justify-center p-1"
-                    >
-                      <XMarkMini />
-                    </button>
-                  )}
-                </div>
-                <Popover.Content
-                  align="start"
-                  sideOffset={8}
-                  collisionPadding={8}
-                  className="max-h-[200px] w-[300px] p-1"
-                >
-                  {STATUSES.map((value) => {
-                    const isSelected = statusFilter === value
-                    return (
-                      <div
-                        key={value}
-                        role="menuitem"
-                        className={clx(MENU_ITEM_CLASSES, "gap-x-2")}
-                        onClick={() => setStatus(isSelected ? null : value)}
-                      >
-                        <div
-                          className={clx(
-                            "transition-fg flex h-5 w-5 items-center justify-center",
-                            { "[&_svg]:invisible": !isSelected }
-                          )}
-                        >
-                          <EllipseMiniSolid />
-                        </div>
-                        {PRODUCT_STATUS_META[value].label}
-                      </div>
-                    )
-                  })}
-                </Popover.Content>
-              </Popover>
+            {activeFilters.includes("status") && (
+              <DataTableFilterChip
+                label={filterLabels.status}
+                value={statusFilter}
+                autoOpen={justAdded === "status"}
+                options={STATUSES.map((value) => ({
+                  value,
+                  label: t(PRODUCT_STATUS_META[value].label),
+                }))}
+                onChange={(value) =>
+                  setStatus(value as ProductModerationStatus | null)
+                }
+                onRemove={() => removeFilter("status")}
+              />
             )}
-            {!filterActive && (
+            {activeFilters.includes("category") && (
+              <DataTableFilterChip
+                label={filterLabels.category}
+                value={categoryFilter}
+                autoOpen={justAdded === "category"}
+                options={categoryOptions}
+                onChange={setCategory}
+                onRemove={() => removeFilter("category")}
+              />
+            )}
+            {inactiveFilters.length > 0 && (
               <Popover open={addOpen} onOpenChange={setAddOpen}>
                 <Popover.Trigger asChild>
                   <Button size="small" variant="secondary">
-                    Add filter
+                    {t("common.addFilter")}
                   </Button>
                 </Popover.Trigger>
                 <Popover.Content
@@ -337,33 +327,74 @@ const ProductModerationPage = () => {
                   collisionPadding={8}
                   className="max-h-[200px] w-[300px] overflow-auto p-1"
                 >
-                  <div
-                    role="menuitem"
-                    className={MENU_ITEM_CLASSES}
-                    onClick={addStatusFilter}
-                  >
-                    Status
-                  </div>
+                  {inactiveFilters.map((key) => (
+                    <div
+                      key={key}
+                      role="menuitem"
+                      className={MENU_ITEM_CLASSES}
+                      onClick={() => addFilter(key)}
+                    >
+                      {filterLabels[key]}
+                    </div>
+                  ))}
                 </Popover.Content>
               </Popover>
             )}
-            {filterActive && (
+            {activeFilters.length > 0 && (
               <button
                 type="button"
-                onClick={removeStatusFilter}
+                onClick={clearFilters}
                 className="text-ui-fg-muted transition-fg txt-compact-small-plus hover:text-ui-fg-subtle focus-visible:shadow-borders-focus rounded-md px-2 py-1"
               >
-                Clear all
+                {t("common.clearAll")}
               </button>
             )}
           </div>
           <div className="flex items-center gap-x-2">
-            <DataTable.Search placeholder="Search" />
-            <DataTable.SortingMenu tooltip="Sort" />
+            <DataTable.Search placeholder={t("common.search")} />
+            <DataTable.SortingMenu tooltip={t("common.sort")} />
           </div>
         </div>
-        <DataTable.Table />
-        <DataTable.Pagination />
+        {isError ? (
+          <DataTableListError
+            message={t("productModeration.error")}
+            onRetry={refetch}
+          />
+        ) : (
+          <>
+            <DataTable.Table
+              emptyState={{
+                // Пусто с активным чипом — «ничего не найдено», совсем пусто —
+                // «карточек нет»: DataTable различает только свой поиск, чипы
+                // статуса и категории он не видит (идиома очереди заказов).
+                empty: activeFilters.length
+                  ? {
+                      heading: t("productModeration.filteredHeading"),
+                      description: t("productModeration.filteredDescription"),
+                    }
+                  : {
+                      heading: t("productModeration.emptyHeading"),
+                      description: t("productModeration.emptyDescription"),
+                    },
+                filtered: {
+                  heading: t("productModeration.filteredHeading"),
+                  description: t("productModeration.filteredDescription"),
+                },
+              }}
+            />
+            {/* Подписи пагинации у компонента свои (не из i18n ядра) —
+                переводим сами, иначе в русской панели «1 of 1 pages». */}
+            <DataTable.Pagination
+              translations={{
+                of: t("common.pagination.of"),
+                results: t("common.pagination.results"),
+                pages: t("common.pagination.pages"),
+                prev: t("common.pagination.prev"),
+                next: t("common.pagination.next"),
+              }}
+            />
+          </>
+        )}
       </DataTable>
 
       <RejectProductCardPrompt
@@ -382,7 +413,7 @@ const ProductModerationPage = () => {
 }
 
 export const config = defineRouteConfig({
-  label: "Product Moderation",
+  label: routeLabel({ en: "Product Moderation", ru: "Модерация товаров" }),
   icon: CheckCircle,
 })
 

@@ -1,5 +1,6 @@
 import { toast, usePrompt } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useTranslation } from "react-i18next"
 import { sdk } from "../lib/sdk"
 
 type ModerationActionResponse = {
@@ -9,6 +10,7 @@ type ModerationActionResponse = {
 // Мутации модерации карточек товара (submit/approve/reject) — общие для
 // очереди модерации и widget'а на странице товара.
 export const useProductModeration = () => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const confirmDialog = usePrompt()
 
@@ -26,7 +28,7 @@ export const useProductModeration = () => {
         { method: "POST" }
       ),
     onSuccess: () => {
-      toast.success("Product submitted for moderation")
+      toast.success(t("productModeration.toast.submitted"))
       invalidate()
     },
     onError: (error: Error) => toast.error(error.message),
@@ -39,7 +41,7 @@ export const useProductModeration = () => {
         { method: "POST" }
       ),
     onSuccess: () => {
-      toast.success("Product card approved")
+      toast.success(t("productModeration.toast.approved"))
       invalidate()
     },
     onError: (error: Error) => toast.error(error.message),
@@ -52,7 +54,7 @@ export const useProductModeration = () => {
         { method: "POST", body: { reason } }
       ),
     onSuccess: () => {
-      toast.success("Product card rejected")
+      toast.success(t("productModeration.toast.rejected"))
       invalidate()
     },
     onError: (error: Error) => toast.error(error.message),
@@ -60,10 +62,12 @@ export const useProductModeration = () => {
 
   const approveWithConfirm = async (product: { id: string; title: string }) => {
     const confirmed = await confirmDialog({
-      title: "Approve product card?",
-      description: `The product "${product.title}" will be published and become visible to buyers.`,
-      confirmText: "Approve",
-      cancelText: "Cancel",
+      title: t("productModeration.approve.title"),
+      description: t("productModeration.approve.description", {
+        title: product.title,
+      }),
+      confirmText: t("productModeration.action.approve"),
+      cancelText: t("common.cancel"),
       variant: "confirmation",
     })
     if (confirmed) {

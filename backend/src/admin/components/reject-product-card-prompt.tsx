@@ -1,5 +1,6 @@
 import { Label, Prompt, Textarea } from "@medusajs/ui"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 
 type RejectProductCardPromptProps = {
   // null — диалог закрыт
@@ -17,6 +18,7 @@ const RejectProductCardPrompt = ({
   onSubmit,
   isPending,
 }: RejectProductCardPromptProps) => {
+  const { t } = useTranslation()
   const [reason, setReason] = useState("")
 
   useEffect(() => {
@@ -35,28 +37,27 @@ const RejectProductCardPrompt = ({
     >
       <Prompt.Content>
         <Prompt.Header>
-          <Prompt.Title>Reject product card</Prompt.Title>
+          <Prompt.Title>{t("productModeration.reject.title")}</Prompt.Title>
           <Prompt.Description>
-            A rejection reason is required — the seller will see it on the
-            product card.
+            {t("productModeration.reject.description")}
           </Prompt.Description>
         </Prompt.Header>
         <div className="flex flex-col gap-y-2 px-6 py-4">
-          <Label htmlFor="reject-card-reason">Reason</Label>
+          <Label htmlFor="reject-card-reason">{t("common.reason")}</Label>
           <Textarea
             id="reject-card-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
-            placeholder="e.g. Certificates are missing or expired"
+            placeholder={t("productModeration.reject.placeholder")}
           />
         </div>
         <Prompt.Footer>
-          <Prompt.Cancel>Cancel</Prompt.Cancel>
+          <Prompt.Cancel>{t("common.cancel")}</Prompt.Cancel>
           <Prompt.Action
             disabled={!reason.trim() || isPending}
             onClick={() => product && onSubmit(product.id, reason.trim())}
           >
-            Reject
+            {t("productModeration.action.reject")}
           </Prompt.Action>
         </Prompt.Footer>
       </Prompt.Content>

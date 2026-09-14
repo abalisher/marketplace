@@ -10,6 +10,7 @@ import {
 } from "@medusajs/ui"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import {
   AdminProductCard,
   AdminProductCardResponse,
@@ -36,6 +37,7 @@ const ProductCardDrawer = ({
   open,
   onClose,
 }: ProductCardDrawerProps) => {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
 
   const [segment, setSegment] = useState<ProductSegment | "">("")
@@ -62,7 +64,13 @@ const ProductCardDrawer = ({
         { method: "POST", body }
       ),
     onSuccess: () => {
-      toast.success(card ? "Catalog card updated" : "Catalog card created")
+      toast.success(
+        t(
+          card
+            ? "productModeration.toast.cardUpdated"
+            : "productModeration.toast.cardCreated"
+        )
+      )
       queryClient.invalidateQueries({ queryKey: ["catalog-moderation"] })
       queryClient.invalidateQueries({ queryKey: ["products"] })
       onClose()
@@ -110,41 +118,51 @@ const ProductCardDrawer = ({
       <Drawer.Content>
         <Drawer.Header>
           <Drawer.Title>
-            {card ? "Edit catalog card" : "Create catalog card"}
+            {t(
+              card
+                ? "productModeration.drawer.editTitle"
+                : "productModeration.drawer.createTitle"
+            )}
           </Drawer.Title>
         </Drawer.Header>
         <Drawer.Body className="flex flex-col gap-y-6 overflow-y-auto">
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="card-segment">Segment</Label>
+            <Label htmlFor="card-segment">
+              {t("productModeration.drawer.segment")}
+            </Label>
             <Select
               value={segment || undefined}
               onValueChange={(value) => setSegment(value as ProductSegment)}
             >
               <Select.Trigger id="card-segment">
-                <Select.Value placeholder="Select segment" />
+                <Select.Value
+                  placeholder={t("productModeration.drawer.selectSegment")}
+                />
               </Select.Trigger>
               <Select.Content>
                 {(
                   Object.entries(SEGMENT_LABELS) as [ProductSegment, string][]
                 ).map(([value, label]) => (
                   <Select.Item key={value} value={value}>
-                    {label}
+                    {t(label)}
                   </Select.Item>
                 ))}
               </Select.Content>
             </Select>
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label htmlFor="card-unit">Unit</Label>
+            <Label htmlFor="card-unit">
+              {t("productModeration.drawer.unit")}
+            </Label>
             <Input
               id="card-unit"
               value={unit}
               onChange={(event) => setUnit(event.target.value)}
-              placeholder="e.g. bag 25 kg"
+              placeholder={t("productModeration.drawer.unitPlaceholder")}
             />
           </div>
           <div className="flex flex-col gap-y-2">
-            <Label>Certificates</Label>
+            <Label>{t("productModeration.drawer.certificates")}</Label>
             {certificates.map((cert, index) => (
               <div key={index} className="flex items-center gap-x-2">
                 <Input
@@ -152,14 +170,14 @@ const ProductCardDrawer = ({
                   onChange={(event) =>
                     setCertificate(index, { name: event.target.value })
                   }
-                  placeholder="Name"
+                  placeholder={t("productModeration.drawer.certName")}
                 />
                 <Input
                   value={cert.url}
                   onChange={(event) =>
                     setCertificate(index, { url: event.target.value })
                   }
-                  placeholder="URL"
+                  placeholder={t("productModeration.drawer.certUrl")}
                 />
                 <IconButton
                   size="small"
@@ -184,14 +202,14 @@ const ProductCardDrawer = ({
                 setCertificates((prev) => [...prev, { name: "", url: "" }])
               }
             >
-              Add certificate
+              {t("productModeration.drawer.addCertificate")}
             </Button>
           </div>
         </Drawer.Body>
         <Drawer.Footer>
           <Drawer.Close asChild>
             <Button size="small" variant="secondary">
-              Cancel
+              {t("common.cancel")}
             </Button>
           </Drawer.Close>
           <Button
@@ -200,7 +218,7 @@ const ProductCardDrawer = ({
             isLoading={saveMutation.isPending}
             onClick={save}
           >
-            Save
+            {t("common.save")}
           </Button>
         </Drawer.Footer>
       </Drawer.Content>
