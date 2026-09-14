@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useActionState } from "react";
+import React, { useEffect, useActionState } from "react"
 
 import Input from "@modules/common/components/input"
 
@@ -50,7 +50,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
     <form action={formAction} className="w-full">
       <AccountInfo
         label={m.common.address.phone}
-        currentInfo={`${customer.phone}`}
+        currentInfo={customer.phone || "—"}
         isSuccess={successState}
         isError={!!state.error}
         errorMessage={state.error}

@@ -22,10 +22,10 @@ const Register = ({ setCurrentView }: Props) => {
       className="max-w-sm flex flex-col items-center"
       data-testid="register-page"
     >
-      <h1 className="text-large-semi uppercase mb-6">
+      <h1 className="text-title-medium uppercase mb-6">
         {m.account.registerTitle}
       </h1>
-      <p className="text-center text-base-regular text-ui-fg-base mb-4">
+      <p className="text-center text-body-large text-ink mb-4">
         {m.account.registerSubtitle}
       </p>
       <form className="w-full flex flex-col" action={formAction}>
@@ -69,7 +69,7 @@ const Register = ({ setCurrentView }: Props) => {
           />
         </div>
         <ErrorMessage error={message} data-testid="register-error" />
-        <span className="text-center text-ui-fg-base text-small-regular mt-6">
+        <span className="text-center text-ink text-body-medium mt-6">
           {m.account.byCreatingAccount}{" "}
           <LocalizedClientLink
             href="/content/privacy-policy"
@@ -90,7 +90,7 @@ const Register = ({ setCurrentView }: Props) => {
           {m.account.join}
         </SubmitButton>
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
+      <span className="text-center text-ink text-body-medium mt-6">
         {m.account.alreadyMember}{" "}
         <button
           onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}

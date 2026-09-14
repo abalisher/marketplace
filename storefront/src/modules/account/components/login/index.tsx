@@ -19,8 +19,10 @@ const Login = ({ setCurrentView }: Props) => {
       className="max-w-sm w-full flex flex-col items-center"
       data-testid="login-page"
     >
-      <h1 className="text-large-semi uppercase mb-6">{m.account.welcomeBack}</h1>
-      <p className="text-center text-base-regular text-ui-fg-base mb-8">
+      <h1 className="text-title-medium uppercase mb-6">
+        {m.account.welcomeBack}
+      </h1>
+      <p className="text-center text-body-large text-ink mb-8">
         {m.account.loginSubtitle}
       </p>
       <form className="w-full" action={formAction}>
@@ -48,7 +50,7 @@ const Login = ({ setCurrentView }: Props) => {
           {m.account.signIn}
         </SubmitButton>
       </form>
-      <span className="text-center text-ui-fg-base text-small-regular mt-6">
+      <span className="text-center text-ink text-body-medium mt-6">
         {m.account.notAMember}{" "}
         <button
           onClick={() => setCurrentView(LOGIN_VIEW.REGISTER)}
@@ -58,6 +60,15 @@ const Login = ({ setCurrentView }: Props) => {
           {m.account.joinUs}
         </button>
         .
+      </span>
+      <span className="text-center text-ink text-body-medium mt-2">
+        <button
+          onClick={() => setCurrentView(LOGIN_VIEW.PHONE)}
+          className="underline"
+          data-testid="phone-login-button"
+        >
+          {m.account.phone.backToPhone}
+        </button>
       </span>
     </div>
   )
