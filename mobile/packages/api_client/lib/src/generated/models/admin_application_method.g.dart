@@ -38,18 +38,19 @@ AdminApplicationMethod _$AdminApplicationMethodFromJson(
 Map<String, dynamic> _$AdminApplicationMethodToJson(
   AdminApplicationMethod instance,
 ) => <String, dynamic>{
-  'promotion': instance.promotion,
-  'target_rules': instance.targetRules,
-  'buy_rules': instance.buyRules,
+  'promotion': ?instance.promotion,
+  'target_rules': ?instance.targetRules,
+  'buy_rules': ?instance.buyRules,
   'id': instance.id,
-  'type': _$AdminApplicationMethodTypeEnumMap[instance.type],
-  'target_type': _$AdminApplicationMethodTargetTypeEnumMap[instance.targetType],
-  'allocation': _$AdminApplicationMethodAllocationEnumMap[instance.allocation],
-  'value': instance.value,
-  'currency_code': instance.currencyCode,
-  'max_quantity': instance.maxQuantity,
-  'buy_rules_min_quantity': instance.buyRulesMinQuantity,
-  'apply_to_quantity': instance.applyToQuantity,
+  'type': ?_$AdminApplicationMethodTypeEnumMap[instance.type],
+  'target_type':
+      ?_$AdminApplicationMethodTargetTypeEnumMap[instance.targetType],
+  'allocation': ?_$AdminApplicationMethodAllocationEnumMap[instance.allocation],
+  'value': ?instance.value,
+  'currency_code': ?instance.currencyCode,
+  'max_quantity': ?instance.maxQuantity,
+  'buy_rules_min_quantity': ?instance.buyRulesMinQuantity,
+  'apply_to_quantity': ?instance.applyToQuantity,
 };
 
 const _$AdminApplicationMethodTypeEnumMap = {

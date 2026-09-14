@@ -31,7 +31,7 @@ Map<String, dynamic> _$BaseOrderTransactionToJson(
   'currency_code': instance.currencyCode,
   'reference': _$BaseOrderTransactionReferenceEnumMap[instance.reference]!,
   'reference_id': instance.referenceId,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

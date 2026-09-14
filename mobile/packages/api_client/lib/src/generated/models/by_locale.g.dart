@@ -13,7 +13,7 @@ ByLocale _$ByLocaleFromJson(Map<String, dynamic> json) => ByLocale(
 );
 
 Map<String, dynamic> _$ByLocaleToJson(ByLocale instance) => <String, dynamic>{
-  'expected': instance.expected,
-  'translated': instance.translated,
-  'missing': instance.missing,
+  'expected': ?instance.expected,
+  'translated': ?instance.translated,
+  'missing': ?instance.missing,
 };

@@ -19,7 +19,7 @@ Map<String, dynamic> _$StoreEmployeeCustomerToJson(
   StoreEmployeeCustomer instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'email': instance.email,
-  'first_name': instance.firstName,
-  'last_name': instance.lastName,
+  'email': ?instance.email,
+  'first_name': ?instance.firstName,
+  'last_name': ?instance.lastName,
 };

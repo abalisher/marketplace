@@ -17,7 +17,7 @@ AdminUpdateRefundReason _$AdminUpdateRefundReasonFromJson(
 Map<String, dynamic> _$AdminUpdateRefundReasonToJson(
   AdminUpdateRefundReason instance,
 ) => <String, dynamic>{
-  'label': instance.label,
-  'description': instance.description,
-  'code': instance.code,
+  'label': ?instance.label,
+  'description': ?instance.description,
+  'code': ?instance.code,
 };

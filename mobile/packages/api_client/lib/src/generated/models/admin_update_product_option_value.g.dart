@@ -15,4 +15,7 @@ AdminUpdateProductOptionValue _$AdminUpdateProductOptionValueFromJson(
 
 Map<String, dynamic> _$AdminUpdateProductOptionValueToJson(
   AdminUpdateProductOptionValue instance,
-) => <String, dynamic>{'value': instance.value, 'metadata': instance.metadata};
+) => <String, dynamic>{
+  'value': ?instance.value,
+  'metadata': ?instance.metadata,
+};

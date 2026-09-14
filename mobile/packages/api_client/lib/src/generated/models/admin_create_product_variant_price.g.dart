@@ -21,7 +21,7 @@ Map<String, dynamic> _$AdminCreateProductVariantPriceToJson(
 ) => <String, dynamic>{
   'currency_code': instance.currencyCode,
   'amount': instance.amount,
-  'min_quantity': instance.minQuantity,
-  'max_quantity': instance.maxQuantity,
-  'rules': instance.rules,
+  'min_quantity': ?instance.minQuantity,
+  'max_quantity': ?instance.maxQuantity,
+  'rules': ?instance.rules,
 };

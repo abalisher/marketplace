@@ -45,15 +45,15 @@ Map<String, dynamic> _$AdminCreateFlatRateShippingOptionToJson(
   'name': instance.name,
   'service_zone_id': instance.serviceZoneId,
   'shipping_profile_id': instance.shippingProfileId,
-  'data': instance.data,
+  'data': ?instance.data,
   'price_type':
       _$AdminCreateFlatRateShippingOptionPriceTypeEnumMap[instance.priceType]!,
   'provider_id': instance.providerId,
-  'type': instance.type,
+  'type': ?instance.type,
   'prices': instance.prices,
-  'type_id': instance.typeId,
-  'rules': instance.rules,
-  'metadata': instance.metadata,
+  'type_id': ?instance.typeId,
+  'rules': ?instance.rules,
+  'metadata': ?instance.metadata,
 };
 
 const _$AdminCreateFlatRateShippingOptionPriceTypeEnumMap = {

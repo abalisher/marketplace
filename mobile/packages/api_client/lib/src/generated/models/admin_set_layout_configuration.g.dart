@@ -18,6 +18,6 @@ AdminSetLayoutConfiguration _$AdminSetLayoutConfigurationFromJson(
 Map<String, dynamic> _$AdminSetLayoutConfigurationToJson(
   AdminSetLayoutConfiguration instance,
 ) => <String, dynamic>{
-  'is_default': instance.isDefault,
+  'is_default': ?instance.isDefault,
   'configuration': instance.configuration,
 };

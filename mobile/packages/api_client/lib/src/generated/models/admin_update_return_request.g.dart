@@ -17,7 +17,7 @@ AdminUpdateReturnRequest _$AdminUpdateReturnRequestFromJson(
 Map<String, dynamic> _$AdminUpdateReturnRequestToJson(
   AdminUpdateReturnRequest instance,
 ) => <String, dynamic>{
-  'location_id': instance.locationId,
-  'no_notification': instance.noNotification,
-  'metadata': instance.metadata,
+  'location_id': ?instance.locationId,
+  'no_notification': ?instance.noNotification,
+  'metadata': ?instance.metadata,
 };

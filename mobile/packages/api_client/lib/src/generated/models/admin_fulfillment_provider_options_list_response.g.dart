@@ -29,5 +29,5 @@ Map<String, dynamic> _$AdminFulfillmentProviderOptionsListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'fulfillment_options': instance.fulfillmentOptions,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

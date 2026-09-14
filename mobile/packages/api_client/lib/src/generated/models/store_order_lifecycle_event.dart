@@ -5,6 +5,8 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'store_order_lifecycle_event_actor_type.dart';
+import 'store_order_lifecycle_event_kind.dart';
+import 'store_order_lifecycle_event_to_slot_window.dart';
 
 part 'store_order_lifecycle_event.g.dart';
 
@@ -18,6 +20,9 @@ class StoreOrderLifecycleEvent {
     this.actorId,
     this.reason,
     this.createdAt,
+    this.kind,
+    this.toSlotDate,
+    this.toSlotWindow,
   });
 
   factory StoreOrderLifecycleEvent.fromJson(Map<String, Object?> json) =>
@@ -35,6 +40,17 @@ class StoreOrderLifecycleEvent {
   final String? reason;
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
+
+  /// Род записи: переход статуса или перенос окна доставки (T5.6b).
+  final StoreOrderLifecycleEventKind? kind;
+
+  /// Дата слота после переноса (kind=slot).
+  @JsonKey(name: 'to_slot_date')
+  final String? toSlotDate;
+
+  /// Окно после переноса (kind=slot).
+  @JsonKey(name: 'to_slot_window')
+  final StoreOrderLifecycleEventToSlotWindow? toSlotWindow;
 
   Map<String, Object?> toJson() => _$StoreOrderLifecycleEventToJson(this);
 }

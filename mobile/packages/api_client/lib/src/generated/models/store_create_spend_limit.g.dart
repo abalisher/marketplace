@@ -19,7 +19,7 @@ Map<String, dynamic> _$StoreCreateSpendLimitToJson(
 ) => <String, dynamic>{
   'amount': instance.amount,
   'period': _$StoreCreateSpendLimitPeriodEnumMap[instance.period]!,
-  'currency_code': instance.currencyCode,
+  'currency_code': ?instance.currencyCode,
 };
 
 const _$StoreCreateSpendLimitPeriodEnumMap = {

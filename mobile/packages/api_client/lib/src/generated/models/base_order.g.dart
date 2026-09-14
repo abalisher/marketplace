@@ -80,10 +80,10 @@ BaseOrder _$BaseOrderFromJson(Map<String, dynamic> json) => BaseOrder(
 );
 
 Map<String, dynamic> _$BaseOrderToJson(BaseOrder instance) => <String, dynamic>{
-  'payment_collections': instance.paymentCollections,
-  'fulfillments': instance.fulfillments,
-  'shipping_address': instance.shippingAddress,
-  'billing_address': instance.billingAddress,
+  'payment_collections': ?instance.paymentCollections,
+  'fulfillments': ?instance.fulfillments,
+  'shipping_address': ?instance.shippingAddress,
+  'billing_address': ?instance.billingAddress,
   'id': instance.id,
   'version': instance.version,
   'region_id': instance.regionId,
@@ -91,15 +91,15 @@ Map<String, dynamic> _$BaseOrderToJson(BaseOrder instance) => <String, dynamic>{
   'sales_channel_id': instance.salesChannelId,
   'email': instance.email,
   'currency_code': instance.currencyCode,
-  'display_id': instance.displayId,
+  'display_id': ?instance.displayId,
   'items': instance.items,
   'shipping_methods': instance.shippingMethods,
   'payment_status': _$BaseOrderPaymentStatusEnumMap[instance.paymentStatus]!,
   'fulfillment_status':
       _$BaseOrderFulfillmentStatusEnumMap[instance.fulfillmentStatus]!,
-  'transactions': instance.transactions,
+  'transactions': ?instance.transactions,
   'summary': instance.summary,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
   'original_item_total': instance.originalItemTotal,
@@ -128,7 +128,7 @@ Map<String, dynamic> _$BaseOrderToJson(BaseOrder instance) => <String, dynamic>{
   'credit_line_total': instance.creditLineTotal,
   'item_discount_total': instance.itemDiscountTotal,
   'shipping_discount_total': instance.shippingDiscountTotal,
-  'custom_display_id': instance.customDisplayId,
+  'custom_display_id': ?instance.customDisplayId,
 };
 
 const _$BaseOrderPaymentStatusEnumMap = {

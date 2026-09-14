@@ -27,5 +27,5 @@ Map<String, dynamic> _$InventoryLevelToJson(InventoryLevel instance) =>
       'reserved_quantity': instance.reservedQuantity,
       'available_quantity': instance.availableQuantity,
       'incoming_quantity': instance.incomingQuantity,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
     };

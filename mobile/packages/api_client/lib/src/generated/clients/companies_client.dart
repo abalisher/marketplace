@@ -8,6 +8,7 @@ import 'package:retrofit/retrofit.dart';
 import '../models/store_company_employees_res.dart';
 import '../models/store_company_me_res.dart';
 import '../models/store_company_registration_res.dart';
+import '../models/store_company_res.dart';
 import '../models/store_create_company.dart';
 import '../models/store_create_employee.dart';
 import '../models/store_create_spend_limit.dart';
@@ -15,6 +16,7 @@ import '../models/store_employee_delete_res.dart';
 import '../models/store_employee_res.dart';
 import '../models/store_spend_limit_delete_res.dart';
 import '../models/store_spend_limit_res.dart';
+import '../models/store_update_company_application.dart';
 
 part 'companies_client.g.dart';
 
@@ -37,6 +39,15 @@ abstract class CompaniesClient {
   @GET('/store/companies/me')
   Future<StoreCompanyMeRes> getCompaniesMe({
     @Header('x-publishable-api-key') required String xPublishableApiKey,
+  });
+
+  /// Update My Company Application.
+  ///
+  /// Правка собственной заявки админом компании: исправить реквизиты после отказа модератора и/или догрузить учредительные документы (общий лимит на компанию — 4 файла). Отклонённая заявка возвращается в очередь модерации (rejected → pending, отметка resubmitted_at); реквизиты одобренной компании менять нельзя.
+  @POST('/store/companies/me')
+  Future<StoreCompanyRes> postCompaniesMe({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Body() required StoreUpdateCompanyApplication body,
   });
 
   /// List Company Employees.

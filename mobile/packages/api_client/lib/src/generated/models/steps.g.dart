@@ -26,10 +26,10 @@ Steps _$StepsFromJson(Map<String, dynamic> json) => Steps(
 );
 
 Map<String, dynamic> _$StepsToJson(Steps instance) => <String, dynamic>{
-  'id': instance.id,
-  'invoke': instance.invoke,
-  'definition': instance.definition,
-  'compensate': instance.compensate,
-  'depth': instance.depth,
-  'startedAt': instance.startedAt,
+  'id': ?instance.id,
+  'invoke': ?instance.invoke,
+  'definition': ?instance.definition,
+  'compensate': ?instance.compensate,
+  'depth': ?instance.depth,
+  'startedAt': ?instance.startedAt,
 };

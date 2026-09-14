@@ -4,19 +4,27 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import 'admin_transition_dispute_outcome.dart';
 import 'admin_transition_dispute_to.dart';
 
 part 'admin_transition_dispute.g.dart';
 
 @JsonSerializable()
 class AdminTransitionDispute {
-  const AdminTransitionDispute({required this.to, this.resolution});
+  const AdminTransitionDispute({
+    required this.to,
+    this.resolution,
+    this.outcome,
+  });
 
   factory AdminTransitionDispute.fromJson(Map<String, Object?> json) =>
       _$AdminTransitionDisputeFromJson(json);
 
   final AdminTransitionDisputeTo to;
   final String? resolution;
+
+  /// Последствие решения. Обязательно при resolved; при rejected всегда none.
+  final AdminTransitionDisputeOutcome? outcome;
 
   Map<String, Object?> toJson() => _$AdminTransitionDisputeToJson(this);
 }

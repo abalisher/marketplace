@@ -17,5 +17,5 @@ Map<String, dynamic> _$CreateToJson(Create instance) => <String, dynamic>{
   'entity': instance.entity,
   'property': instance.property,
   'label': instance.label,
-  'description': instance.description,
+  'description': ?instance.description,
 };

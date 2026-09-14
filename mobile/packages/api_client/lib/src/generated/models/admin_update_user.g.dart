@@ -16,8 +16,8 @@ AdminUpdateUser _$AdminUpdateUserFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminUpdateUserToJson(AdminUpdateUser instance) =>
     <String, dynamic>{
-      'first_name': instance.firstName,
-      'last_name': instance.lastName,
-      'avatar_url': instance.avatarUrl,
-      'metadata': instance.metadata,
+      'first_name': ?instance.firstName,
+      'last_name': ?instance.lastName,
+      'avatar_url': ?instance.avatarUrl,
+      'metadata': ?instance.metadata,
     };

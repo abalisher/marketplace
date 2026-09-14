@@ -25,11 +25,11 @@ AdminUpdateDraftOrder _$AdminUpdateDraftOrderFromJson(
 Map<String, dynamic> _$AdminUpdateDraftOrderToJson(
   AdminUpdateDraftOrder instance,
 ) => <String, dynamic>{
-  'email': instance.email,
-  'shipping_address': instance.shippingAddress,
-  'billing_address': instance.billingAddress,
-  'metadata': instance.metadata,
-  'customer_id': instance.customerId,
-  'sales_channel_id': instance.salesChannelId,
-  'locale': instance.locale,
+  'email': ?instance.email,
+  'shipping_address': ?instance.shippingAddress,
+  'billing_address': ?instance.billingAddress,
+  'metadata': ?instance.metadata,
+  'customer_id': ?instance.customerId,
+  'sales_channel_id': ?instance.salesChannelId,
+  'locale': ?instance.locale,
 };

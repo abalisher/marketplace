@@ -25,5 +25,5 @@ Map<String, dynamic> _$StoreCustomerAddressListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'addresses': instance.addresses,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

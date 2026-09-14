@@ -24,10 +24,10 @@ Map<String, dynamic> _$BaseOrderShippingDetailToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'shipping_method_id': instance.shippingMethodId,
-  'shipping_method': instance.shippingMethod,
-  'claim_id': instance.claimId,
-  'exchange_id': instance.exchangeId,
-  'return_id': instance.returnId,
+  'shipping_method': ?instance.shippingMethod,
+  'claim_id': ?instance.claimId,
+  'exchange_id': ?instance.exchangeId,
+  'return_id': ?instance.returnId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

@@ -16,7 +16,7 @@ abstract class ReturnsClient {
 
   /// Create Return.
   ///
-  /// Create a return for an order's items. The admin receives the return and process it from their side.
+  /// Create a return for an order's items. The admin receives the return and process it from their side. This API route doesn't require customer authentication, so that guest customers can request a return for their orders. To restrict access to this API route, refer to the [Restrict Return Creation guide](https://docs.medusajs.com/resources/commerce-modules/order/secure-return-creation).
   ///
   /// [xPublishableApiKey] - Publishable API Key created in the Medusa Admin.
   ///

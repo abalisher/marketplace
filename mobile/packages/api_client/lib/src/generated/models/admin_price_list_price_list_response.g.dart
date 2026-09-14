@@ -24,6 +24,6 @@ Map<String, dynamic> _$AdminPriceListPriceListResponseToJson(
   'limit': instance.limit,
   'offset': instance.offset,
   'count': instance.count,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
   'prices': instance.prices,
 };

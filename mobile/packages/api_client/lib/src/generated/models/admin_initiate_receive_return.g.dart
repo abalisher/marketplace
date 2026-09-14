@@ -17,7 +17,7 @@ AdminInitiateReceiveReturn _$AdminInitiateReceiveReturnFromJson(
 Map<String, dynamic> _$AdminInitiateReceiveReturnToJson(
   AdminInitiateReceiveReturn instance,
 ) => <String, dynamic>{
-  'internal_note': instance.internalNote,
-  'description': instance.description,
-  'metadata': instance.metadata,
+  'internal_note': ?instance.internalNote,
+  'description': ?instance.description,
+  'metadata': ?instance.metadata,
 };

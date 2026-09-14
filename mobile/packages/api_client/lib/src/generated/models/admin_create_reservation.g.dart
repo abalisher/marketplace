@@ -20,10 +20,10 @@ AdminCreateReservation _$AdminCreateReservationFromJson(
 Map<String, dynamic> _$AdminCreateReservationToJson(
   AdminCreateReservation instance,
 ) => <String, dynamic>{
-  'line_item_id': instance.lineItemId,
+  'line_item_id': ?instance.lineItemId,
   'location_id': instance.locationId,
   'inventory_item_id': instance.inventoryItemId,
   'quantity': instance.quantity,
-  'description': instance.description,
-  'metadata': instance.metadata,
+  'description': ?instance.description,
+  'metadata': ?instance.metadata,
 };

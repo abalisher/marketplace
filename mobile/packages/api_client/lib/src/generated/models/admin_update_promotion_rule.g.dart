@@ -25,10 +25,10 @@ Map<String, dynamic> _$AdminUpdatePromotionRuleToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'operator':
-      _$AdminUpdatePromotionRuleOperatorEnumEnumMap[instance.operatorEnum],
-  'description': instance.description,
-  'attribute': instance.attribute,
-  'values': instance.values,
+      ?_$AdminUpdatePromotionRuleOperatorEnumEnumMap[instance.operatorEnum],
+  'description': ?instance.description,
+  'attribute': ?instance.attribute,
+  'values': ?instance.values,
 };
 
 const _$AdminUpdatePromotionRuleOperatorEnumEnumMap = {

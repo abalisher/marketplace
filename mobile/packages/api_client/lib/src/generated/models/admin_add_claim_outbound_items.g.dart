@@ -16,4 +16,4 @@ AdminAddClaimOutboundItems _$AdminAddClaimOutboundItemsFromJson(
 
 Map<String, dynamic> _$AdminAddClaimOutboundItemsToJson(
   AdminAddClaimOutboundItems instance,
-) => <String, dynamic>{'items': instance.items};
+) => <String, dynamic>{'items': ?instance.items};

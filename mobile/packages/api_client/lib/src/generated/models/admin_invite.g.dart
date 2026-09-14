@@ -27,8 +27,8 @@ Map<String, dynamic> _$AdminInviteToJson(AdminInvite instance) =>
       'accepted': instance.accepted,
       'token': instance.token,
       'expires_at': instance.expiresAt.toIso8601String(),
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'rbac_roles': instance.rbacRoles,
+      'rbac_roles': ?instance.rbacRoles,
     };

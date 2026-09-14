@@ -23,12 +23,12 @@ Map<String, dynamic> _$AdminReviewToJson(AdminReview instance) =>
     <String, dynamic>{
       'id': instance.id,
       'order_id': instance.orderId,
-      'customer_id': instance.customerId,
+      'customer_id': ?instance.customerId,
       'target': _$AdminReviewTargetEnumMap[instance.target]!,
       'rating': instance.rating,
-      'comment': instance.comment,
+      'comment': ?instance.comment,
       'status': _$AdminReviewStatusEnumMap[instance.status]!,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'created_at': ?instance.createdAt?.toIso8601String(),
     };
 
 const _$AdminReviewTargetEnumMap = {

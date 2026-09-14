@@ -18,7 +18,7 @@ _$AdminProductVariantInventoryBatchResponseFromJson(
 Map<String, dynamic> _$AdminProductVariantInventoryBatchResponseToJson(
   AdminProductVariantInventoryBatchResponse instance,
 ) => <String, dynamic>{
-  'created': instance.created,
-  'updated': instance.updated,
-  'deleted': instance.deleted,
+  'created': ?instance.created,
+  'updated': ?instance.updated,
+  'deleted': ?instance.deleted,
 };

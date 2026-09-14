@@ -37,19 +37,20 @@ OrderChange _$OrderChangeFromJson(Map<String, dynamic> json) => OrderChange(
       ? null
       : OrderChangeChangeType.fromJson(json['change_type'] as String),
   carryOverPromotions: json['carry_over_promotions'] as bool?,
+  noNotification: json['no_notification'] as bool?,
 );
 
 Map<String, dynamic> _$OrderChangeToJson(OrderChange instance) =>
     <String, dynamic>{
       'id': instance.id,
       'version': instance.version,
-      'change_type': _$OrderChangeChangeTypeEnumMap[instance.changeType],
+      'change_type': ?_$OrderChangeChangeTypeEnumMap[instance.changeType],
       'order_id': instance.orderId,
       'return_id': instance.returnId,
       'exchange_id': instance.exchangeId,
       'claim_id': instance.claimId,
-      'order': instance.order,
-      'return_order': instance.returnOrder,
+      'order': ?instance.order,
+      'return_order': ?instance.returnOrder,
       'exchange': instance.exchange,
       'claim': instance.claim,
       'actions': instance.actions,
@@ -60,13 +61,14 @@ Map<String, dynamic> _$OrderChangeToJson(OrderChange instance) =>
       'confirmed_at': instance.confirmedAt.toIso8601String(),
       'declined_by': instance.declinedBy,
       'declined_reason': instance.declinedReason,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'declined_at': instance.declinedAt.toIso8601String(),
       'canceled_by': instance.canceledBy,
       'canceled_at': instance.canceledAt.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'carry_over_promotions': instance.carryOverPromotions,
+      'carry_over_promotions': ?instance.carryOverPromotions,
+      'no_notification': ?instance.noNotification,
     };
 
 const _$OrderChangeChangeTypeEnumMap = {

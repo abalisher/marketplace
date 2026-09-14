@@ -17,7 +17,7 @@ AdminUpdateShippingProfile _$AdminUpdateShippingProfileFromJson(
 Map<String, dynamic> _$AdminUpdateShippingProfileToJson(
   AdminUpdateShippingProfile instance,
 ) => <String, dynamic>{
-  'name': instance.name,
-  'type': instance.type,
-  'metadata': instance.metadata,
+  'name': ?instance.name,
+  'type': ?instance.type,
+  'metadata': ?instance.metadata,
 };

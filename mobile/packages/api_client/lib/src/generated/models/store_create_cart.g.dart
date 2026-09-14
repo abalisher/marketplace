@@ -30,12 +30,12 @@ StoreCreateCart _$StoreCreateCartFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$StoreCreateCartToJson(StoreCreateCart instance) =>
     <String, dynamic>{
-      'region_id': instance.regionId,
-      'shipping_address': instance.shippingAddress,
-      'billing_address': instance.billingAddress,
-      'email': instance.email,
-      'currency_code': instance.currencyCode,
-      'items': instance.items,
-      'sales_channel_id': instance.salesChannelId,
-      'metadata': instance.metadata,
+      'region_id': ?instance.regionId,
+      'shipping_address': ?instance.shippingAddress,
+      'billing_address': ?instance.billingAddress,
+      'email': ?instance.email,
+      'currency_code': ?instance.currencyCode,
+      'items': ?instance.items,
+      'sales_channel_id': ?instance.salesChannelId,
+      'metadata': ?instance.metadata,
     };

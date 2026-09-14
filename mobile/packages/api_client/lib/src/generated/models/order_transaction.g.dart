@@ -31,10 +31,10 @@ Map<String, dynamic> _$OrderTransactionToJson(OrderTransaction instance) =>
       'currency_code': instance.currencyCode,
       'reference': _$OrderTransactionReferenceEnumMap[instance.reference]!,
       'reference_id': instance.referenceId,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'order': instance.order,
+      'order': ?instance.order,
       'version': instance.version,
     };
 

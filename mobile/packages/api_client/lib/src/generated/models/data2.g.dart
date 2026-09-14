@@ -15,5 +15,5 @@ Data2 _$Data2FromJson(Map<String, dynamic> json) => Data2(
 
 Map<String, dynamic> _$Data2ToJson(Data2 instance) => <String, dynamic>{
   'invoke': instance.invoke,
-  'payload': instance.payload,
+  'payload': ?instance.payload,
 };

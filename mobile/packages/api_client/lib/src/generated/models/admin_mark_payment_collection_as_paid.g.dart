@@ -17,5 +17,5 @@ Map<String, dynamic> _$AdminMarkPaymentCollectionAsPaidToJson(
   AdminMarkPaymentCollectionAsPaid instance,
 ) => <String, dynamic>{
   'order_id': instance.orderId,
-  'provider_id': instance.providerId,
+  'provider_id': ?instance.providerId,
 };

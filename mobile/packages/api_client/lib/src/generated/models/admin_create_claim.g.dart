@@ -20,10 +20,10 @@ Map<String, dynamic> _$AdminCreateClaimToJson(AdminCreateClaim instance) =>
     <String, dynamic>{
       'type': _$AdminCreateClaimTypeEnumMap[instance.type]!,
       'order_id': instance.orderId,
-      'description': instance.description,
-      'internal_note': instance.internalNote,
-      'reason_id': instance.reasonId,
-      'metadata': instance.metadata,
+      'description': ?instance.description,
+      'internal_note': ?instance.internalNote,
+      'reason_id': ?instance.reasonId,
+      'metadata': ?instance.metadata,
     };
 
 const _$AdminCreateClaimTypeEnumMap = {

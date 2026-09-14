@@ -17,7 +17,7 @@ Map<String, dynamic> _$StoreCreateReviewToJson(StoreCreateReview instance) =>
     <String, dynamic>{
       'target': _$StoreCreateReviewTargetEnumMap[instance.target]!,
       'rating': instance.rating,
-      'comment': instance.comment,
+      'comment': ?instance.comment,
     };
 
 const _$StoreCreateReviewTargetEnumMap = {

@@ -21,5 +21,5 @@ Map<String, dynamic> _$AdminCreateTranslationToJson(
   'reference': instance.reference,
   'reference_id': instance.referenceId,
   'locale_code': instance.localeCode,
-  'translations': instance.translations,
+  'translations': ?instance.translations,
 };

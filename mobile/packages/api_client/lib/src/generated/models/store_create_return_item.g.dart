@@ -20,6 +20,6 @@ Map<String, dynamic> _$StoreCreateReturnItemToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'quantity': instance.quantity,
-  'reason_id': instance.reasonId,
-  'note': instance.note,
+  'reason_id': ?instance.reasonId,
+  'note': ?instance.note,
 };

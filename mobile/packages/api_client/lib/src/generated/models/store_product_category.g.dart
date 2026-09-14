@@ -11,7 +11,7 @@ StoreProductCategory _$StoreProductCategoryFromJson(
 ) => StoreProductCategory(
   id: json['id'] as String,
   name: json['name'] as String,
-  description: json['description'] as String,
+  description: json['description'] as String?,
   handle: json['handle'] as String,
   rank: json['rank'] as num,
   parentCategoryId: json['parent_category_id'] as String,
@@ -19,7 +19,9 @@ StoreProductCategory _$StoreProductCategoryFromJson(
   categoryChildren: json['category_children'] as List<dynamic>,
   createdAt: DateTime.parse(json['created_at'] as String),
   updatedAt: DateTime.parse(json['updated_at'] as String),
-  deletedAt: DateTime.parse(json['deleted_at'] as String),
+  deletedAt: json['deleted_at'] == null
+      ? null
+      : DateTime.parse(json['deleted_at'] as String),
   metadata: json['metadata'],
   products: (json['products'] as List<dynamic>?)
       ?.map((e) => StoreProduct.fromJson(e as Map<String, dynamic>))
@@ -31,15 +33,15 @@ Map<String, dynamic> _$StoreProductCategoryToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'name': instance.name,
-  'description': instance.description,
+  'description': ?instance.description,
   'handle': instance.handle,
   'rank': instance.rank,
   'parent_category_id': instance.parentCategoryId,
-  'parent_category': instance.parentCategory,
+  'parent_category': ?instance.parentCategory,
   'category_children': instance.categoryChildren,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
-  'deleted_at': instance.deletedAt.toIso8601String(),
-  'products': instance.products,
+  'deleted_at': ?instance.deletedAt?.toIso8601String(),
+  'products': ?instance.products,
 };

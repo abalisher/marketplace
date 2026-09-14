@@ -20,6 +20,6 @@ Map<String, dynamic> _$StoreCartsIdLineItemsRequestBodyToJson(
 ) => <String, dynamic>{
   'variant_id': instance.variantId,
   'quantity': instance.quantity,
-  'metadata': instance.metadata,
-  'additional_data': instance.additionalData,
+  'metadata': ?instance.metadata,
+  'additional_data': ?instance.additionalData,
 };

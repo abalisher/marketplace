@@ -30,7 +30,7 @@ class AdminSalesChannel {
   final String name;
 
   /// The sales channel's description.
-  final String description;
+  final String? description;
 
   /// Whether the sales channel is disabled.
   @JsonKey(name: 'is_disabled')
@@ -49,7 +49,7 @@ class AdminSalesChannel {
 
   /// The date the sales channel was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminSalesChannelToJson(this);
 }

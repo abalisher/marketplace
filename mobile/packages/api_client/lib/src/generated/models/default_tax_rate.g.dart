@@ -17,9 +17,9 @@ DefaultTaxRate _$DefaultTaxRateFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$DefaultTaxRateToJson(DefaultTaxRate instance) =>
     <String, dynamic>{
-      'rate': instance.rate,
+      'rate': ?instance.rate,
       'code': instance.code,
       'name': instance.name,
-      'is_combinable': instance.isCombinable,
-      'metadata': instance.metadata,
+      'is_combinable': ?instance.isCombinable,
+      'metadata': ?instance.metadata,
     };

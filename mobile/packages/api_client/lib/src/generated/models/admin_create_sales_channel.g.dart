@@ -19,7 +19,7 @@ Map<String, dynamic> _$AdminCreateSalesChannelToJson(
   AdminCreateSalesChannel instance,
 ) => <String, dynamic>{
   'name': instance.name,
-  'description': instance.description,
-  'is_disabled': instance.isDisabled,
-  'metadata': instance.metadata,
+  'description': ?instance.description,
+  'is_disabled': ?instance.isDisabled,
+  'metadata': ?instance.metadata,
 };

@@ -6,7 +6,6 @@ import 'package:dio/dio.dart';
 
 import 'clients/auth_client.dart';
 import 'clients/multi_factor_authentication_mfa_factors_client.dart';
-import 'clients/verification_client.dart';
 import 'clients/carts_client.dart';
 import 'clients/collections_client.dart';
 import 'clients/currencies_client.dart';
@@ -31,27 +30,29 @@ import 'clients/admin_auth_client.dart';
 import 'clients/admin_orders_client.dart';
 import 'clients/admin_products_client.dart';
 import 'clients/admin_stock_locations_client.dart';
-import 'clients/counter_carts_client.dart';
+import 'clients/assembly_client.dart';
+import 'clients/logistics_client.dart';
+import 'clients/catalog_client.dart';
 import 'clients/reviews_client.dart';
+import 'clients/assistant_client.dart';
 import 'clients/bonus_client.dart';
 import 'clients/payment_client.dart';
 import 'clients/companies_client.dart';
+import 'clients/documents_client.dart';
 import 'clients/estimator_client.dart';
-import 'clients/catalog_client.dart';
 
-/// Medusa Storefront API `v2.0.0`
+/// Medusa Storefront API `v2.20.1`
 class MedusaStoreApi {
   MedusaStoreApi(Dio dio, {String? baseUrl}) : _dio = dio, _baseUrl = baseUrl;
 
   final Dio _dio;
   final String? _baseUrl;
 
-  static String get version => '2.0.0';
+  static String get version => '2.20.1';
 
   AuthClient? _auth;
   MultiFactorAuthenticationMfaFactorsClient?
   _multiFactorAuthenticationMfaFactors;
-  VerificationClient? _verification;
   CartsClient? _carts;
   CollectionsClient? _collections;
   CurrenciesClient? _currencies;
@@ -76,13 +77,16 @@ class MedusaStoreApi {
   AdminOrdersClient? _adminOrders;
   AdminProductsClient? _adminProducts;
   AdminStockLocationsClient? _adminStockLocations;
-  CounterCartsClient? _counterCarts;
+  AssemblyClient? _assembly;
+  LogisticsClient? _logistics;
+  CatalogClient? _catalog;
   ReviewsClient? _reviews;
+  AssistantClient? _assistant;
   BonusClient? _bonus;
   PaymentClient? _payment;
   CompaniesClient? _companies;
+  DocumentsClient? _documents;
   EstimatorClient? _estimator;
-  CatalogClient? _catalog;
 
   AuthClient get auth => _auth ??= AuthClient(_dio, baseUrl: _baseUrl);
 
@@ -90,9 +94,6 @@ class MedusaStoreApi {
   get multiFactorAuthenticationMfaFactors =>
       _multiFactorAuthenticationMfaFactors ??=
           MultiFactorAuthenticationMfaFactorsClient(_dio, baseUrl: _baseUrl);
-
-  VerificationClient get verification =>
-      _verification ??= VerificationClient(_dio, baseUrl: _baseUrl);
 
   CartsClient get carts => _carts ??= CartsClient(_dio, baseUrl: _baseUrl);
 
@@ -164,11 +165,20 @@ class MedusaStoreApi {
   AdminStockLocationsClient get adminStockLocations => _adminStockLocations ??=
       AdminStockLocationsClient(_dio, baseUrl: _baseUrl);
 
-  CounterCartsClient get counterCarts =>
-      _counterCarts ??= CounterCartsClient(_dio, baseUrl: _baseUrl);
+  AssemblyClient get assembly =>
+      _assembly ??= AssemblyClient(_dio, baseUrl: _baseUrl);
+
+  LogisticsClient get logistics =>
+      _logistics ??= LogisticsClient(_dio, baseUrl: _baseUrl);
+
+  CatalogClient get catalog =>
+      _catalog ??= CatalogClient(_dio, baseUrl: _baseUrl);
 
   ReviewsClient get reviews =>
       _reviews ??= ReviewsClient(_dio, baseUrl: _baseUrl);
+
+  AssistantClient get assistant =>
+      _assistant ??= AssistantClient(_dio, baseUrl: _baseUrl);
 
   BonusClient get bonus => _bonus ??= BonusClient(_dio, baseUrl: _baseUrl);
 
@@ -178,9 +188,9 @@ class MedusaStoreApi {
   CompaniesClient get companies =>
       _companies ??= CompaniesClient(_dio, baseUrl: _baseUrl);
 
+  DocumentsClient get documents =>
+      _documents ??= DocumentsClient(_dio, baseUrl: _baseUrl);
+
   EstimatorClient get estimator =>
       _estimator ??= EstimatorClient(_dio, baseUrl: _baseUrl);
-
-  CatalogClient get catalog =>
-      _catalog ??= CatalogClient(_dio, baseUrl: _baseUrl);
 }

@@ -51,7 +51,7 @@ class AdminStoreCurrency {
 
   /// The date the currency was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminStoreCurrencyToJson(this);
 }

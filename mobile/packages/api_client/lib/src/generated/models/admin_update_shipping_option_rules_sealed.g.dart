@@ -29,7 +29,7 @@ _$AdminUpdateShippingOptionRulesSealedAdminCreateShippingOptionRuleToJson(
       _$AdminCreateShippingOptionRuleOperatorEnumEnumMap[instance
           .operatorEnum]!,
   'attribute': instance.attribute,
-  'value': instance.value,
+  'value': ?instance.value,
 };
 
 const _$AdminCreateShippingOptionRuleOperatorEnumEnumMap = {
@@ -65,7 +65,7 @@ _$AdminUpdateShippingOptionRulesSealedAdminUpdateShippingOptionRuleToJson(
       _$AdminUpdateShippingOptionRuleOperatorEnumEnumMap[instance
           .operatorEnum]!,
   'attribute': instance.attribute,
-  'value': instance.value,
+  'value': ?instance.value,
 };
 
 const _$AdminUpdateShippingOptionRuleOperatorEnumEnumMap = {

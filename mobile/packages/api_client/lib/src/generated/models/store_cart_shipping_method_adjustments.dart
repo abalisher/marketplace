@@ -13,6 +13,7 @@ part 'store_cart_shipping_method_adjustments.g.dart';
 class StoreCartShippingMethodAdjustments {
   const StoreCartShippingMethodAdjustments({
     required this.shippingMethod,
+    required this.shippingMethodId,
     required this.id,
     required this.amount,
     required this.cartId,
@@ -31,6 +32,10 @@ class StoreCartShippingMethodAdjustments {
   /// The details of the method that the adjustment belongs to.
   @JsonKey(name: 'shipping_method')
   final dynamic shippingMethod;
+
+  /// The ID of the shipping method this adjustment applies on.
+  @JsonKey(name: 'shipping_method_id')
+  final String shippingMethodId;
 
   /// The adjustment's ID.
   final String id;

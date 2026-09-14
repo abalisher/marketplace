@@ -57,7 +57,7 @@ class AdminShippingOptionPriceRule {
 
   /// The date the price rule was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminShippingOptionPriceRuleToJson(this);
 }

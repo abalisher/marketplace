@@ -21,7 +21,7 @@ WorkflowExecutionContext _$WorkflowExecutionContextFromJson(
 Map<String, dynamic> _$WorkflowExecutionContextToJson(
   WorkflowExecutionContext instance,
 ) => <String, dynamic>{
-  'data': instance.data,
-  'compensate': instance.compensate,
+  'data': ?instance.data,
+  'compensate': ?instance.compensate,
   'errors': instance.errors,
 };

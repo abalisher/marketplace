@@ -10,6 +10,7 @@ BaseShippingMethodAdjustment _$BaseShippingMethodAdjustmentFromJson(
   Map<String, dynamic> json,
 ) => BaseShippingMethodAdjustment(
   shippingMethod: json['shipping_method'],
+  shippingMethodId: json['shipping_method_id'] as String,
   id: json['id'] as String,
   amount: json['amount'] as num,
   cartId: json['cart_id'] as String,
@@ -24,14 +25,15 @@ BaseShippingMethodAdjustment _$BaseShippingMethodAdjustmentFromJson(
 Map<String, dynamic> _$BaseShippingMethodAdjustmentToJson(
   BaseShippingMethodAdjustment instance,
 ) => <String, dynamic>{
-  'shipping_method': instance.shippingMethod,
+  'shipping_method': ?instance.shippingMethod,
+  'shipping_method_id': instance.shippingMethodId,
   'id': instance.id,
-  'code': instance.code,
+  'code': ?instance.code,
   'amount': instance.amount,
   'cart_id': instance.cartId,
-  'description': instance.description,
-  'promotion_id': instance.promotionId,
-  'provider_id': instance.providerId,
+  'description': ?instance.description,
+  'promotion_id': ?instance.promotionId,
+  'provider_id': ?instance.providerId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

@@ -32,7 +32,7 @@ class AdminCreatePriceList {
   final String title;
 
   /// The price list's description.
-  final String description;
+  final String? description;
 
   /// The date and time the price list starts at.
   @JsonKey(name: 'starts_at')

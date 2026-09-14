@@ -16,6 +16,6 @@ AdminCreateWorkflowsRun _$AdminCreateWorkflowsRunFromJson(
 Map<String, dynamic> _$AdminCreateWorkflowsRunToJson(
   AdminCreateWorkflowsRun instance,
 ) => <String, dynamic>{
-  'input': instance.input,
-  'transaction_id': instance.transactionId,
+  'input': ?instance.input,
+  'transaction_id': ?instance.transactionId,
 };

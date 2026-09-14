@@ -6,27 +6,14 @@ import 'package:json_annotation/json_annotation.dart';
 
 @JsonEnum()
 enum Status {
-  /// The name has been replaced because it contains a keyword. Original name: `new`.
-  @JsonValue('new')
-  valueNew('new'),
-  @JsonValue('confirmed')
-  confirmed('confirmed'),
-  @JsonValue('assembling')
-  assembling('assembling'),
-  @JsonValue('partially_assembled')
-  partiallyAssembled('partially_assembled'),
-  @JsonValue('assembled')
-  assembled('assembled'),
-  @JsonValue('in_delivery')
-  inDelivery('in_delivery'),
-  @JsonValue('delivered')
-  delivered('delivered'),
-  @JsonValue('closed')
-  closed('closed'),
-  @JsonValue('canceled')
-  canceled('canceled'),
-  @JsonValue('returned')
-  returned('returned'),
+  @JsonValue('draft')
+  draft('draft'),
+  @JsonValue('proposed')
+  proposed('proposed'),
+  @JsonValue('published')
+  published('published'),
+  @JsonValue('rejected')
+  rejected('rejected'),
 
   /// Default value for all unparsed values, allows backward compatibility when adding new values on the backend.
   $unknown(null);

@@ -43,8 +43,8 @@ Map<String, dynamic> _$StoreShippingOptionToJson(
   'shipping_profile_id': instance.shippingProfileId,
   'amount': instance.amount,
   'is_tax_inclusive': instance.isTaxInclusive,
-  'data': instance.data,
-  'metadata': instance.metadata,
+  'data': ?instance.data,
+  'metadata': ?instance.metadata,
 };
 
 const _$StoreShippingOptionPriceTypeEnumMap = {

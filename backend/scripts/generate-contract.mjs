@@ -91,6 +91,116 @@ function markOptionalCompositionsNullable(node) {
   Object.values(node).forEach(markOptionalCompositionsNullable)
 }
 
+// Medusa помечает ряд ФАКТИЧЕСКИ-NULLABLE полей как required без nullable:true
+// (спека объявляет `type: string`/`date-time`, но реальный ответ API возвращает
+// по ним null). swagger_parser генерит из них non-nullable типы + DateTime.parse(...)
+// / `... as String`, и парсинг живого ответа падает с TypeError (весь список товаров
+// не распарсится — риск из docs/STATE.md 2026-07-21). Помечаем такие поля
+// nullable: true везде, где встречаются. Направление безопасное: для КЛИЕНТСКОГО
+// контракта nullable — расширение (клиент допускает null; если сервер null не шлёт —
+// вреда нет), а обратное (non-nullable при реальном null) — краш. Набор — из
+// универсального soft-delete (`deleted_at`), всегда-nullable `metadata` и известных
+// опциональных дескрипторов/размеров/FK товаров и вариантов Medusa.
+const ALWAYS_NULLABLE_FIELDS = new Set([
+  "deleted_at",
+  "metadata",
+  "subtitle",
+  "description",
+  "thumbnail",
+  "material",
+  "origin_country",
+  "hs_code",
+  "mid_code",
+  "external_id",
+  "sku",
+  "barcode",
+  "ean",
+  "upc",
+  "collection_id",
+  "type_id",
+  "weight",
+  "length",
+  "height",
+  "width",
+  // Покупатель/адрес: имя/фамилия/компания и дефолтные адреса Medusa возвращает
+  // null для покупателя без заполненного профиля (спека объявляет их required
+  // без nullable) — `GET /store/customers/me` иначе падает с TypeError.
+  "first_name",
+  "last_name",
+  "company_name",
+  "default_billing_address_id",
+  "default_shipping_address_id",
+])
+
+function markKnownNullableFields(node) {
+  if (Array.isArray(node)) {
+    node.forEach(markKnownNullableFields)
+    return
+  }
+  if (node === null || typeof node !== "object") {
+    return
+  }
+  if (node.properties) {
+    for (const [name, prop] of Object.entries(node.properties)) {
+      // Только плоские скаляр/object-схемы без $ref и композиции — композиции
+      // уже обрабатывает markOptionalCompositionsNullable, $ref-соседи невалидны.
+      const isPlain =
+        prop &&
+        typeof prop === "object" &&
+        !prop.$ref &&
+        !prop.allOf &&
+        !prop.oneOf &&
+        !prop.anyOf
+      if (ALWAYS_NULLABLE_FIELDS.has(name) && isPlain && prop.nullable !== true) {
+        prop.nullable = true
+      }
+    }
+  }
+  Object.values(node).forEach(markKnownNullableFields)
+}
+
+// Схемо-ТОЧЕЧНЫЕ nullable: поля, которые store-эндпоинты фактически не отдают,
+// но спека помечает required — правим по КОНКРЕТНОЙ схеме, а не по имени глобально
+// (одноимённые поля в других схемах трогать нельзя). Причины:
+//  - BaseRegionCountry.id: `/store/regions` возвращает страны БЕЗ `id` (идентификатор —
+//    iso_2), из-за чего `id as String` роняет весь разбор регионов;
+//  - StoreProduct.status: store-ответ не содержит `status` (это admin-поле) —
+//    `StoreProductStatus.fromJson(json['status'] as String)` роняет разбор каталога.
+// Направление безопасное (nullable — расширение для клиента, см. выше).
+const SCOPED_NULLABLE_FIELDS = {
+  BaseRegionCountry: ["id"],
+  StoreProduct: ["status"],
+  // Store-ответ отдаёт calculated_price БЕЗ налоговых сумм (нет налогового
+  // контекста) — поля отсутствуют, а спека помечает их required num → разбор
+  // цены (а с ним всего каталога) падает.
+  BaseCalculatedPriceSet: [
+    "original_amount_with_tax",
+    "original_amount_without_tax",
+    "calculated_amount_with_tax",
+    "calculated_amount_without_tax",
+  ],
+}
+
+function markScopedNullableFields(spec) {
+  const schemas = spec?.components?.schemas
+  if (!schemas) return
+  for (const [schemaName, fields] of Object.entries(SCOPED_NULLABLE_FIELDS)) {
+    const schema = schemas[schemaName]
+    if (!schema || !schema.properties) continue
+    for (const field of fields) {
+      const prop = schema.properties[field]
+      if (
+        prop &&
+        typeof prop === "object" &&
+        !prop.$ref &&
+        prop.nullable !== true
+      ) {
+        prop.nullable = true
+      }
+    }
+  }
+}
+
 // В спеке Medusa встречаются default, не совпадающие по типу со схемой
 // (например, boolean deleted с default "variant") — кодоген вставляет их в Dart как есть.
 function dropMismatchedDefaults(node) {
@@ -288,6 +398,11 @@ for (const file of fragments) {
     }
   }
 }
+
+// После мерджа фрагментов — по всей итоговой спеке (база + admin + кастомные схемы):
+// кастомные модели тоже наследуют soft-delete `deleted_at`/`metadata` от DML-базы.
+markKnownNullableFields(spec)
+markScopedNullableFields(spec)
 
 mkdirSync(dirname(outFile), { recursive: true })
 writeFileSync(outFile, JSON.stringify(spec, null, 2) + "\n")

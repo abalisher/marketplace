@@ -73,7 +73,10 @@ class StoreCart {
   @JsonKey(name: 'customer_id')
   final String? customerId;
 
-  /// The ID of the cart's sales channel. Only products that belong to the same sales channel can be added to the cart. The created order will be associated with the same sales channel.
+  /// The ID of the cart's sales channel. The created order is associated with the same sales channel.
+  ///
+  /// A product's availability in a sales channel only filters the products you retrieve. Medusa doesn't reject a variant added to the cart when its product isn't available in the cart's sales channel. Refer to the guide in the external documentation to learn how to enforce that validation.
+  ///
   @JsonKey(name: 'sales_channel_id')
   final String? salesChannelId;
 

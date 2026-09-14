@@ -24,10 +24,10 @@ Configuration4 _$Configuration4FromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$Configuration4ToJson(Configuration4 instance) =>
     <String, dynamic>{
-      'search': instance.search,
-      'visible_columns': instance.visibleColumns,
-      'column_order': instance.columnOrder,
-      'column_widths': instance.columnWidths,
-      'filters': instance.filters,
-      'sorting': instance.sorting,
+      'search': ?instance.search,
+      'visible_columns': ?instance.visibleColumns,
+      'column_order': ?instance.columnOrder,
+      'column_widths': ?instance.columnWidths,
+      'filters': ?instance.filters,
+      'sorting': ?instance.sorting,
     };

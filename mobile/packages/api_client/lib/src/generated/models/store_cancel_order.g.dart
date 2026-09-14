@@ -10,4 +10,4 @@ StoreCancelOrder _$StoreCancelOrderFromJson(Map<String, dynamic> json) =>
     StoreCancelOrder(reason: json['reason'] as String?);
 
 Map<String, dynamic> _$StoreCancelOrderToJson(StoreCancelOrder instance) =>
-    <String, dynamic>{'reason': instance.reason};
+    <String, dynamic>{'reason': ?instance.reason};

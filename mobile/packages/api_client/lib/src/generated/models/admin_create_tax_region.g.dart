@@ -25,9 +25,9 @@ Map<String, dynamic> _$AdminCreateTaxRegionToJson(
   AdminCreateTaxRegion instance,
 ) => <String, dynamic>{
   'country_code': instance.countryCode,
-  'province_code': instance.provinceCode,
-  'parent_id': instance.parentId,
-  'default_tax_rate': instance.defaultTaxRate,
-  'metadata': instance.metadata,
-  'provider_id': instance.providerId,
+  'province_code': ?instance.provinceCode,
+  'parent_id': ?instance.parentId,
+  'default_tax_rate': ?instance.defaultTaxRate,
+  'metadata': ?instance.metadata,
+  'provider_id': ?instance.providerId,
 };

@@ -12,6 +12,9 @@ AdminOrderLifecycleListRes _$AdminOrderLifecycleListResFromJson(
   orderLifecycles: (json['order_lifecycles'] as List<dynamic>)
       .map((e) => AdminOrderLifecycle.fromJson(e as Map<String, dynamic>))
       .toList(),
+  counts: AdminOrderLifecycleCounts.fromJson(
+    json['counts'] as Map<String, dynamic>,
+  ),
   count: (json['count'] as num).toInt(),
   offset: (json['offset'] as num).toInt(),
   limit: (json['limit'] as num).toInt(),
@@ -21,6 +24,7 @@ Map<String, dynamic> _$AdminOrderLifecycleListResToJson(
   AdminOrderLifecycleListRes instance,
 ) => <String, dynamic>{
   'order_lifecycles': instance.orderLifecycles,
+  'counts': instance.counts,
   'count': instance.count,
   'offset': instance.offset,
   'limit': instance.limit,

@@ -23,7 +23,7 @@ Map<String, dynamic> _$AdminCreatePriceListPriceToJson(
   'currency_code': instance.currencyCode,
   'amount': instance.amount,
   'variant_id': instance.variantId,
-  'min_quantity': instance.minQuantity,
-  'max_quantity': instance.maxQuantity,
-  'rules': instance.rules,
+  'min_quantity': ?instance.minQuantity,
+  'max_quantity': ?instance.maxQuantity,
+  'rules': ?instance.rules,
 };

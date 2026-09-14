@@ -31,5 +31,5 @@ Map<String, dynamic> _$AdminCreateGiftCardParamsToJson(
   'reference': instance.reference,
   'line_item_id': instance.lineItemId,
   'customer_id': instance.customerId,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
 };

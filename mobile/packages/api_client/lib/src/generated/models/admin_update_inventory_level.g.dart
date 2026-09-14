@@ -16,6 +16,6 @@ AdminUpdateInventoryLevel _$AdminUpdateInventoryLevelFromJson(
 Map<String, dynamic> _$AdminUpdateInventoryLevelToJson(
   AdminUpdateInventoryLevel instance,
 ) => <String, dynamic>{
-  'stocked_quantity': instance.stockedQuantity,
-  'incoming_quantity': instance.incomingQuantity,
+  'stocked_quantity': ?instance.stockedQuantity,
+  'incoming_quantity': ?instance.incomingQuantity,
 };

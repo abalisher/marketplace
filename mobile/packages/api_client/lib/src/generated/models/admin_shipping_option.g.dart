@@ -36,7 +36,9 @@ AdminShippingOption _$AdminShippingOptionFromJson(
   metadata: json['metadata'],
   createdAt: DateTime.parse(json['created_at'] as String),
   updatedAt: DateTime.parse(json['updated_at'] as String),
-  deletedAt: DateTime.parse(json['deleted_at'] as String),
+  deletedAt: json['deleted_at'] == null
+      ? null
+      : DateTime.parse(json['deleted_at'] as String),
 );
 
 Map<String, dynamic> _$AdminShippingOptionToJson(
@@ -46,7 +48,7 @@ Map<String, dynamic> _$AdminShippingOptionToJson(
   'name': instance.name,
   'price_type': _$AdminShippingOptionPriceTypeEnumMap[instance.priceType]!,
   'service_zone_id': instance.serviceZoneId,
-  'service_zone': instance.serviceZone,
+  'service_zone': ?instance.serviceZone,
   'provider_id': instance.providerId,
   'provider': instance.provider,
   'shipping_option_type_id': instance.shippingOptionTypeId,
@@ -55,11 +57,11 @@ Map<String, dynamic> _$AdminShippingOptionToJson(
   'shipping_profile': instance.shippingProfile,
   'rules': instance.rules,
   'prices': instance.prices,
-  'data': instance.data,
-  'metadata': instance.metadata,
+  'data': ?instance.data,
+  'metadata': ?instance.metadata,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
-  'deleted_at': instance.deletedAt.toIso8601String(),
+  'deleted_at': ?instance.deletedAt?.toIso8601String(),
 };
 
 const _$AdminShippingOptionPriceTypeEnumMap = {

@@ -70,7 +70,7 @@ class AdminPromotion {
 
   /// The date the promotion was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The promotion's status.
   final AdminPromotionStatus? status;

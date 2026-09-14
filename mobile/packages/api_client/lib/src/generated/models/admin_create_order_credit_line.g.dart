@@ -21,5 +21,5 @@ Map<String, dynamic> _$AdminCreateOrderCreditLineToJson(
   'amount': instance.amount,
   'reference': instance.reference,
   'reference_id': instance.referenceId,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
 };

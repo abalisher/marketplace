@@ -17,7 +17,7 @@ AdminUpdateReturnShipping _$AdminUpdateReturnShippingFromJson(
 Map<String, dynamic> _$AdminUpdateReturnShippingToJson(
   AdminUpdateReturnShipping instance,
 ) => <String, dynamic>{
-  'custom_amount': instance.customAmount,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'custom_amount': ?instance.customAmount,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };

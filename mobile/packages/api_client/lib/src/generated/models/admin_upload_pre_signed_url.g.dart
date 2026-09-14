@@ -23,7 +23,7 @@ Map<String, dynamic> _$AdminUploadPreSignedUrlToJson(
   'originalname': instance.originalname,
   'size': instance.size,
   'mime_type': instance.mimeType,
-  'access': _$AdminUploadPreSignedUrlAccessEnumMap[instance.access],
+  'access': ?_$AdminUploadPreSignedUrlAccessEnumMap[instance.access],
 };
 
 const _$AdminUploadPreSignedUrlAccessEnumMap = {

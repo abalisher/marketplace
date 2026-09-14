@@ -24,7 +24,7 @@ Map<String, dynamic> _$StoreEstimateSuggestionOptionToJson(
 ) => <String, dynamic>{
   'segment': _$StoreEstimateSuggestionOptionSegmentEnumMap[instance.segment]!,
   'product_id': instance.productId,
-  'product_title': instance.productTitle,
+  'product_title': ?instance.productTitle,
   'unit_price': instance.unitPrice,
   'total': instance.total,
   'in_stock': instance.inStock,

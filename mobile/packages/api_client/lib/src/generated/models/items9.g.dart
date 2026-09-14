@@ -16,6 +16,6 @@ Items9 _$Items9FromJson(Map<String, dynamic> json) => Items9(
 Map<String, dynamic> _$Items9ToJson(Items9 instance) => <String, dynamic>{
   'id': instance.id,
   'quantity': instance.quantity,
-  'description': instance.description,
-  'internal_note': instance.internalNote,
+  'description': ?instance.description,
+  'internal_note': ?instance.internalNote,
 };

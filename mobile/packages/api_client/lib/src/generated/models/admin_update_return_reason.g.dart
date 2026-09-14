@@ -20,6 +20,6 @@ Map<String, dynamic> _$AdminUpdateReturnReasonToJson(
 ) => <String, dynamic>{
   'label': instance.label,
   'value': instance.value,
-  'description': instance.description,
-  'metadata': instance.metadata,
+  'description': ?instance.description,
+  'metadata': ?instance.metadata,
 };

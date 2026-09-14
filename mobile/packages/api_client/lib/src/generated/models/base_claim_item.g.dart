@@ -38,10 +38,10 @@ Map<String, dynamic> _$BaseClaimItemToJson(BaseClaimItem instance) =>
       'quantity': instance.quantity,
       'reason': _$BaseClaimItemReasonEnumMap[instance.reason]!,
       'raw_quantity': instance.rawQuantity,
-      'metadata': instance.metadata,
-      'created_at': instance.createdAt?.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
-      'item': instance.item,
+      'metadata': ?instance.metadata,
+      'created_at': ?instance.createdAt?.toIso8601String(),
+      'updated_at': ?instance.updatedAt?.toIso8601String(),
+      'item': ?instance.item,
     };
 
 const _$BaseClaimItemReasonEnumMap = {

@@ -67,7 +67,7 @@ class BaseProduct {
   final List<BaseProductTag>? tags;
 
   /// The product's length.
-  final num length;
+  final num? length;
 
   /// The product's title.
   final String title;
@@ -79,7 +79,7 @@ class BaseProduct {
   final List<BaseProductOption> options;
 
   /// The product's description.
-  final String description;
+  final String? description;
 
   /// The product's ID.
   final String id;
@@ -99,46 +99,46 @@ class BaseProduct {
   final String handle;
 
   /// The product's subtitle.
-  final String subtitle;
+  final String? subtitle;
 
   /// Whether the product is a gift card.
   @JsonKey(name: 'is_giftcard')
   final bool isGiftcard;
 
   /// The product's thumbnail.
-  final String thumbnail;
+  final String? thumbnail;
 
   /// The product's width.
-  final num width;
+  final num? width;
 
   /// The product's weight.
-  final num weight;
+  final num? weight;
 
   /// The product's height.
-  final num height;
+  final num? height;
 
   /// The product's origin country.
   @JsonKey(name: 'origin_country')
-  final String originCountry;
+  final String? originCountry;
 
   /// The product's HS code.
   @JsonKey(name: 'hs_code')
-  final String hsCode;
+  final String? hsCode;
 
   /// The product's MID code.
   @JsonKey(name: 'mid_code')
-  final String midCode;
+  final String? midCode;
 
   /// The product's material.
-  final String material;
+  final String? material;
 
   /// The ID of the collection that the product belongs to.
   @JsonKey(name: 'collection_id')
-  final String collectionId;
+  final String? collectionId;
 
   /// The ID of the product's type.
   @JsonKey(name: 'type_id')
-  final String typeId;
+  final String? typeId;
 
   /// The product's images.
   final List<BaseProductImage> images;
@@ -148,11 +148,11 @@ class BaseProduct {
 
   /// The ID of a product in an external system, such as an ERP or CMS.
   @JsonKey(name: 'external_id')
-  final String externalId;
+  final String? externalId;
 
   /// The date the product was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$BaseProductToJson(this);
 }

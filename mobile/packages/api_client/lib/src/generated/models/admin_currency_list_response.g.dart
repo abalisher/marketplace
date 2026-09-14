@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminCurrencyListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'currencies': instance.currencies,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

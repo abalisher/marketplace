@@ -78,11 +78,11 @@ class BaseCalculatedPriceSet {
 
   /// The amount of the original price with taxes applied.
   @JsonKey(name: 'original_amount_with_tax')
-  final num originalAmountWithTax;
+  final num? originalAmountWithTax;
 
   /// The amount of the original price without taxes.
   @JsonKey(name: 'original_amount_without_tax')
-  final num originalAmountWithoutTax;
+  final num? originalAmountWithoutTax;
 
   Map<String, Object?> toJson() => _$BaseCalculatedPriceSetToJson(this);
 }

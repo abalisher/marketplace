@@ -21,7 +21,7 @@ StoreCartPromotion _$StoreCartPromotionFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$StoreCartPromotionToJson(StoreCartPromotion instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'code': instance.code,
-      'is_automatic': instance.isAutomatic,
-      'application_method': instance.applicationMethod,
+      'code': ?instance.code,
+      'is_automatic': ?instance.isAutomatic,
+      'application_method': ?instance.applicationMethod,
     };

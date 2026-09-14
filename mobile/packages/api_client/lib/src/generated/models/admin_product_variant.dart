@@ -63,16 +63,16 @@ class AdminProductVariant {
   final String title;
 
   /// The variant's SKU.
-  final String sku;
+  final String? sku;
 
   /// The variant's barcode.
-  final String barcode;
+  final String? barcode;
 
   /// The variant's EAN code.
-  final String ean;
+  final String? ean;
 
   /// The variant's UPC.
-  final String upc;
+  final String? upc;
 
   /// Whether the variant can be ordered even if it's out of stock.
   @JsonKey(name: 'allow_backorder')
@@ -88,30 +88,30 @@ class AdminProductVariant {
 
   /// The variant's HS code.
   @JsonKey(name: 'hs_code')
-  final String hsCode;
+  final String? hsCode;
 
   /// The variant's origin country.
   @JsonKey(name: 'origin_country')
-  final String originCountry;
+  final String? originCountry;
 
   /// The variant's MID code.
   @JsonKey(name: 'mid_code')
-  final String midCode;
+  final String? midCode;
 
   /// The variant's material.
-  final String material;
+  final String? material;
 
   /// The variant's weight.
-  final num weight;
+  final num? weight;
 
   /// The variant's length.
-  final num length;
+  final num? length;
 
   /// The variant's height.
-  final num height;
+  final num? height;
 
   /// The variant's width.
-  final num width;
+  final num? width;
 
   /// The variant's rank among its sibling variants.
   @JsonKey(name: 'variant_rank')
@@ -137,7 +137,7 @@ class AdminProductVariant {
 
   /// The date the variant was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The variant's metadata, can hold custom key-value pairs.
   final dynamic metadata;
@@ -150,7 +150,7 @@ class AdminProductVariant {
   final List<BaseProductImage>? images;
 
   /// The variant's thumbnail.
-  final String thumbnail;
+  final String? thumbnail;
 
   /// The variant's translations.
   final List<AdminTranslation>? translations;

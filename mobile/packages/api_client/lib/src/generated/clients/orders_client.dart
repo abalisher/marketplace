@@ -8,22 +8,24 @@ import 'package:retrofit/retrofit.dart';
 import '../models/admin_cancel_order.dart';
 import '../models/admin_complete_assembly.dart';
 import '../models/admin_deliver_order.dart';
+import '../models/admin_order_card_res.dart';
 import '../models/admin_order_documents_export_res.dart';
 import '../models/admin_order_documents_res.dart';
 import '../models/admin_order_fulfillment_res.dart';
 import '../models/admin_order_lifecycle_list_res.dart';
 import '../models/admin_order_lifecycle_res.dart';
+import '../models/admin_order_reschedule_options_res.dart';
+import '../models/admin_order_slot_res.dart';
 import '../models/admin_order_status_res.dart';
-import '../models/admin_place_counter_order.dart';
-import '../models/admin_place_counter_order_res.dart';
+import '../models/admin_reschedule_order.dart';
 import '../models/admin_ship_order.dart';
 import '../models/delivery_method.dart';
 import '../models/get_store_orders_response.dart';
 import '../models/order.dart';
-import '../models/status.dart';
 import '../models/store_accept_order_transfer.dart';
 import '../models/store_cancel_order.dart';
 import '../models/store_decline_order_transfer.dart';
+import '../models/store_my_order_lifecycles_res.dart';
 import '../models/store_order_documents_res.dart';
 import '../models/store_order_lifecycle_res.dart';
 import '../models/store_order_response.dart';
@@ -84,7 +86,7 @@ abstract class OrdersClient {
 
   /// Get an Order.
   ///
-  /// Retrieve an order by its ID. You can expand the order's relations or select the fields that should be returned.
+  /// Retrieve an order by its ID. You can expand the order's relations or select the fields that should be returned. This API route doesn't require customer authentication, so that guest customers can view their order confirmation page after placing an order. To restrict access to this API route, refer to the [Restrict Order Retrieval guide](https://docs.medusajs.com/resources/commerce-modules/order/secure-order-retrieval).
   ///
   /// [id] - The order's ID.
   ///
@@ -205,9 +207,9 @@ abstract class OrdersClient {
 
   /// List Order Lifecycle Queue.
   ///
-  /// Очередь заказов по бизнес-статусу ТЗ. Отдельный ресурс, а не переопределение ядрового GET /admin/orders. Фильтр по статусу, сортировка (дефолт — FIFO по created_at), пагинация. Каждая запись несёт связанный заказ (номер/почта/дата).
+  /// Очередь заказов по бизнес-статусу ТЗ. Отдельный ресурс, а не переопределение ядрового GET /admin/orders. Фильтр по статусу (одно значение или несколько), способу получения, поиск по номеру/почте, сортировка (дефолт — FIFO по created_at), пагинация. Каждая запись несёт заказ в виде готовой строки экрана «Заказы» (плательщик, число позиций, итог, оплата, адрес), а ответ — счётчики по статусам для чипов-фильтров.
   ///
-  /// [status] - Фильтр по бизнес-статусу заказа.
+  /// [status] - Фильтр по бизнес-статусу заказа. Одно значение или несколько через запятую («new,confirmed»). Описан ПРОСТОЙ строкой по той же причине, что и статус задания сборки: из oneOf кодогенератор Dart делает dynamic и зовёт toJson() (см. assembly-tasks.oas.json).
   ///
   /// [deliveryMethod] - Фильтр по способу получения заказа.
   ///
@@ -219,7 +221,7 @@ abstract class OrdersClient {
     @Query('order') Order? order = Order.createdAt,
     @Query('limit') int? limit = 20,
     @Query('offset') int? offset = 0,
-    @Query('status') Status? status,
+    @Query('status') String? status,
     @Query('delivery_method') DeliveryMethod? deliveryMethod,
     @Query('q') String? q,
   });
@@ -229,6 +231,14 @@ abstract class OrdersClient {
   /// Бизнес-статус заказа и полный лог переходов. 404 — заказ не найден.
   @GET('/admin/orders/{id}/lifecycle')
   Future<AdminOrderLifecycleRes> getOrdersIdLifecycleAdmin({
+    @Path('id') required String id,
+  });
+
+  /// Get Order Card (Admin).
+  ///
+  /// Карточка заказа для панели продавца одним ответом: статус и лог переходов, покупатель с лимитом отсрочки, позиции с итогами, доставка, документы и цели переходов. 404 — заказ не найден.
+  @GET('/admin/orders/{id}/lifecycle/card')
+  Future<AdminOrderCardRes> getOrdersIdLifecycleCardAdmin({
     @Path('id') required String id,
   });
 
@@ -268,7 +278,7 @@ abstract class OrdersClient {
 
   /// Deliver Order.
   ///
-  /// Вручение: статус → delivered (для способа delivery обязателен верный код получения от покупателя; для pickup — выдача у окна по накладной, без кода), затем ядровый markOrderFulfillmentAsDelivered.
+  /// Вручение: статус → delivered (обязателен верный код получения от покупателя), затем ядровый markOrderFulfillmentAsDelivered.
   @POST('/admin/orders/{id}/lifecycle/deliver')
   Future<AdminOrderStatusRes> postOrdersIdLifecycleDeliver({
     @Path('id') required String id,
@@ -299,14 +309,6 @@ abstract class OrdersClient {
     @Path('id') required String id,
   });
 
-  /// Place Counter Order (POS).
-  ///
-  /// Продажа у окна склада: продавец собрал корзину покупателя на месте, оплата авторизована — заказ создаётся сразу выданным (свёрнутый путь new → delivered, способ получения counter). Отдельный ресурс: статический сегмент под /admin/orders конфликтует с ядровым /admin/orders/{id}.
-  @POST('/admin/counter-orders')
-  Future<AdminPlaceCounterOrderRes> postCounterOrders({
-    @Body() required AdminPlaceCounterOrder body,
-  });
-
   /// Cancel Order (Admin).
   ///
   /// Отмена админом: ядровый cancelOrder (order.status → canceled), статус → canceled. Под /lifecycle/, чтобы не перекрывать ядровый POST /admin/orders/{id}/cancel.
@@ -314,6 +316,31 @@ abstract class OrdersClient {
   Future<AdminOrderStatusRes> postOrdersIdLifecycleCancel({
     @Path('id') required String id,
     @Body() AdminCancelOrder? body,
+  });
+
+  /// List Delivery Slots For Reschedule (Admin).
+  ///
+  /// Окна приезда, которые заказу ещё можно поставить, и признак, можно ли его двигать (T5.6b). Доступность окна (запас на сборку, горизонт недели) считает домен слота — панель получает коды и подписывает их сама.
+  @GET('/admin/orders/{id}/lifecycle/reschedule')
+  Future<AdminOrderRescheduleOptionsRes> getOrdersIdLifecycleReschedule({
+    @Path('id') required String id,
+  });
+
+  /// Reschedule Order Delivery (Admin).
+  ///
+  /// Перенос доставки на другое окно (T5.6b): продавец двигает слот по звонку покупателя. Статус заказа не меняется; «кто и почему подвинул» пишется в лог заказа записью kind=slot.
+  @POST('/admin/orders/{id}/lifecycle/reschedule')
+  Future<AdminOrderSlotRes> postOrdersIdLifecycleReschedule({
+    @Path('id') required String id,
+    @Body() required AdminRescheduleOrder body,
+  });
+
+  /// List My Order Lifecycles.
+  ///
+  /// Бизнес-стадии всех заказов текущего покупателя одним запросом (кабинет клиента): ядровый GET /store/orders не знает про order-lifecycle, а список заказов показывает стадию. Заказ без заведённого цикла в ответ не попадает.
+  @GET('/store/order-lifecycles')
+  Future<StoreMyOrderLifecyclesRes> storeListMyOrderLifecycles({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
   });
 
   /// Get Order Lifecycle Status.

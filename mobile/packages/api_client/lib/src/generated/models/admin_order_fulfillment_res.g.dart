@@ -19,5 +19,5 @@ Map<String, dynamic> _$AdminOrderFulfillmentResToJson(
   AdminOrderFulfillmentRes instance,
 ) => <String, dynamic>{
   'order_id': instance.orderId,
-  'fulfillment': instance.fulfillment,
+  'fulfillment': ?instance.fulfillment,
 };

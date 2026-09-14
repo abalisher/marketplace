@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminProductTypeListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'product_types': instance.productTypes,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

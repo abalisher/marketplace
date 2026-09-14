@@ -13,7 +13,7 @@ Errors _$ErrorsFromJson(Map<String, dynamic> json) => Errors(
 );
 
 Map<String, dynamic> _$ErrorsToJson(Errors instance) => <String, dynamic>{
-  'error': instance.error,
+  'error': ?instance.error,
   'action': instance.action,
   'handlerType': instance.handlerType,
 };

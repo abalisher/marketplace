@@ -29,9 +29,9 @@ Map<String, dynamic> _$StoreCompanyEmployeeToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'role': _$StoreCompanyEmployeeRoleEnumMap[instance.role]!,
-  'created_at': instance.createdAt?.toIso8601String(),
-  'customer': instance.customer,
-  'spend_limits': instance.spendLimits,
+  'created_at': ?instance.createdAt?.toIso8601String(),
+  'customer': ?instance.customer,
+  'spend_limits': ?instance.spendLimits,
 };
 
 const _$StoreCompanyEmployeeRoleEnumMap = {

@@ -31,12 +31,12 @@ Map<String, dynamic> _$AdminPaymentSessionToJson(
   'amount': instance.amount,
   'currency_code': instance.currencyCode,
   'provider_id': instance.providerId,
-  'data': instance.data,
-  'context': instance.context,
+  'data': ?instance.data,
+  'context': ?instance.context,
   'status': _$AdminPaymentSessionStatusEnumMap[instance.status]!,
-  'authorized_at': instance.authorizedAt?.toIso8601String(),
-  'payment_collection': instance.paymentCollection,
-  'payment': instance.payment,
+  'authorized_at': ?instance.authorizedAt?.toIso8601String(),
+  'payment_collection': ?instance.paymentCollection,
+  'payment': ?instance.payment,
 };
 
 const _$AdminPaymentSessionStatusEnumMap = {

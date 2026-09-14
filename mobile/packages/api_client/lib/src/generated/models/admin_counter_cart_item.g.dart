@@ -24,12 +24,12 @@ Map<String, dynamic> _$AdminCounterCartItemToJson(
   AdminCounterCartItem instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'variant_id': instance.variantId,
-  'product_id': instance.productId,
+  'variant_id': ?instance.variantId,
+  'product_id': ?instance.productId,
   'title': instance.title,
-  'product_title': instance.productTitle,
-  'variant_title': instance.variantTitle,
-  'thumbnail': instance.thumbnail,
+  'product_title': ?instance.productTitle,
+  'variant_title': ?instance.variantTitle,
+  'thumbnail': ?instance.thumbnail,
   'quantity': instance.quantity,
   'unit_price': instance.unitPrice,
 };

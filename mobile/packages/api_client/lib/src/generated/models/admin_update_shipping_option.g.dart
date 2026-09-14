@@ -44,16 +44,17 @@ AdminUpdateShippingOption _$AdminUpdateShippingOptionFromJson(
 Map<String, dynamic> _$AdminUpdateShippingOptionToJson(
   AdminUpdateShippingOption instance,
 ) => <String, dynamic>{
-  'name': instance.name,
-  'data': instance.data,
-  'price_type': _$AdminUpdateShippingOptionPriceTypeEnumMap[instance.priceType],
-  'provider_id': instance.providerId,
-  'shipping_profile_id': instance.shippingProfileId,
-  'type': instance.type,
-  'type_id': instance.typeId,
-  'prices': instance.prices,
-  'rules': instance.rules,
-  'metadata': instance.metadata,
+  'name': ?instance.name,
+  'data': ?instance.data,
+  'price_type':
+      ?_$AdminUpdateShippingOptionPriceTypeEnumMap[instance.priceType],
+  'provider_id': ?instance.providerId,
+  'shipping_profile_id': ?instance.shippingProfileId,
+  'type': ?instance.type,
+  'type_id': ?instance.typeId,
+  'prices': ?instance.prices,
+  'rules': ?instance.rules,
+  'metadata': ?instance.metadata,
 };
 
 const _$AdminUpdateShippingOptionPriceTypeEnumMap = {

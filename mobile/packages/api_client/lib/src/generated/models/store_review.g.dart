@@ -24,9 +24,9 @@ Map<String, dynamic> _$StoreReviewToJson(StoreReview instance) =>
       'order_id': instance.orderId,
       'target': _$StoreReviewTargetEnumMap[instance.target]!,
       'rating': instance.rating,
-      'comment': instance.comment,
+      'comment': ?instance.comment,
       'status': _$StoreReviewStatusEnumMap[instance.status]!,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'created_at': ?instance.createdAt?.toIso8601String(),
     };
 
 const _$StoreReviewTargetEnumMap = {

@@ -11,4 +11,4 @@ AdminCapturePayment _$AdminCapturePaymentFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminCapturePaymentToJson(
   AdminCapturePayment instance,
-) => <String, dynamic>{'amount': instance.amount};
+) => <String, dynamic>{'amount': ?instance.amount};

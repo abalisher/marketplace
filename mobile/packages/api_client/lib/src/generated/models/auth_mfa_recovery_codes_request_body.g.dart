@@ -12,4 +12,4 @@ AuthMfaRecoveryCodesRequestBody _$AuthMfaRecoveryCodesRequestBodyFromJson(
 
 Map<String, dynamic> _$AuthMfaRecoveryCodesRequestBodyToJson(
   AuthMfaRecoveryCodesRequestBody instance,
-) => <String, dynamic>{'count': instance.count};
+) => <String, dynamic>{'count': ?instance.count};

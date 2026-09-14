@@ -18,6 +18,6 @@ Map<String, dynamic> _$AdminUpdateStoreSupportedCurrencyToJson(
   AdminUpdateStoreSupportedCurrency instance,
 ) => <String, dynamic>{
   'currency_code': instance.currencyCode,
-  'is_default': instance.isDefault,
-  'is_tax_inclusive': instance.isTaxInclusive,
+  'is_default': ?instance.isDefault,
+  'is_tax_inclusive': ?instance.isTaxInclusive,
 };

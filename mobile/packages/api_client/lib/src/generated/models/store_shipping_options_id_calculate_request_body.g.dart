@@ -16,4 +16,4 @@ _$StoreShippingOptionsIdCalculateRequestBodyFromJson(
 
 Map<String, dynamic> _$StoreShippingOptionsIdCalculateRequestBodyToJson(
   StoreShippingOptionsIdCalculateRequestBody instance,
-) => <String, dynamic>{'cart_id': instance.cartId, 'data': instance.data};
+) => <String, dynamic>{'cart_id': instance.cartId, 'data': ?instance.data};

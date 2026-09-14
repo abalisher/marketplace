@@ -21,8 +21,8 @@ Map<String, dynamic> _$AdminPostOrderEditsUpdateItemQuantityReqSchemaToJson(
   AdminPostOrderEditsUpdateItemQuantityReqSchema instance,
 ) => <String, dynamic>{
   'quantity': instance.quantity,
-  'internal_note': instance.internalNote,
-  'unit_price': instance.unitPrice,
-  'compare_at_unit_price': instance.compareAtUnitPrice,
-  'metadata': instance.metadata,
+  'internal_note': ?instance.internalNote,
+  'unit_price': ?instance.unitPrice,
+  'compare_at_unit_price': ?instance.compareAtUnitPrice,
+  'metadata': ?instance.metadata,
 };

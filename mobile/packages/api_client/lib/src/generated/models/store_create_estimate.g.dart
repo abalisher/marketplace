@@ -20,7 +20,7 @@ StoreCreateEstimate _$StoreCreateEstimateFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$StoreCreateEstimateToJson(
   StoreCreateEstimate instance,
 ) => <String, dynamic>{
-  'params': instance.params,
-  'norm_codes': instance.normCodes,
-  'note': instance.note,
+  'params': ?instance.params,
+  'norm_codes': ?instance.normCodes,
+  'note': ?instance.note,
 };

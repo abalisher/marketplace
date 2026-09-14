@@ -15,6 +15,7 @@ class RelationshipFilterConfig {
     required this.displayField,
     required this.multiple,
     required this.endpoint,
+    this.filterKey,
   });
 
   factory RelationshipFilterConfig.fromJson(Map<String, Object?> json) =>
@@ -36,6 +37,10 @@ class RelationshipFilterConfig {
 
   /// The relationship filter's endpoint.
   final String endpoint;
+
+  /// The relationship's filter key.
+  @JsonKey(name: 'filter_key')
+  final String? filterKey;
 
   Map<String, Object?> toJson() => _$RelationshipFilterConfigToJson(this);
 }

@@ -28,10 +28,10 @@ _$AdminUpdateShippingOptionPricesSealedAdminUpdateShippingOptionPriceWithCurrenc
   AdminUpdateShippingOptionPricesSealedAdminUpdateShippingOptionPriceWithCurrency
   instance,
 ) => <String, dynamic>{
-  'id': instance.id,
-  'currencyCode': instance.currencyCode,
-  'amount': instance.amount,
-  'rules': instance.rules,
+  'id': ?instance.id,
+  'currencyCode': ?instance.currencyCode,
+  'amount': ?instance.amount,
+  'rules': ?instance.rules,
 };
 
 AdminUpdateShippingOptionPricesSealedAdminUpdateShippingOptionPriceWithRegion
@@ -52,8 +52,8 @@ _$AdminUpdateShippingOptionPricesSealedAdminUpdateShippingOptionPriceWithRegionT
   AdminUpdateShippingOptionPricesSealedAdminUpdateShippingOptionPriceWithRegion
   instance,
 ) => <String, dynamic>{
-  'id': instance.id,
-  'regionId': instance.regionId,
-  'amount': instance.amount,
-  'rules': instance.rules,
+  'id': ?instance.id,
+  'regionId': ?instance.regionId,
+  'amount': ?instance.amount,
+  'rules': ?instance.rules,
 };

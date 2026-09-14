@@ -26,8 +26,8 @@ _$AdminCreateProductOptionsSealedAdminCreateProductOptionToJson(
 ) => <String, dynamic>{
   'title': instance.title,
   'values': instance.values,
-  'ranks': instance.ranks,
-  'isExclusive': instance.isExclusive,
+  'ranks': ?instance.ranks,
+  'isExclusive': ?instance.isExclusive,
 };
 
 AdminCreateProductOptionsSealedVariant2
@@ -41,4 +41,4 @@ _$AdminCreateProductOptionsSealedVariant2FromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminCreateProductOptionsSealedVariant2ToJson(
   AdminCreateProductOptionsSealedVariant2 instance,
-) => <String, dynamic>{'id': instance.id, 'valueIds': instance.valueIds};
+) => <String, dynamic>{'id': instance.id, 'valueIds': ?instance.valueIds};

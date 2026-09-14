@@ -20,8 +20,8 @@ _$AdminUpdateShippingOptionPriceWithRegionFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$AdminUpdateShippingOptionPriceWithRegionToJson(
   AdminUpdateShippingOptionPriceWithRegion instance,
 ) => <String, dynamic>{
-  'id': instance.id,
-  'region_id': instance.regionId,
-  'amount': instance.amount,
-  'rules': instance.rules,
+  'id': ?instance.id,
+  'region_id': ?instance.regionId,
+  'amount': ?instance.amount,
+  'rules': ?instance.rules,
 };

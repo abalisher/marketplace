@@ -15,4 +15,4 @@ AuthMfaFactorsIdRequestBody _$AuthMfaFactorsIdRequestBodyFromJson(
 
 Map<String, dynamic> _$AuthMfaFactorsIdRequestBodyToJson(
   AuthMfaFactorsIdRequestBody instance,
-) => <String, dynamic>{'method': instance.method, 'code': instance.code};
+) => <String, dynamic>{'method': ?instance.method, 'code': ?instance.code};

@@ -43,7 +43,7 @@ class BaseCollection {
 
   /// The collection's deletion date.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The collection's products.
   final List<dynamic>? products;

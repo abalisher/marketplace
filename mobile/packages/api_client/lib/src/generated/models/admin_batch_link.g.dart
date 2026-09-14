@@ -15,4 +15,4 @@ AdminBatchLink _$AdminBatchLinkFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$AdminBatchLinkToJson(AdminBatchLink instance) =>
-    <String, dynamic>{'add': instance.add, 'remove': instance.remove};
+    <String, dynamic>{'add': ?instance.add, 'remove': ?instance.remove};

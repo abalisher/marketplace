@@ -23,11 +23,11 @@ AdminUpdateTaxRate _$AdminUpdateTaxRateFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminUpdateTaxRateToJson(AdminUpdateTaxRate instance) =>
     <String, dynamic>{
-      'rate': instance.rate,
-      'code': instance.code,
-      'rules': instance.rules,
-      'name': instance.name,
-      'is_default': instance.isDefault,
-      'is_combinable': instance.isCombinable,
-      'metadata': instance.metadata,
+      'rate': ?instance.rate,
+      'code': ?instance.code,
+      'rules': ?instance.rules,
+      'name': ?instance.name,
+      'is_default': ?instance.isDefault,
+      'is_combinable': ?instance.isCombinable,
+      'metadata': ?instance.metadata,
     };

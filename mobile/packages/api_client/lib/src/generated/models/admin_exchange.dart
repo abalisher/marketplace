@@ -109,7 +109,7 @@ class AdminExchange {
 
   /// The date the exchange was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
   final BaseOrder? order;
 
   /// Whether variants that are out-of-stock can still be added as additional or outbound items.

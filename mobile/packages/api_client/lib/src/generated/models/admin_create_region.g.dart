@@ -25,9 +25,9 @@ Map<String, dynamic> _$AdminCreateRegionToJson(AdminCreateRegion instance) =>
     <String, dynamic>{
       'name': instance.name,
       'currency_code': instance.currencyCode,
-      'countries': instance.countries,
-      'automatic_taxes': instance.automaticTaxes,
-      'is_tax_inclusive': instance.isTaxInclusive,
-      'payment_providers': instance.paymentProviders,
-      'metadata': instance.metadata,
+      'countries': ?instance.countries,
+      'automatic_taxes': ?instance.automaticTaxes,
+      'is_tax_inclusive': ?instance.isTaxInclusive,
+      'payment_providers': ?instance.paymentProviders,
+      'metadata': ?instance.metadata,
     };

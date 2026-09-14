@@ -28,6 +28,7 @@ class OrderShippingMethod {
     required this.taxTotal,
     required this.discountTotal,
     required this.discountTaxTotal,
+    required this.isCustomAmount,
     this.description,
     this.shippingOptionId,
     this.data,
@@ -113,6 +114,10 @@ class OrderShippingMethod {
   /// The total taxes of the discount amount.
   @JsonKey(name: 'discount_tax_total')
   final num discountTaxTotal;
+
+  /// Whether the shipping method price is custom amount or not.
+  @JsonKey(name: 'is_custom_amount')
+  final bool isCustomAmount;
 
   Map<String, Object?> toJson() => _$OrderShippingMethodToJson(this);
 }

@@ -19,5 +19,5 @@ Map<String, dynamic> _$AdminCreateShippingProfileToJson(
 ) => <String, dynamic>{
   'name': instance.name,
   'type': instance.type,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
 };

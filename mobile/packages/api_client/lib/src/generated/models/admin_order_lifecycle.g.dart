@@ -17,6 +17,14 @@ AdminOrderLifecycle _$AdminOrderLifecycleFromJson(Map<String, dynamic> json) =>
           : AdminOrderLifecycleDeliveryMethod.fromJson(
               json['delivery_method'] as String,
             ),
+      deliveryDate: json['delivery_date'] == null
+          ? null
+          : DateTime.parse(json['delivery_date'] as String),
+      deliveryWindow: json['delivery_window'] == null
+          ? null
+          : AdminOrderLifecycleDeliveryWindow.fromJson(
+              json['delivery_window'] as String,
+            ),
       createdAt: json['created_at'] == null
           ? null
           : DateTime.parse(json['created_at'] as String),
@@ -28,6 +36,15 @@ AdminOrderLifecycle _$AdminOrderLifecycleFromJson(Map<String, dynamic> json) =>
           : AdminOrderLifecycleOrder.fromJson(
               json['order'] as Map<String, dynamic>,
             ),
+      ageHours: (json['age_hours'] as num?)?.toInt(),
+      statusHours: (json['status_hours'] as num?)?.toInt(),
+      slaHours: (json['sla_hours'] as num?)?.toInt(),
+      overdue: json['overdue'] as bool?,
+      assignee: json['assignee'] == null
+          ? null
+          : AdminOrderAssignee.fromJson(
+              json['assignee'] as Map<String, dynamic>,
+            ),
     );
 
 Map<String, dynamic> _$AdminOrderLifecycleToJson(
@@ -35,13 +52,21 @@ Map<String, dynamic> _$AdminOrderLifecycleToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'status': _$AdminOrderLifecycleStatusEnumMap[instance.status]!,
-  'previous_status': instance.previousStatus,
-  'note': instance.note,
+  'previous_status': ?instance.previousStatus,
+  'note': ?instance.note,
   'delivery_method':
-      _$AdminOrderLifecycleDeliveryMethodEnumMap[instance.deliveryMethod],
-  'created_at': instance.createdAt?.toIso8601String(),
-  'updated_at': instance.updatedAt?.toIso8601String(),
-  'order': instance.order,
+      ?_$AdminOrderLifecycleDeliveryMethodEnumMap[instance.deliveryMethod],
+  'delivery_date': ?instance.deliveryDate?.toIso8601String(),
+  'delivery_window':
+      ?_$AdminOrderLifecycleDeliveryWindowEnumMap[instance.deliveryWindow],
+  'created_at': ?instance.createdAt?.toIso8601String(),
+  'updated_at': ?instance.updatedAt?.toIso8601String(),
+  'order': ?instance.order,
+  'age_hours': ?instance.ageHours,
+  'status_hours': ?instance.statusHours,
+  'sla_hours': ?instance.slaHours,
+  'overdue': ?instance.overdue,
+  'assignee': ?instance.assignee,
 };
 
 const _$AdminOrderLifecycleStatusEnumMap = {
@@ -60,7 +85,12 @@ const _$AdminOrderLifecycleStatusEnumMap = {
 
 const _$AdminOrderLifecycleDeliveryMethodEnumMap = {
   AdminOrderLifecycleDeliveryMethod.delivery: 'delivery',
-  AdminOrderLifecycleDeliveryMethod.pickup: 'pickup',
-  AdminOrderLifecycleDeliveryMethod.counter: 'counter',
   AdminOrderLifecycleDeliveryMethod.$unknown: r'$unknown',
+};
+
+const _$AdminOrderLifecycleDeliveryWindowEnumMap = {
+  AdminOrderLifecycleDeliveryWindow.morning: 'morning',
+  AdminOrderLifecycleDeliveryWindow.day: 'day',
+  AdminOrderLifecycleDeliveryWindow.evening: 'evening',
+  AdminOrderLifecycleDeliveryWindow.$unknown: r'$unknown',
 };

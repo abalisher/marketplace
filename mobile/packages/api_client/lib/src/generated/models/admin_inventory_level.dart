@@ -40,7 +40,7 @@ class AdminInventoryLevel {
 
   /// The location level's deleted at.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The location level's inventory item id.
   @JsonKey(name: 'inventory_item_id')

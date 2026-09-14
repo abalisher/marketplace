@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminTransactionsResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'transactions': instance.transactions,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

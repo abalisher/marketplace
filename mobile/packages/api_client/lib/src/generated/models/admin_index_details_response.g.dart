@@ -9,11 +9,11 @@ part of 'admin_index_details_response.dart';
 AdminIndexDetailsResponse _$AdminIndexDetailsResponseFromJson(
   Map<String, dynamic> json,
 ) => AdminIndexDetailsResponse(
-  metadata: (json['metadata'] as List<dynamic>)
-      .map((e) => IndexInfo.fromJson(e as Map<String, dynamic>))
+  metadata: (json['metadata'] as List<dynamic>?)
+      ?.map((e) => IndexInfo.fromJson(e as Map<String, dynamic>))
       .toList(),
 );
 
 Map<String, dynamic> _$AdminIndexDetailsResponseToJson(
   AdminIndexDetailsResponse instance,
-) => <String, dynamic>{'metadata': instance.metadata};
+) => <String, dynamic>{'metadata': ?instance.metadata};

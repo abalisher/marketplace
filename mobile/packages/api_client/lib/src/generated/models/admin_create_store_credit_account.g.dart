@@ -18,6 +18,6 @@ Map<String, dynamic> _$AdminCreateStoreCreditAccountToJson(
   AdminCreateStoreCreditAccount instance,
 ) => <String, dynamic>{
   'currency_code': instance.currencyCode,
-  'customer_id': instance.customerId,
-  'metadata': instance.metadata,
+  'customer_id': ?instance.customerId,
+  'metadata': ?instance.metadata,
 };

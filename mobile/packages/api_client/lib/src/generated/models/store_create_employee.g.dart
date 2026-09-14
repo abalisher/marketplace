@@ -18,7 +18,7 @@ Map<String, dynamic> _$StoreCreateEmployeeToJson(
   StoreCreateEmployee instance,
 ) => <String, dynamic>{
   'customer_id': instance.customerId,
-  'role': _$StoreCreateEmployeeRoleEnumMap[instance.role],
+  'role': ?_$StoreCreateEmployeeRoleEnumMap[instance.role],
 };
 
 const _$StoreCreateEmployeeRoleEnumMap = {

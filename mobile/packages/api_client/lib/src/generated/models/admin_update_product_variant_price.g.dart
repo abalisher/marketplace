@@ -20,10 +20,10 @@ AdminUpdateProductVariantPrice _$AdminUpdateProductVariantPriceFromJson(
 Map<String, dynamic> _$AdminUpdateProductVariantPriceToJson(
   AdminUpdateProductVariantPrice instance,
 ) => <String, dynamic>{
-  'currency_code': instance.currencyCode,
-  'amount': instance.amount,
-  'min_quantity': instance.minQuantity,
-  'max_quantity': instance.maxQuantity,
-  'rules': instance.rules,
-  'id': instance.id,
+  'currency_code': ?instance.currencyCode,
+  'amount': ?instance.amount,
+  'min_quantity': ?instance.minQuantity,
+  'max_quantity': ?instance.maxQuantity,
+  'rules': ?instance.rules,
+  'id': ?instance.id,
 };

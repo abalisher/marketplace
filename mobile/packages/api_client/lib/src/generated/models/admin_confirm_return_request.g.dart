@@ -13,4 +13,4 @@ AdminConfirmReturnRequest _$AdminConfirmReturnRequestFromJson(
 
 Map<String, dynamic> _$AdminConfirmReturnRequestToJson(
   AdminConfirmReturnRequest instance,
-) => <String, dynamic>{'no_notification': instance.noNotification};
+) => <String, dynamic>{'no_notification': ?instance.noNotification};

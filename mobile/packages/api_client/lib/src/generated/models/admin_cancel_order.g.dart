@@ -10,4 +10,4 @@ AdminCancelOrder _$AdminCancelOrderFromJson(Map<String, dynamic> json) =>
     AdminCancelOrder(reason: json['reason'] as String?);
 
 Map<String, dynamic> _$AdminCancelOrderToJson(AdminCancelOrder instance) =>
-    <String, dynamic>{'reason': instance.reason};
+    <String, dynamic>{'reason': ?instance.reason};

@@ -18,7 +18,9 @@ AdminApiKey _$AdminApiKeyFromJson(Map<String, dynamic> json) => AdminApiKey(
   revokedBy: json['revoked_by'] as String,
   revokedAt: DateTime.parse(json['revoked_at'] as String),
   updatedAt: DateTime.parse(json['updated_at'] as String),
-  deletedAt: DateTime.parse(json['deleted_at'] as String),
+  deletedAt: json['deleted_at'] == null
+      ? null
+      : DateTime.parse(json['deleted_at'] as String),
 );
 
 Map<String, dynamic> _$AdminApiKeyToJson(AdminApiKey instance) =>
@@ -34,7 +36,7 @@ Map<String, dynamic> _$AdminApiKeyToJson(AdminApiKey instance) =>
       'revoked_by': instance.revokedBy,
       'revoked_at': instance.revokedAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'deleted_at': instance.deletedAt.toIso8601String(),
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
     };
 
 const _$AdminApiKeyTypeEnumMap = {

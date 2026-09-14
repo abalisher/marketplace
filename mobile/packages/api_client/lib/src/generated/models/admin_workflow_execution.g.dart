@@ -37,7 +37,7 @@ Map<String, dynamic> _$AdminWorkflowExecutionToJson(
   'state': _$AdminWorkflowExecutionStateEnumMap[instance.state]!,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
-  'deleted_at': instance.deletedAt?.toIso8601String(),
+  'deleted_at': ?instance.deletedAt?.toIso8601String(),
 };
 
 const _$AdminWorkflowExecutionStateEnumMap = {

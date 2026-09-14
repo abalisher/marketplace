@@ -70,7 +70,7 @@ class AdminApiKey {
 
   /// The date the API key was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminApiKeyToJson(this);
 }

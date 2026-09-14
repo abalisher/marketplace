@@ -19,6 +19,7 @@ import '../models/store_carts_id_line_items_line_id_request_body.dart';
 import '../models/store_carts_id_line_items_request_body.dart';
 import '../models/store_carts_id_request_body.dart';
 import '../models/store_carts_request_body.dart';
+import '../models/store_my_cart_res.dart';
 import '../models/store_remove_gift_card_from_cart.dart';
 
 part 'carts_client.g.dart';
@@ -314,15 +315,17 @@ abstract class CartsClient {
   ///
   /// Add a shipping method to a cart. Use this API route when the customer chooses their preferred shipping option.
   ///
+  /// If the chosen shipping option's `price_type` is `calculated`, its price is computed by the associated fulfillment provider when it's added to the cart. If the provider fails to calculate the price, this route returns an error.
+  ///
   /// [id] - The cart's ID.
   ///
   /// [xPublishableApiKey] - Publishable API Key created in the Medusa Admin.
   ///
   /// [xMedusaLocale] - The locale in BCP 47 format to retrieve localized content.
   ///
-  /// [fields] - Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.
-  ///
   /// [locale] - The locale in BCP 47 format to retrieve localized content.
+  ///
+  /// [fields] - Comma-separated fields that should be included in the returned data. If a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. Without prefix it will replace the entire default fields.
   ///
   /// [body] - The shipping method's details.
   @POST('/store/carts/{id}/shipping-methods')
@@ -331,8 +334,8 @@ abstract class CartsClient {
     @Header('x-publishable-api-key') required String xPublishableApiKey,
     @Body() required dynamic body,
     @Header('x-medusa-locale') String? xMedusaLocale,
-    @Query('fields') String? fields,
     @Query('locale') String? locale,
+    @Query('fields') String? fields,
   });
 
   /// Add Store Credit to Cart.
@@ -367,15 +370,23 @@ abstract class CartsClient {
   ///
   /// [xMedusaLocale] - The locale in BCP 47 format to retrieve localized content.
   ///
-  /// [fields] - Comma-separated fields that should be included in the returned data. if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. without prefix it will replace the entire default fields.
-  ///
   /// [locale] - The locale in BCP 47 format to retrieve localized content.
+  ///
+  /// [fields] - Comma-separated fields that should be included in the returned data. If a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. Without prefix it will replace the entire default fields.
   @POST('/store/carts/{id}/taxes')
   Future<StoreCartResponse> postCartsIdTaxes({
     @Path('id') required String id,
     @Header('x-publishable-api-key') required String xPublishableApiKey,
     @Header('x-medusa-locale') String? xMedusaLocale,
-    @Query('fields') String? fields,
     @Query('locale') String? locale,
+    @Query('fields') String? fields,
+  });
+
+  /// Get My Current Cart.
+  ///
+  /// Незавершённая корзина текущего покупателя (кабинет клиента): последняя обновлённая корзина без completed_at. Корзину создаёт ассистент в ходе диалога, поэтому её id нужен клиенту с сервера, а не из состояния диалога. Содержимое читается ядровым GET /store/carts/{id}. Корзины нет — cart_id: null.
+  @GET('/store/carts/me')
+  Future<StoreMyCartRes> storeGetMyCart({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
   });
 }

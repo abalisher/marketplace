@@ -14,4 +14,4 @@ AdminReceiveItems _$AdminReceiveItemsFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$AdminReceiveItemsToJson(AdminReceiveItems instance) =>
-    <String, dynamic>{'items': instance.items};
+    <String, dynamic>{'items': ?instance.items};

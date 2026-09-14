@@ -25,7 +25,7 @@ Map<String, dynamic> _$AdminUpdateShippingOptionRuleToJson(
       _$AdminUpdateShippingOptionRuleOperatorEnumEnumMap[instance
           .operatorEnum]!,
   'attribute': instance.attribute,
-  'value': instance.value,
+  'value': ?instance.value,
 };
 
 const _$AdminUpdateShippingOptionRuleOperatorEnumEnumMap = {

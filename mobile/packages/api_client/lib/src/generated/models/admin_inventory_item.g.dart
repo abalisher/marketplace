@@ -28,26 +28,28 @@ AdminInventoryItem _$AdminInventoryItemFromJson(Map<String, dynamic> json) =>
       locationLevels: (json['location_levels'] as List<dynamic>?)
           ?.map((e) => AdminInventoryLevel.fromJson(e as Map<String, dynamic>))
           .toList(),
+      unitOfMeasure: json['unit_of_measure'] as String?,
     );
 
 Map<String, dynamic> _$AdminInventoryItemToJson(AdminInventoryItem instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'sku': instance.sku,
-      'origin_country': instance.originCountry,
-      'hs_code': instance.hsCode,
+      'sku': ?instance.sku,
+      'origin_country': ?instance.originCountry,
+      'hs_code': ?instance.hsCode,
       'requires_shipping': instance.requiresShipping,
-      'mid_code': instance.midCode,
-      'material': instance.material,
-      'weight': instance.weight,
-      'length': instance.length,
-      'height': instance.height,
-      'width': instance.width,
-      'title': instance.title,
-      'description': instance.description,
-      'thumbnail': instance.thumbnail,
-      'metadata': instance.metadata,
-      'location_levels': instance.locationLevels,
+      'mid_code': ?instance.midCode,
+      'material': ?instance.material,
+      'weight': ?instance.weight,
+      'length': ?instance.length,
+      'height': ?instance.height,
+      'width': ?instance.width,
+      'title': ?instance.title,
+      'description': ?instance.description,
+      'thumbnail': ?instance.thumbnail,
+      'metadata': ?instance.metadata,
+      'location_levels': ?instance.locationLevels,
       'stocked_quantity': instance.stockedQuantity,
       'reserved_quantity': instance.reservedQuantity,
+      'unit_of_measure': ?instance.unitOfMeasure,
     };

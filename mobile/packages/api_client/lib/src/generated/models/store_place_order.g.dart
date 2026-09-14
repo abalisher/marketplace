@@ -25,6 +25,5 @@ Map<String, dynamic> _$StorePlaceOrderToJson(StorePlaceOrder instance) =>
 
 const _$StorePlaceOrderDeliveryMethodEnumMap = {
   StorePlaceOrderDeliveryMethod.delivery: 'delivery',
-  StorePlaceOrderDeliveryMethod.pickup: 'pickup',
   StorePlaceOrderDeliveryMethod.$unknown: r'$unknown',
 };

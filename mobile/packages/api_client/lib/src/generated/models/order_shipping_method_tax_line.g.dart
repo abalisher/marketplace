@@ -21,21 +21,25 @@ OrderShippingMethodTaxLine _$OrderShippingMethodTaxLineFromJson(
   description: json['description'] as String?,
   taxRateId: json['tax_rate_id'] as String?,
   providerId: json['provider_id'] as String?,
+  data: json['data'],
+  metadata: json['metadata'],
 );
 
 Map<String, dynamic> _$OrderShippingMethodTaxLineToJson(
   OrderShippingMethodTaxLine instance,
 ) => <String, dynamic>{
-  'shipping_method': instance.shippingMethod,
+  'shipping_method': ?instance.shippingMethod,
   'shipping_method_id': instance.shippingMethodId,
   'total': instance.total,
   'subtotal': instance.subtotal,
   'id': instance.id,
-  'description': instance.description,
-  'tax_rate_id': instance.taxRateId,
+  'description': ?instance.description,
+  'tax_rate_id': ?instance.taxRateId,
   'code': instance.code,
   'rate': instance.rate,
-  'provider_id': instance.providerId,
+  'provider_id': ?instance.providerId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
+  'data': ?instance.data,
+  'metadata': ?instance.metadata,
 };

@@ -27,6 +27,7 @@ class AdminCreateInventoryItem {
     this.thumbnail,
     this.metadata,
     this.locationLevels,
+    this.unitOfMeasure,
   });
 
   factory AdminCreateInventoryItem.fromJson(Map<String, Object?> json) =>
@@ -81,6 +82,10 @@ class AdminCreateInventoryItem {
   /// The inventory item's location levels.
   @JsonKey(name: 'location_levels')
   final List<AdminBatchCreateInventoryItemLocationLevels>? locationLevels;
+
+  /// The inventory item's unit of measure.
+  @JsonKey(name: 'unit_of_measure')
+  final String? unitOfMeasure;
 
   Map<String, Object?> toJson() => _$AdminCreateInventoryItemToJson(this);
 }

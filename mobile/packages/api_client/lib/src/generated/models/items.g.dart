@@ -20,10 +20,10 @@ Items _$ItemsFromJson(Map<String, dynamic> json) => Items(
 Map<String, dynamic> _$ItemsToJson(Items instance) => <String, dynamic>{
   'id': instance.id,
   'quantity': instance.quantity,
-  'reason': _$ReasonEnumMap[instance.reason],
-  'description': instance.description,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'reason': ?_$ReasonEnumMap[instance.reason],
+  'description': ?instance.description,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };
 
 const _$ReasonEnumMap = {

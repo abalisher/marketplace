@@ -15,4 +15,4 @@ AdminCreateCustomerGroup _$AdminCreateCustomerGroupFromJson(
 
 Map<String, dynamic> _$AdminCreateCustomerGroupToJson(
   AdminCreateCustomerGroup instance,
-) => <String, dynamic>{'name': instance.name, 'metadata': instance.metadata};
+) => <String, dynamic>{'name': instance.name, 'metadata': ?instance.metadata};

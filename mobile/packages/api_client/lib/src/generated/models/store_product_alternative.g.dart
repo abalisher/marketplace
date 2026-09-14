@@ -25,7 +25,7 @@ Map<String, dynamic> _$StoreProductAlternativeToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'title': instance.title,
-  'handle': instance.handle,
-  'thumbnail': instance.thumbnail,
-  'product_card': instance.productCard,
+  'handle': ?instance.handle,
+  'thumbnail': ?instance.thumbnail,
+  'product_card': ?instance.productCard,
 };

@@ -34,7 +34,7 @@ Map<String, dynamic> _$AdminOrderChangeActionToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'order_change_id': instance.orderChangeId,
-  'order_change': instance.orderChange,
+  'order_change': ?instance.orderChange,
   'order_id': instance.orderId,
   'return_id': instance.returnId,
   'claim_id': instance.claimId,
@@ -43,7 +43,7 @@ Map<String, dynamic> _$AdminOrderChangeActionToJson(
   'reference': _$AdminOrderChangeActionReferenceEnumMap[instance.reference]!,
   'reference_id': instance.referenceId,
   'action': _$AdminOrderChangeActionActionEnumMap[instance.action]!,
-  'details': instance.details,
+  'details': ?instance.details,
   'internal_note': instance.internalNote,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),

@@ -17,7 +17,7 @@ AdminUpdateProductTag _$AdminUpdateProductTagFromJson(
 Map<String, dynamic> _$AdminUpdateProductTagToJson(
   AdminUpdateProductTag instance,
 ) => <String, dynamic>{
-  'value': instance.value,
-  'metadata': instance.metadata,
-  'external_id': instance.externalId,
+  'value': ?instance.value,
+  'metadata': ?instance.metadata,
+  'external_id': ?instance.externalId,
 };

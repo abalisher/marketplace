@@ -46,7 +46,10 @@ class StoreCartsRequestBody {
   /// The cart's items.
   final List<StoreCartLineItem>? items;
 
-  /// The ID of the sales channel that cart is created in. Only products available in that sales channel can be added to the cart. If not provided, the store's default sales channel is associated with the cart instead.
+  /// The ID of the sales channel that cart is created in. If not provided, the store's default sales channel is associated with the cart instead.
+  ///
+  /// A product's availability in a sales channel only filters the products you retrieve. Medusa doesn't reject a variant added to the cart when its product isn't available in the cart's sales channel. Refer to the guide in the external documentation to learn how to enforce that validation.
+  ///
   @JsonKey(name: 'sales_channel_id')
   final String? salesChannelId;
 

@@ -43,7 +43,7 @@ class AdminProductCategory {
   final String name;
 
   /// The category's description.
-  final String description;
+  final String? description;
 
   /// The category's ID.
   final String id;
@@ -64,7 +64,7 @@ class AdminProductCategory {
 
   /// The date the category was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// Whether the category is active. If disabled, the category isn't shown in the storefront.
   @JsonKey(name: 'is_active')

@@ -31,11 +31,11 @@ AdminUpdateStore _$AdminUpdateStoreFromJson(
 
 Map<String, dynamic> _$AdminUpdateStoreToJson(AdminUpdateStore instance) =>
     <String, dynamic>{
-      'name': instance.name,
-      'supported_currencies': instance.supportedCurrencies,
-      'default_sales_channel_id': instance.defaultSalesChannelId,
-      'default_region_id': instance.defaultRegionId,
-      'default_location_id': instance.defaultLocationId,
-      'metadata': instance.metadata,
-      'supported_locales': instance.supportedLocales,
+      'name': ?instance.name,
+      'supported_currencies': ?instance.supportedCurrencies,
+      'default_sales_channel_id': ?instance.defaultSalesChannelId,
+      'default_region_id': ?instance.defaultRegionId,
+      'default_location_id': ?instance.defaultLocationId,
+      'metadata': ?instance.metadata,
+      'supported_locales': ?instance.supportedLocales,
     };

@@ -4,6 +4,8 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import 'base_cart_line_item.dart';
+
 part 'base_line_item_tax_line.g.dart';
 
 /// The tax line's details.
@@ -27,8 +29,7 @@ class BaseLineItemTaxLine {
   factory BaseLineItemTaxLine.fromJson(Map<String, Object?> json) =>
       _$BaseLineItemTaxLineFromJson(json);
 
-  /// The details of the item that the tax line belongs to.
-  final dynamic item;
+  final BaseCartLineItem item;
 
   /// The ID of the line item this tax line belongs to.
   @JsonKey(name: 'item_id')

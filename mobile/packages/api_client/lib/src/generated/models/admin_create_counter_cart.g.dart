@@ -19,7 +19,7 @@ Map<String, dynamic> _$AdminCreateCounterCartToJson(
   AdminCreateCounterCart instance,
 ) => <String, dynamic>{
   'location_id': instance.locationId,
-  'region_id': instance.regionId,
-  'email': instance.email,
-  'phone': instance.phone,
+  'region_id': ?instance.regionId,
+  'email': ?instance.email,
+  'phone': ?instance.phone,
 };

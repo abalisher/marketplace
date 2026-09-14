@@ -17,5 +17,5 @@ Map<String, dynamic> _$AdminPlaceCounterOrderToJson(
   AdminPlaceCounterOrder instance,
 ) => <String, dynamic>{
   'cart_id': instance.cartId,
-  'location_id': instance.locationId,
+  'location_id': ?instance.locationId,
 };

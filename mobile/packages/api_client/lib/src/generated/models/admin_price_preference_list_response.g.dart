@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminPricePreferenceListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'price_preferences': instance.pricePreferences,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

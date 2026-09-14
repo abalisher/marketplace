@@ -24,6 +24,7 @@ class AdminUpdateInventoryItem {
     this.requiresShipping,
     this.thumbnail,
     this.metadata,
+    this.unitOfMeasure,
   });
 
   factory AdminUpdateInventoryItem.fromJson(Map<String, Object?> json) =>
@@ -74,6 +75,10 @@ class AdminUpdateInventoryItem {
 
   /// The inventory item's metadata. Can be custom data in key-value pairs.
   final dynamic metadata;
+
+  /// The inventory item's unit of measure.
+  @JsonKey(name: 'unit_of_measure')
+  final String? unitOfMeasure;
 
   Map<String, Object?> toJson() => _$AdminUpdateInventoryItemToJson(this);
 }

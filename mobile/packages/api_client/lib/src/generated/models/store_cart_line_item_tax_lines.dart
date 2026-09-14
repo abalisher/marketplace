@@ -4,6 +4,7 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
+import 'base_cart_line_item.dart';
 import 'base_line_item_tax_line.dart';
 
 part 'store_cart_line_item_tax_lines.g.dart';

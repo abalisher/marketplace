@@ -36,29 +36,31 @@ AdminColumn _$AdminColumnFromJson(Map<String, dynamic> json) => AdminColumn(
       : Source.fromJson(json['source'] as Map<String, dynamic>),
   customLabel: json['custom_label'] as bool?,
   labelId: json['label_id'] as String?,
+  metadata: json['metadata'],
 );
 
 Map<String, dynamic> _$AdminColumnToJson(AdminColumn instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'description': instance.description,
+      'description': ?instance.description,
       'field': instance.field,
       'sortable': instance.sortable,
       'hideable': instance.hideable,
       'default_visible': instance.defaultVisible,
       'data_type': _$AdminColumnDataTypeEnumMap[instance.dataType]!,
-      'semantic_type': instance.semanticType,
-      'context': instance.context,
-      'computed': instance.computed,
-      'relationship': instance.relationship,
-      'default_order': instance.defaultOrder,
-      'category': _$AdminColumnCategoryEnumMap[instance.category],
-      'render_mode': instance.renderMode,
-      'filter': instance.filter,
-      'source': instance.source,
-      'custom_label': instance.customLabel,
-      'label_id': instance.labelId,
+      'semantic_type': ?instance.semanticType,
+      'context': ?instance.context,
+      'computed': ?instance.computed,
+      'relationship': ?instance.relationship,
+      'default_order': ?instance.defaultOrder,
+      'category': ?_$AdminColumnCategoryEnumMap[instance.category],
+      'render_mode': ?instance.renderMode,
+      'filter': ?instance.filter,
+      'source': ?instance.source,
+      'custom_label': ?instance.customLabel,
+      'label_id': ?instance.labelId,
+      'metadata': ?instance.metadata,
     };
 
 const _$AdminColumnDataTypeEnumMap = {

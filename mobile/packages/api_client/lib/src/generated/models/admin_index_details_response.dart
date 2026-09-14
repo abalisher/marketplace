@@ -17,7 +17,7 @@ class AdminIndexDetailsResponse {
       _$AdminIndexDetailsResponseFromJson(json);
 
   /// The index's metadata.
-  final List<IndexInfo> metadata;
+  final List<IndexInfo>? metadata;
 
   Map<String, Object?> toJson() => _$AdminIndexDetailsResponseToJson(this);
 }

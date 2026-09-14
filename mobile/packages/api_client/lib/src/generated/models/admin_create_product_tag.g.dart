@@ -18,6 +18,6 @@ Map<String, dynamic> _$AdminCreateProductTagToJson(
   AdminCreateProductTag instance,
 ) => <String, dynamic>{
   'value': instance.value,
-  'metadata': instance.metadata,
-  'external_id': instance.externalId,
+  'metadata': ?instance.metadata,
+  'external_id': ?instance.externalId,
 };

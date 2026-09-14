@@ -71,10 +71,10 @@ class AdminOrderLineItem {
   final String title;
 
   /// The item's subtitle.
-  final String subtitle;
+  final String? subtitle;
 
   /// The URL of the item's thumbnail.
-  final String thumbnail;
+  final String? thumbnail;
   final AdminProductVariant? variant;
 
   /// The ID of the associated variant.

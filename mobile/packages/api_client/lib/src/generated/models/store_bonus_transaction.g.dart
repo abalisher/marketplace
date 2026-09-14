@@ -26,9 +26,9 @@ Map<String, dynamic> _$StoreBonusTransactionToJson(
   'id': instance.id,
   'type': _$StoreBonusTransactionTypeEnumMap[instance.type]!,
   'amount': instance.amount,
-  'remaining': instance.remaining,
-  'expires_at': instance.expiresAt?.toIso8601String(),
-  'note': instance.note,
+  'remaining': ?instance.remaining,
+  'expires_at': ?instance.expiresAt?.toIso8601String(),
+  'note': ?instance.note,
   'created_at': instance.createdAt.toIso8601String(),
 };
 

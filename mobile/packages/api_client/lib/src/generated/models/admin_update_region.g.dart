@@ -23,11 +23,11 @@ AdminUpdateRegion _$AdminUpdateRegionFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminUpdateRegionToJson(AdminUpdateRegion instance) =>
     <String, dynamic>{
-      'name': instance.name,
-      'currency_code': instance.currencyCode,
-      'countries': instance.countries,
-      'automatic_taxes': instance.automaticTaxes,
-      'payment_providers': instance.paymentProviders,
-      'metadata': instance.metadata,
-      'is_tax_inclusive': instance.isTaxInclusive,
+      'name': ?instance.name,
+      'currency_code': ?instance.currencyCode,
+      'countries': ?instance.countries,
+      'automatic_taxes': ?instance.automaticTaxes,
+      'payment_providers': ?instance.paymentProviders,
+      'metadata': ?instance.metadata,
+      'is_tax_inclusive': ?instance.isTaxInclusive,
     };

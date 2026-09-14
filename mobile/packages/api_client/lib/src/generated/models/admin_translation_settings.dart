@@ -35,7 +35,7 @@ class AdminTranslationSettings {
 
   /// The date the translation settings was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The entity type the translation settings are for.
   @JsonKey(name: 'entity_type')

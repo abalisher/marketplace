@@ -12,4 +12,4 @@ AdminImportProductRequest _$AdminImportProductRequestFromJson(
 
 Map<String, dynamic> _$AdminImportProductRequestToJson(
   AdminImportProductRequest instance,
-) => <String, dynamic>{'file': instance.file};
+) => <String, dynamic>{'file': ?instance.file};

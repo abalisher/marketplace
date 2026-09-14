@@ -20,8 +20,8 @@ AdminCreateViewConfiguration _$AdminCreateViewConfigurationFromJson(
 Map<String, dynamic> _$AdminCreateViewConfigurationToJson(
   AdminCreateViewConfiguration instance,
 ) => <String, dynamic>{
-  'is_system_default': instance.isSystemDefault,
-  'set_active': instance.setActive,
-  'configuration': instance.configuration,
-  'name': instance.name,
+  'is_system_default': ?instance.isSystemDefault,
+  'set_active': ?instance.setActive,
+  'configuration': ?instance.configuration,
+  'name': ?instance.name,
 };

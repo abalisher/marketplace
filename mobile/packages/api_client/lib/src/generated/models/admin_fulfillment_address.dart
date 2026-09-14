@@ -43,11 +43,11 @@ class AdminFulfillmentAddress {
 
   /// The address's first name.
   @JsonKey(name: 'first_name')
-  final String firstName;
+  final String? firstName;
 
   /// The address's last name.
   @JsonKey(name: 'last_name')
-  final String lastName;
+  final String? lastName;
 
   /// The address's first line.
   @JsonKey(name: 'address_1')
@@ -87,7 +87,7 @@ class AdminFulfillmentAddress {
 
   /// The date the address was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminFulfillmentAddressToJson(this);
 }

@@ -14,6 +14,6 @@ Update _$UpdateFromJson(Map<String, dynamic> json) => Update(
 
 Map<String, dynamic> _$UpdateToJson(Update instance) => <String, dynamic>{
   'id': instance.id,
-  'label': instance.label,
-  'description': instance.description,
+  'label': ?instance.label,
+  'description': ?instance.description,
 };

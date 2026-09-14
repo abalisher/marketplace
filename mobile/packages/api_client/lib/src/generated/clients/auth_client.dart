@@ -7,11 +7,18 @@ import 'package:retrofit/retrofit.dart';
 
 import '../models/auth_customer_auth_provider_reset_password_request_body.dart';
 import '../models/auth_customer_emailpass_verification_confirm_request_body.dart';
+import '../models/auth_providers_list_response.dart';
 import '../models/auth_response.dart';
 import '../models/auth_store_session_response.dart';
+import '../models/auth_verification_confirm_request_body.dart';
+import '../models/auth_verification_request_request_body.dart';
 import '../models/delete_auth_session_response.dart';
 import '../models/post_auth_customer_auth_provider_response_sealed.dart';
 import '../models/post_auth_customer_auth_provider_update_response.dart';
+import '../models/store_phone_otp_res.dart';
+import '../models/store_phone_session_res.dart';
+import '../models/store_request_phone_otp.dart';
+import '../models/store_verify_phone_otp.dart';
 
 part 'auth_client.g.dart';
 
@@ -28,6 +35,12 @@ abstract class AuthClient {
   Future<void> postActorTypeAuthProviderVerificationConfirm({
     @Body() required AuthCustomerEmailpassVerificationConfirmRequestBody body,
   });
+
+  /// List Auth Providers for Customers.
+  ///
+  /// Retrieve a list of auth providers for the customer actor type. This is useful to show the authentication option for the available providers.
+  @GET('/auth/customer/providers')
+  Future<AuthProvidersListResponse> getCustomerProviders();
 
   /// Authenticate Customer.
   ///
@@ -83,7 +96,7 @@ abstract class AuthClient {
   ///
   /// [body] - The input data necessary to generate a reset password token.
   @POST('/auth/customer/{auth_provider}/reset-password')
-  Future<void> postActorTypeAuthProviderResetPassword({
+  Future<String> postActorTypeAuthProviderResetPassword({
     @Path('auth_provider') required String authProvider,
     @Body() required AuthCustomerAuthProviderResetPasswordRequestBody body,
   });
@@ -119,4 +132,42 @@ abstract class AuthClient {
   /// Refresh the authentication token of a customer. This is useful after authenticating a customer with a third-party service to ensure the token holds the new user's details, or when you don't want customers to re-login every day.
   @POST('/auth/token/refresh')
   Future<AuthResponse> postAdminAuthTokenRefresh();
+
+  /// Confirm Customer Verification.
+  ///
+  /// Confirm a verification token of the customer. This API route is used as the last step part of the email verification flow. It can also be used for custom flows, such as phone number verification. Once successfully verified, a customer can complete their registration and log into their account.
+  ///
+  /// [body] - The verification details.
+  @POST('/auth/verification/confirm')
+  Future<void> postVerificationConfirm({
+    @Body() required AuthVerificationConfirmRequestBody body,
+  });
+
+  /// Request Customer Verification.
+  ///
+  /// Create a verification request for a customer. This API route is used when a customer logs in, but their email requires verification. It can also be used for custom flows, such as phone number verification. Once successfully requested, a verification code will be generated and an `auth.verification_requested` event will be emitted. You can listen to this event and decide how to deliver the code to the customer.
+  ///
+  /// [body] - The verification request details.
+  @POST('/auth/verification/request')
+  Future<void> postVerificationRequest({
+    @Body() required AuthVerificationRequestRequestBody body,
+  });
+
+  /// Request Phone Login Code.
+  ///
+  /// Запрос одноразового кода входа на номер телефона покупателя. Доступен гостю — это и есть вход (и регистрация). Номер принимается в любой записи («8 701…», «+7 (701)…»), в ответе — канон +7XXXXXXXXXX. Пока нет SMS-провайдера, в dev-канале код возвращается полем `dev_code` и пишется в лог сервера. Повторный запрос раньше `resend_after` секунд — 429.
+  @POST('/store/auth/phone/otp')
+  Future<StorePhoneOtpRes> postAuthPhoneOtp({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Body() required StoreRequestPhoneOtp body,
+  });
+
+  /// Verify Phone Login Code.
+  ///
+  /// Подтверждение кода: один путь и для входа, и для регистрации. Верный код — сессионный токен покупателя (Bearer, как у ядровых роутов /auth) и профиль. Учётки не было — она создаётся с профилем «только телефон» (`created: true`), ФИО и адрес спрашиваются один раз при оформлении. Неверный или истёкший код — 401, исчерпаны попытки — 429 (нужен новый код).
+  @POST('/store/auth/phone/verify')
+  Future<StorePhoneSessionRes> postAuthPhoneVerify({
+    @Header('x-publishable-api-key') required String xPublishableApiKey,
+    @Body() required StoreVerifyPhoneOtp body,
+  });
 }

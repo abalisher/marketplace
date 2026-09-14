@@ -4,17 +4,13 @@
 
 import 'package:json_annotation/json_annotation.dart';
 
-import 'store_company_document.dart';
+import 'store_create_company_file.dart';
 
 part 'store_create_company.g.dart';
 
 @JsonSerializable()
 class StoreCreateCompany {
-  const StoreCreateCompany({
-    required this.name,
-    required this.bin,
-    this.documents,
-  });
+  const StoreCreateCompany({required this.name, required this.bin, this.files});
 
   factory StoreCreateCompany.fromJson(Map<String, Object?> json) =>
       _$StoreCreateCompanyFromJson(json);
@@ -23,7 +19,9 @@ class StoreCreateCompany {
 
   /// БИН — ровно 12 цифр.
   final String bin;
-  final List<StoreCompanyDocument>? documents;
+
+  /// Учредительные документы содержимым (base64): до 4 файлов по 3 МБ, только PDF/JPEG/PNG. Ссылки клиент не присылает — их выдаёт бэкенд после загрузки.
+  final List<StoreCreateCompanyFile>? files;
 
   Map<String, Object?> toJson() => _$StoreCreateCompanyToJson(this);
 }

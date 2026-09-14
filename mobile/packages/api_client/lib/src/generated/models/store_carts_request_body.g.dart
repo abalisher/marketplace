@@ -33,13 +33,13 @@ StoreCartsRequestBody _$StoreCartsRequestBodyFromJson(
 Map<String, dynamic> _$StoreCartsRequestBodyToJson(
   StoreCartsRequestBody instance,
 ) => <String, dynamic>{
-  'region_id': instance.regionId,
-  'shipping_address': instance.shippingAddress,
-  'billing_address': instance.billingAddress,
-  'email': instance.email,
-  'currency_code': instance.currencyCode,
-  'items': instance.items,
-  'sales_channel_id': instance.salesChannelId,
-  'metadata': instance.metadata,
-  'additional_data': instance.additionalData,
+  'region_id': ?instance.regionId,
+  'shipping_address': ?instance.shippingAddress,
+  'billing_address': ?instance.billingAddress,
+  'email': ?instance.email,
+  'currency_code': ?instance.currencyCode,
+  'items': ?instance.items,
+  'sales_channel_id': ?instance.salesChannelId,
+  'metadata': ?instance.metadata,
+  'additional_data': ?instance.additionalData,
 };

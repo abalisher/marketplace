@@ -22,7 +22,7 @@ class AdminUpdateShippingOptionPriceWithRegion {
     Map<String, Object?> json,
   ) => _$AdminUpdateShippingOptionPriceWithRegionFromJson(json);
 
-  /// The price's ID.
+  /// The price's ID. If not provided, a new price is created; existing prices whose ID isn't included in the request are deleted.
   final String? id;
 
   /// The ID of the region the price is associated with.
@@ -32,7 +32,7 @@ class AdminUpdateShippingOptionPriceWithRegion {
   /// The price's amount.
   final num? amount;
 
-  /// The price's rules.
+  /// The price's rules. These rules replace the price's existing rules, so omit a rule to remove it.
   final List<PriceRule>? rules;
 
   Map<String, Object?> toJson() =>

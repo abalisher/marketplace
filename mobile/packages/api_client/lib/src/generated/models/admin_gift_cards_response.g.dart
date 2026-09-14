@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminGiftCardsResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'gift_cards': instance.giftCards,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

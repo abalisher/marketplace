@@ -30,14 +30,14 @@ UpdateCartData _$UpdateCartDataFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$UpdateCartDataToJson(UpdateCartData instance) =>
     <String, dynamic>{
-      'region_id': instance.regionId,
-      'customer_id': instance.customerId,
-      'sales_channel_id': instance.salesChannelId,
-      'email': instance.email,
-      'currency_code': instance.currencyCode,
-      'shipping_address_id': instance.shippingAddressId,
-      'billing_address_id': instance.billingAddressId,
-      'billing_address': instance.billingAddress,
-      'shipping_address': instance.shippingAddress,
-      'metadata': instance.metadata,
+      'region_id': ?instance.regionId,
+      'customer_id': ?instance.customerId,
+      'sales_channel_id': ?instance.salesChannelId,
+      'email': ?instance.email,
+      'currency_code': ?instance.currencyCode,
+      'shipping_address_id': ?instance.shippingAddressId,
+      'billing_address_id': ?instance.billingAddressId,
+      'billing_address': ?instance.billingAddress,
+      'shipping_address': ?instance.shippingAddress,
+      'metadata': ?instance.metadata,
     };

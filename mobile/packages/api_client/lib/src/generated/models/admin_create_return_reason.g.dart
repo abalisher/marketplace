@@ -21,7 +21,7 @@ Map<String, dynamic> _$AdminCreateReturnReasonToJson(
 ) => <String, dynamic>{
   'value': instance.value,
   'label': instance.label,
-  'description': instance.description,
-  'parent_return_reason_id': instance.parentReturnReasonId,
-  'metadata': instance.metadata,
+  'description': ?instance.description,
+  'parent_return_reason_id': ?instance.parentReturnReasonId,
+  'metadata': ?instance.metadata,
 };

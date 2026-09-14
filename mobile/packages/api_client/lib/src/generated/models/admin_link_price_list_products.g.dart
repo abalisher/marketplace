@@ -14,4 +14,4 @@ AdminLinkPriceListProducts _$AdminLinkPriceListProductsFromJson(
 
 Map<String, dynamic> _$AdminLinkPriceListProductsToJson(
   AdminLinkPriceListProducts instance,
-) => <String, dynamic>{'remove': instance.remove};
+) => <String, dynamic>{'remove': ?instance.remove};

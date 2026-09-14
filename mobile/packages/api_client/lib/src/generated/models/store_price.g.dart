@@ -24,5 +24,5 @@ Map<String, dynamic> _$StorePriceToJson(StorePrice instance) =>
       'amount': instance.amount,
       'min_quantity': instance.minQuantity,
       'max_quantity': instance.maxQuantity,
-      'price_rules': instance.priceRules,
+      'price_rules': ?instance.priceRules,
     };

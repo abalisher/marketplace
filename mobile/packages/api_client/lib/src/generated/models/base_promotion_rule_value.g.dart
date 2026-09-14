@@ -15,4 +15,4 @@ BasePromotionRuleValue _$BasePromotionRuleValueFromJson(
 
 Map<String, dynamic> _$BasePromotionRuleValueToJson(
   BasePromotionRuleValue instance,
-) => <String, dynamic>{'id': instance.id, 'value': instance.value};
+) => <String, dynamic>{'id': instance.id, 'value': ?instance.value};

@@ -60,7 +60,7 @@ class StoreShippingOption {
   @JsonKey(name: 'shipping_profile_id')
   final String shippingProfileId;
 
-  /// The shipping option's amount.
+  /// The shipping option's amount. For a shipping option whose `price_type` is `calculated`, this amount isn't reliable until it's computed by the fulfillment provider using the [Calculate Shipping Option Price API route](https://docs.medusajs.com/api/store#shipping-options_postshippingoptionsidcalculate).
   final num amount;
 
   /// Whether the amount includes taxes.

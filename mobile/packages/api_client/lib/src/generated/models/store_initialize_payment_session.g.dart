@@ -17,5 +17,5 @@ Map<String, dynamic> _$StoreInitializePaymentSessionToJson(
   StoreInitializePaymentSession instance,
 ) => <String, dynamic>{
   'provider_id': instance.providerId,
-  'data': instance.data,
+  'data': ?instance.data,
 };

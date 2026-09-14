@@ -26,6 +26,6 @@ Map<String, dynamic> _$AdminShippingOptionTypeListResponseToJson(
   'limit': instance.limit,
   'offset': instance.offset,
   'count': instance.count,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
   'shipping_option_types': instance.shippingOptionTypes,
 };

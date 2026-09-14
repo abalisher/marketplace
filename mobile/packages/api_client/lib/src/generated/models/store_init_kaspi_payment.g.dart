@@ -17,7 +17,7 @@ StoreInitKaspiPayment _$StoreInitKaspiPaymentFromJson(
 Map<String, dynamic> _$StoreInitKaspiPaymentToJson(
   StoreInitKaspiPayment instance,
 ) => <String, dynamic>{
-  'scenario': _$StoreInitKaspiPaymentScenarioEnumMap[instance.scenario],
+  'scenario': ?_$StoreInitKaspiPaymentScenarioEnumMap[instance.scenario],
 };
 
 const _$StoreInitKaspiPaymentScenarioEnumMap = {

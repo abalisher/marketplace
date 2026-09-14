@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminNotificationListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'notifications': instance.notifications,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

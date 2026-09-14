@@ -32,11 +32,11 @@ class AdminUser {
 
   /// The user's first name.
   @JsonKey(name: 'first_name')
-  final String firstName;
+  final String? firstName;
 
   /// The user's last name.
   @JsonKey(name: 'last_name')
-  final String lastName;
+  final String? lastName;
 
   /// The URL of the user's avatar.
   @JsonKey(name: 'avatar_url')
@@ -55,7 +55,7 @@ class AdminUser {
 
   /// The date the user was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminUserToJson(this);
 }

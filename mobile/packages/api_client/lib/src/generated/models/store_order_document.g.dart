@@ -27,11 +27,11 @@ Map<String, dynamic> _$StoreOrderDocumentToJson(StoreOrderDocument instance) =>
       'type': _$StoreOrderDocumentTypeEnumMap[instance.type]!,
       'number': instance.number,
       'version': instance.version,
-      'file_url': instance.fileUrl,
-      'total_money': instance.totalMoney,
-      'total_bonus': instance.totalBonus,
-      'currency_code': instance.currencyCode,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'file_url': ?instance.fileUrl,
+      'total_money': ?instance.totalMoney,
+      'total_bonus': ?instance.totalBonus,
+      'currency_code': ?instance.currencyCode,
+      'created_at': ?instance.createdAt?.toIso8601String(),
     };
 
 const _$StoreOrderDocumentTypeEnumMap = {

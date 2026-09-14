@@ -25,15 +25,15 @@ BaseOrderLineItemAdjustment _$BaseOrderLineItemAdjustmentFromJson(
 Map<String, dynamic> _$BaseOrderLineItemAdjustmentToJson(
   BaseOrderLineItemAdjustment instance,
 ) => <String, dynamic>{
-  'item': instance.item,
+  'item': ?instance.item,
   'item_id': instance.itemId,
   'id': instance.id,
-  'code': instance.code,
+  'code': ?instance.code,
   'amount': instance.amount,
   'order_id': instance.orderId,
-  'description': instance.description,
-  'promotion_id': instance.promotionId,
-  'provider_id': instance.providerId,
+  'description': ?instance.description,
+  'promotion_id': ?instance.promotionId,
+  'provider_id': ?instance.providerId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

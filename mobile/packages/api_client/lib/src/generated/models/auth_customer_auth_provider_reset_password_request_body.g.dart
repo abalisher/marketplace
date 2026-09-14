@@ -18,5 +18,5 @@ Map<String, dynamic> _$AuthCustomerAuthProviderResetPasswordRequestBodyToJson(
   AuthCustomerAuthProviderResetPasswordRequestBody instance,
 ) => <String, dynamic>{
   'identifier': instance.identifier,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
 };

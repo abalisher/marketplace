@@ -13,7 +13,7 @@ Widgets2 _$Widgets2FromJson(Map<String, dynamic> json) => Widgets2(
 );
 
 Map<String, dynamic> _$Widgets2ToJson(Widgets2 instance) => <String, dynamic>{
-  'hidden': instance.hidden,
-  'section': instance.section,
-  'order': instance.order,
+  'hidden': ?instance.hidden,
+  'section': ?instance.section,
+  'order': ?instance.order,
 };

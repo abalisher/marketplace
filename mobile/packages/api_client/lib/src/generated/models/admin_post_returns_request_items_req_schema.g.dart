@@ -16,4 +16,4 @@ _$AdminPostReturnsRequestItemsReqSchemaFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminPostReturnsRequestItemsReqSchemaToJson(
   AdminPostReturnsRequestItemsReqSchema instance,
-) => <String, dynamic>{'items': instance.items};
+) => <String, dynamic>{'items': ?instance.items};

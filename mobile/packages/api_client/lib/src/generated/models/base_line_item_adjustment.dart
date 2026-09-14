@@ -26,7 +26,6 @@ class BaseLineItemAdjustment {
   factory BaseLineItemAdjustment.fromJson(Map<String, Object?> json) =>
       _$BaseLineItemAdjustmentFromJson(json);
 
-  /// The details of the item that the adjustment belongs to.
   final dynamic item;
 
   /// The ID of the item this adjustment applies on.

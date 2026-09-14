@@ -21,7 +21,7 @@ StoreCityAvailability _$StoreCityAvailabilityFromJson(
 Map<String, dynamic> _$StoreCityAvailabilityToJson(
   StoreCityAvailability instance,
 ) => <String, dynamic>{
-  'city': instance.city,
+  'city': ?instance.city,
   'available': instance.available,
   'stock_locations': instance.stockLocations,
 };

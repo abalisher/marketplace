@@ -21,7 +21,7 @@ AdminBatchProductRequest _$AdminBatchProductRequestFromJson(
 Map<String, dynamic> _$AdminBatchProductRequestToJson(
   AdminBatchProductRequest instance,
 ) => <String, dynamic>{
-  'create': instance.create,
-  'update': instance.update,
-  'delete': instance.delete,
+  'create': ?instance.create,
+  'update': ?instance.update,
+  'delete': ?instance.delete,
 };

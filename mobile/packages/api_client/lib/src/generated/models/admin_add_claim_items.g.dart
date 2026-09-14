@@ -14,4 +14,4 @@ AdminAddClaimItems _$AdminAddClaimItemsFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$AdminAddClaimItemsToJson(AdminAddClaimItems instance) =>
-    <String, dynamic>{'items': instance.items};
+    <String, dynamic>{'items': ?instance.items};

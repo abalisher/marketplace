@@ -21,23 +21,39 @@ AdminOrderLifecycleRes _$AdminOrderLifecycleResFromJson(
       : AdminOrderLifecycleResDeliveryMethod.fromJson(
           json['delivery_method'] as String,
         ),
+  deliveryDate: json['delivery_date'] == null
+      ? null
+      : DateTime.parse(json['delivery_date'] as String),
+  deliveryWindow: json['delivery_window'] == null
+      ? null
+      : AdminOrderLifecycleResDeliveryWindow.fromJson(
+          json['delivery_window'] as String,
+        ),
 );
 
 Map<String, dynamic> _$AdminOrderLifecycleResToJson(
   AdminOrderLifecycleRes instance,
 ) => <String, dynamic>{
   'order_id': instance.orderId,
-  'status': instance.status,
-  'previous_status': instance.previousStatus,
-  'note': instance.note,
+  'status': ?instance.status,
+  'previous_status': ?instance.previousStatus,
+  'note': ?instance.note,
   'delivery_method':
-      _$AdminOrderLifecycleResDeliveryMethodEnumMap[instance.deliveryMethod],
+      ?_$AdminOrderLifecycleResDeliveryMethodEnumMap[instance.deliveryMethod],
+  'delivery_date': ?instance.deliveryDate?.toIso8601String(),
+  'delivery_window':
+      ?_$AdminOrderLifecycleResDeliveryWindowEnumMap[instance.deliveryWindow],
   'history': instance.history,
 };
 
 const _$AdminOrderLifecycleResDeliveryMethodEnumMap = {
   AdminOrderLifecycleResDeliveryMethod.delivery: 'delivery',
-  AdminOrderLifecycleResDeliveryMethod.pickup: 'pickup',
-  AdminOrderLifecycleResDeliveryMethod.counter: 'counter',
   AdminOrderLifecycleResDeliveryMethod.$unknown: r'$unknown',
+};
+
+const _$AdminOrderLifecycleResDeliveryWindowEnumMap = {
+  AdminOrderLifecycleResDeliveryWindow.morning: 'morning',
+  AdminOrderLifecycleResDeliveryWindow.day: 'day',
+  AdminOrderLifecycleResDeliveryWindow.evening: 'evening',
+  AdminOrderLifecycleResDeliveryWindow.$unknown: r'$unknown',
 };

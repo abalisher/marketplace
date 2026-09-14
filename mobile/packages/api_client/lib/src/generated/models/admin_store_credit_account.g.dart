@@ -27,13 +27,13 @@ Map<String, dynamic> _$AdminStoreCreditAccountToJson(
 ) => <String, dynamic>{
   'customer': instance.customer,
   'id': instance.id,
-  'customer_id': instance.customerId,
+  'customer_id': ?instance.customerId,
   'currency_code': instance.currencyCode,
   'credits': instance.credits,
   'debits': instance.debits,
   'balance': instance.balance,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
-  'code': instance.code,
+  'code': ?instance.code,
 };

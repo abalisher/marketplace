@@ -18,6 +18,6 @@ Map<String, dynamic> _$AdminCreateRefundReasonToJson(
   AdminCreateRefundReason instance,
 ) => <String, dynamic>{
   'label': instance.label,
-  'description': instance.description,
+  'description': ?instance.description,
   'code': instance.code,
 };

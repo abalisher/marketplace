@@ -9,13 +9,13 @@ part of 'store_open_dispute.dart';
 StoreOpenDispute _$StoreOpenDisputeFromJson(Map<String, dynamic> json) =>
     StoreOpenDispute(
       category: StoreOpenDisputeCategory.fromJson(json['category'] as String),
-      description: json['description'] as String,
+      description: json['description'] as String?,
     );
 
 Map<String, dynamic> _$StoreOpenDisputeToJson(StoreOpenDispute instance) =>
     <String, dynamic>{
       'category': _$StoreOpenDisputeCategoryEnumMap[instance.category]!,
-      'description': instance.description,
+      'description': ?instance.description,
     };
 
 const _$StoreOpenDisputeCategoryEnumMap = {

@@ -22,7 +22,7 @@ AdminLinkProductOptions _$AdminLinkProductOptionsFromJson(
 Map<String, dynamic> _$AdminLinkProductOptionsToJson(
   AdminLinkProductOptions instance,
 ) => <String, dynamic>{
-  'add': instance.add,
-  'remove': instance.remove,
-  'update': instance.update,
+  'add': ?instance.add,
+  'remove': ?instance.remove,
+  'update': ?instance.update,
 };

@@ -25,10 +25,10 @@ Map<String, dynamic> _$StoreOrderLifecycleSummaryToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'status': _$StoreOrderLifecycleSummaryStatusEnumMap[instance.status]!,
-  'previous_status': instance.previousStatus,
-  'note': instance.note,
+  'previous_status': ?instance.previousStatus,
+  'note': ?instance.note,
   'delivery_method':
-      _$StoreOrderLifecycleSummaryDeliveryMethodEnumMap[instance
+      ?_$StoreOrderLifecycleSummaryDeliveryMethodEnumMap[instance
           .deliveryMethod],
 };
 
@@ -48,7 +48,5 @@ const _$StoreOrderLifecycleSummaryStatusEnumMap = {
 
 const _$StoreOrderLifecycleSummaryDeliveryMethodEnumMap = {
   StoreOrderLifecycleSummaryDeliveryMethod.delivery: 'delivery',
-  StoreOrderLifecycleSummaryDeliveryMethod.pickup: 'pickup',
-  StoreOrderLifecycleSummaryDeliveryMethod.counter: 'counter',
   StoreOrderLifecycleSummaryDeliveryMethod.$unknown: r'$unknown',
 };

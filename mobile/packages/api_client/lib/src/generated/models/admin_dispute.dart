@@ -5,6 +5,8 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'admin_dispute_category.dart';
+import 'admin_dispute_outcome.dart';
+import 'admin_dispute_source.dart';
 import 'admin_dispute_status.dart';
 
 part 'admin_dispute.g.dart';
@@ -20,6 +22,8 @@ class AdminDispute {
     this.customerId,
     this.resolution,
     this.createdAt,
+    this.outcome,
+    this.source,
   });
 
   factory AdminDispute.fromJson(Map<String, Object?> json) =>
@@ -31,11 +35,17 @@ class AdminDispute {
   @JsonKey(name: 'customer_id')
   final String? customerId;
   final AdminDisputeCategory category;
-  final String description;
+  final String? description;
   final AdminDisputeStatus status;
   final String? resolution;
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
+
+  /// Последствие решения: что получает покупатель. До закрытия — null.
+  final AdminDisputeOutcome? outcome;
+
+  /// Кто завёл претензию: покупатель через чат или оператор с его слов.
+  final AdminDisputeSource? source;
 
   Map<String, Object?> toJson() => _$AdminDisputeToJson(this);
 }

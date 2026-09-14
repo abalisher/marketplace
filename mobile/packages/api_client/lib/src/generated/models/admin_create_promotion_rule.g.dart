@@ -22,9 +22,9 @@ Map<String, dynamic> _$AdminCreatePromotionRuleToJson(
 ) => <String, dynamic>{
   'operator':
       _$AdminCreatePromotionRuleOperatorEnumEnumMap[instance.operatorEnum]!,
-  'description': instance.description,
+  'description': ?instance.description,
   'attribute': instance.attribute,
-  'values': instance.values,
+  'values': ?instance.values,
 };
 
 const _$AdminCreatePromotionRuleOperatorEnumEnumMap = {

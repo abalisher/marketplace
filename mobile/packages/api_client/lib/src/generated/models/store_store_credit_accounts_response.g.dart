@@ -25,5 +25,5 @@ Map<String, dynamic> _$StoreStoreCreditAccountsResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'store_credit_accounts': instance.storeCreditAccounts,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

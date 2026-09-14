@@ -42,7 +42,7 @@ class AdminRbacPolicy {
   final String name;
 
   /// The policy's description.
-  final String description;
+  final String? description;
 
   /// Key-value pairs that hold additional information about the policy.
   final dynamic metadata;
@@ -61,7 +61,7 @@ class AdminRbacPolicy {
 
   /// The date the policy was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminRbacPolicyToJson(this);
 }

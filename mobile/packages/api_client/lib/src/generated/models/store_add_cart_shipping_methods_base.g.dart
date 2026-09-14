@@ -15,4 +15,4 @@ StoreAddCartShippingMethodsBase _$StoreAddCartShippingMethodsBaseFromJson(
 
 Map<String, dynamic> _$StoreAddCartShippingMethodsBaseToJson(
   StoreAddCartShippingMethodsBase instance,
-) => <String, dynamic>{'option_id': instance.optionId, 'data': instance.data};
+) => <String, dynamic>{'option_id': instance.optionId, 'data': ?instance.data};

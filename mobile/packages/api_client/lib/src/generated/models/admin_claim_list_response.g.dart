@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminClaimListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'claims': instance.claims,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

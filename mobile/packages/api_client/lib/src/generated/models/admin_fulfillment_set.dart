@@ -50,7 +50,7 @@ class AdminFulfillmentSet {
 
   /// The fulfillment set's deleted at.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminFulfillmentSetToJson(this);
 }

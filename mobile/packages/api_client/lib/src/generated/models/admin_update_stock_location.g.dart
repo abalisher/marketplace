@@ -22,8 +22,8 @@ AdminUpdateStockLocation _$AdminUpdateStockLocationFromJson(
 Map<String, dynamic> _$AdminUpdateStockLocationToJson(
   AdminUpdateStockLocation instance,
 ) => <String, dynamic>{
-  'name': instance.name,
-  'address': instance.address,
-  'address_id': instance.addressId,
-  'metadata': instance.metadata,
+  'name': ?instance.name,
+  'address': ?instance.address,
+  'address_id': ?instance.addressId,
+  'metadata': ?instance.metadata,
 };

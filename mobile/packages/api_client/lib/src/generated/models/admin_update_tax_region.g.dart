@@ -17,7 +17,7 @@ AdminUpdateTaxRegion _$AdminUpdateTaxRegionFromJson(
 Map<String, dynamic> _$AdminUpdateTaxRegionToJson(
   AdminUpdateTaxRegion instance,
 ) => <String, dynamic>{
-  'province_code': instance.provinceCode,
-  'metadata': instance.metadata,
-  'provider_id': instance.providerId,
+  'province_code': ?instance.provinceCode,
+  'metadata': ?instance.metadata,
+  'provider_id': ?instance.providerId,
 };

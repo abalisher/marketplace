@@ -19,7 +19,7 @@ Map<String, dynamic> _$AdminAddReturnItemToJson(AdminAddReturnItem instance) =>
     <String, dynamic>{
       'id': instance.id,
       'quantity': instance.quantity,
-      'description': instance.description,
-      'internal_note': instance.internalNote,
-      'metadata': instance.metadata,
+      'description': ?instance.description,
+      'internal_note': ?instance.internalNote,
+      'metadata': ?instance.metadata,
     };

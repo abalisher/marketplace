@@ -10,7 +10,7 @@ AdminCreatePriceList _$AdminCreatePriceListFromJson(
   Map<String, dynamic> json,
 ) => AdminCreatePriceList(
   title: json['title'] as String,
-  description: json['description'] as String,
+  description: json['description'] as String?,
   startsAt: json['starts_at'] == null
       ? null
       : DateTime.parse(json['starts_at'] as String),
@@ -36,14 +36,14 @@ Map<String, dynamic> _$AdminCreatePriceListToJson(
   AdminCreatePriceList instance,
 ) => <String, dynamic>{
   'title': instance.title,
-  'description': instance.description,
-  'starts_at': instance.startsAt?.toIso8601String(),
-  'ends_at': instance.endsAt?.toIso8601String(),
-  'status': _$AdminCreatePriceListStatusEnumMap[instance.status],
-  'type': _$AdminCreatePriceListTypeEnumMap[instance.type],
-  'rules': instance.rules,
-  'prices': instance.prices,
-  'metadata': instance.metadata,
+  'description': ?instance.description,
+  'starts_at': ?instance.startsAt?.toIso8601String(),
+  'ends_at': ?instance.endsAt?.toIso8601String(),
+  'status': ?_$AdminCreatePriceListStatusEnumMap[instance.status],
+  'type': ?_$AdminCreatePriceListTypeEnumMap[instance.type],
+  'rules': ?instance.rules,
+  'prices': ?instance.prices,
+  'metadata': ?instance.metadata,
 };
 
 const _$AdminCreatePriceListStatusEnumMap = {

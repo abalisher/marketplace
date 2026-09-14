@@ -14,4 +14,4 @@ AdminTranslationSettingsResponse _$AdminTranslationSettingsResponseFromJson(
 
 Map<String, dynamic> _$AdminTranslationSettingsResponseToJson(
   AdminTranslationSettingsResponse instance,
-) => <String, dynamic>{'translation_settings': instance.translationSettings};
+) => <String, dynamic>{'translation_settings': ?instance.translationSettings};

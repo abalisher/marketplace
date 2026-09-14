@@ -6,6 +6,7 @@ import 'package:json_annotation/json_annotation.dart';
 
 import 'store_order_lifecycle_event.dart';
 import 'store_order_lifecycle_res_delivery_method.dart';
+import 'store_order_lifecycle_res_delivery_window.dart';
 
 part 'store_order_lifecycle_res.g.dart';
 
@@ -19,6 +20,8 @@ class StoreOrderLifecycleRes {
     this.note,
     this.deliveryMethod,
     this.deliveryCode,
+    this.deliveryDate,
+    this.deliveryWindow,
   });
 
   factory StoreOrderLifecycleRes.fromJson(Map<String, Object?> json) =>
@@ -38,6 +41,14 @@ class StoreOrderLifecycleRes {
   /// Код получения (только delivery, после отгрузки): покупатель называет его водителю при вручении. Виден только владельцу заказа.
   @JsonKey(name: 'delivery_code')
   final String? deliveryCode;
+
+  /// Дата слота доставки в календарных сутках Астаны (YYYY-MM-DD). null — заказ оформлен до появления слотов.
+  @JsonKey(name: 'delivery_date')
+  final DateTime? deliveryDate;
+
+  /// Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00.
+  @JsonKey(name: 'delivery_window')
+  final StoreOrderLifecycleResDeliveryWindow? deliveryWindow;
   final List<StoreOrderLifecycleEvent> history;
 
   Map<String, Object?> toJson() => _$StoreOrderLifecycleResToJson(this);

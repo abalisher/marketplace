@@ -24,7 +24,7 @@ _$AdminBatchInventoryItemsLocationLevelsResponseFromJson(
 Map<String, dynamic> _$AdminBatchInventoryItemsLocationLevelsResponseToJson(
   AdminBatchInventoryItemsLocationLevelsResponse instance,
 ) => <String, dynamic>{
-  'created': instance.created,
-  'updated': instance.updated,
-  'deleted': instance.deleted,
+  'created': ?instance.created,
+  'updated': ?instance.updated,
+  'deleted': ?instance.deleted,
 };

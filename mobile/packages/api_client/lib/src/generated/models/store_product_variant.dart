@@ -52,7 +52,7 @@ class StoreProductVariant {
   final dynamic product;
 
   /// The variant's length.
-  final num length;
+  final num? length;
 
   /// The variant's title.
   final String title;
@@ -64,28 +64,28 @@ class StoreProductVariant {
   final String id;
 
   /// The variant's width.
-  final num width;
+  final num? width;
 
   /// The variant's weight.
-  final num weight;
+  final num? weight;
 
   /// The variant's height.
-  final num height;
+  final num? height;
 
   /// The variant's origin country.
   @JsonKey(name: 'origin_country')
-  final String originCountry;
+  final String? originCountry;
 
   /// The variant's HS code.
   @JsonKey(name: 'hs_code')
-  final String hsCode;
+  final String? hsCode;
 
   /// The variant's MID code.
   @JsonKey(name: 'mid_code')
-  final String midCode;
+  final String? midCode;
 
   /// The variant's material.
-  final String material;
+  final String? material;
 
   /// The date the variant was created.
   @JsonKey(name: 'created_at')
@@ -97,23 +97,23 @@ class StoreProductVariant {
 
   /// The date the variant was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The ID of the product this variant belongs to.
   @JsonKey(name: 'product_id')
   final String? productId;
 
   /// The variant's SKU.
-  final String sku;
+  final String? sku;
 
   /// The variant's barcode.
-  final String barcode;
+  final String? barcode;
 
   /// The variant's EAN.
-  final String ean;
+  final String? ean;
 
   /// The variant's UPC.
-  final String upc;
+  final String? upc;
 
   /// Whether the variant can be ordered even if it's not in stock.
   @JsonKey(name: 'allow_backorder')
@@ -134,7 +134,7 @@ class StoreProductVariant {
   final BaseCalculatedPriceSet? calculatedPrice;
 
   /// The variant's thumbnail.
-  final String thumbnail;
+  final String? thumbnail;
 
   /// The variant's images.
   final List<BaseProductImage>? images;

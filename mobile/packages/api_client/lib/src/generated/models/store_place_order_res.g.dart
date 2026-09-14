@@ -8,7 +8,9 @@ part of 'store_place_order_res.dart';
 
 StorePlaceOrderRes _$StorePlaceOrderResFromJson(Map<String, dynamic> json) =>
     StorePlaceOrderRes(
-      order: Order2.fromJson(json['order'] as Map<String, dynamic>),
+      order: StorePlacedOrderRef.fromJson(
+        json['order'] as Map<String, dynamic>,
+      ),
       lifecycle: StoreOrderLifecycleSummary.fromJson(
         json['lifecycle'] as Map<String, dynamic>,
       ),

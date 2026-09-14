@@ -19,5 +19,5 @@ Map<String, dynamic> _$AdminCompleteAssemblyToJson(
   AdminCompleteAssembly instance,
 ) => <String, dynamic>{
   'items': instance.items,
-  'location_id': instance.locationId,
+  'location_id': ?instance.locationId,
 };

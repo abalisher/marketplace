@@ -8,7 +8,7 @@ part of 'base_line_item_tax_line.dart';
 
 BaseLineItemTaxLine _$BaseLineItemTaxLineFromJson(Map<String, dynamic> json) =>
     BaseLineItemTaxLine(
-      item: json['item'],
+      item: BaseCartLineItem.fromJson(json['item'] as Map<String, dynamic>),
       itemId: json['item_id'] as String,
       total: json['total'] as num,
       subtotal: json['subtotal'] as num,
@@ -30,11 +30,11 @@ Map<String, dynamic> _$BaseLineItemTaxLineToJson(
   'total': instance.total,
   'subtotal': instance.subtotal,
   'id': instance.id,
-  'description': instance.description,
-  'tax_rate_id': instance.taxRateId,
+  'description': ?instance.description,
+  'tax_rate_id': ?instance.taxRateId,
   'code': instance.code,
   'rate': instance.rate,
-  'provider_id': instance.providerId,
+  'provider_id': ?instance.providerId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

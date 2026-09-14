@@ -44,7 +44,7 @@ class AdminShippingProfile {
 
   /// The date the shipping profile was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminShippingProfileToJson(this);
 }

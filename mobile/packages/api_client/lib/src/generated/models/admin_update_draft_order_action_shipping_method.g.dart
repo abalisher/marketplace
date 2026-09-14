@@ -21,8 +21,8 @@ Map<String, dynamic> _$AdminUpdateDraftOrderActionShippingMethodToJson(
   AdminUpdateDraftOrderActionShippingMethod instance,
 ) => <String, dynamic>{
   'shipping_option_id': instance.shippingOptionId,
-  'custom_amount': instance.customAmount,
-  'description': instance.description,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'custom_amount': ?instance.customAmount,
+  'description': ?instance.description,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };

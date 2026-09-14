@@ -26,9 +26,9 @@ Map<String, dynamic> _$StoreEstimateToJson(StoreEstimate instance) =>
       'id': instance.id,
       'source': _$StoreEstimateSourceEnumMap[instance.source]!,
       'status': _$StoreEstimateStatusEnumMap[instance.status]!,
-      'params': instance.params,
-      'note': instance.note,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'params': ?instance.params,
+      'note': ?instance.note,
+      'created_at': ?instance.createdAt?.toIso8601String(),
       'lines': instance.lines,
     };
 

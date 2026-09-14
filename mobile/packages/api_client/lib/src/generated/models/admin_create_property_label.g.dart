@@ -21,5 +21,5 @@ Map<String, dynamic> _$AdminCreatePropertyLabelToJson(
   'entity': instance.entity,
   'property': instance.property,
   'label': instance.label,
-  'description': instance.description,
+  'description': ?instance.description,
 };

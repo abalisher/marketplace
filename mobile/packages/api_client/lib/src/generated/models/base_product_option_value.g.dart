@@ -31,11 +31,11 @@ Map<String, dynamic> _$BaseProductOptionValueToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'value': instance.value,
-  'option': instance.option,
-  'option_id': instance.optionId,
-  'metadata': instance.metadata,
-  'created_at': instance.createdAt?.toIso8601String(),
-  'updated_at': instance.updatedAt?.toIso8601String(),
-  'deleted_at': instance.deletedAt?.toIso8601String(),
-  'rank': instance.rank,
+  'option': ?instance.option,
+  'option_id': ?instance.optionId,
+  'metadata': ?instance.metadata,
+  'created_at': ?instance.createdAt?.toIso8601String(),
+  'updated_at': ?instance.updatedAt?.toIso8601String(),
+  'deleted_at': ?instance.deletedAt?.toIso8601String(),
+  'rank': ?instance.rank,
 };

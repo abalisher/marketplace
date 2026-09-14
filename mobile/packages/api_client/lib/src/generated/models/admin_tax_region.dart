@@ -55,7 +55,7 @@ class AdminTaxRegion {
 
   /// The date the tax region was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The ID of the user that created the tax region.
   @JsonKey(name: 'created_by')

@@ -19,5 +19,5 @@ Map<String, dynamic> _$AdminCreatePricePreferenceToJson(
 ) => <String, dynamic>{
   'attribute': instance.attribute,
   'value': instance.value,
-  'is_tax_inclusive': instance.isTaxInclusive,
+  'is_tax_inclusive': ?instance.isTaxInclusive,
 };

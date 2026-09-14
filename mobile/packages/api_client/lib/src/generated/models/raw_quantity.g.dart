@@ -10,4 +10,4 @@ RawQuantity _$RawQuantityFromJson(Map<String, dynamic> json) =>
     RawQuantity(value: json['value']);
 
 Map<String, dynamic> _$RawQuantityToJson(RawQuantity instance) =>
-    <String, dynamic>{'value': instance.value};
+    <String, dynamic>{'value': ?instance.value};

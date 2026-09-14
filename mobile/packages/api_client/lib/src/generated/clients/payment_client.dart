@@ -26,7 +26,7 @@ abstract class PaymentClient {
 
   /// Get Kaspi Payment Status.
   ///
-  /// Статус оплаты Kaspi (polling): синхронизирует платёжную сессию с состоянием инвойса. Оплачено → status=authorized (можно оформлять заказ POST /store/orders). 400 — оплата для корзины не инициализирована; 404 — корзина не принадлежит покупателю.
+  /// Статус оплаты Kaspi (polling): синхронизирует платёжную сессию с состоянием инвойса. Оплачено → status=authorized (можно оформлять заказ POST /store/orders). Гость допускается: владение ГОСТЕВОЙ корзиной подтверждает сам cart_id (капабилити-токен гостевого checkout'а); корзина покупателя доступна только ему. 400 — оплата для корзины не инициализирована; 404 — корзина не найдена/не принадлежит покупателю.
   @GET('/store/carts/{id}/payment/kaspi')
   Future<StoreKaspiPaymentRes> getCartsIdPaymentKaspi({
     @Header('x-publishable-api-key') required String xPublishableApiKey,

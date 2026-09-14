@@ -28,8 +28,8 @@ Map<String, dynamic> _$BaseExchangeItemToJson(BaseExchangeItem instance) =>
       'order_id': instance.orderId,
       'item_id': instance.itemId,
       'quantity': instance.quantity,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'item': instance.item,
+      'item': ?instance.item,
     };

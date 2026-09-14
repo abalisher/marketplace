@@ -36,6 +36,7 @@ class AdminColumn {
     this.source,
     this.customLabel,
     this.labelId,
+    this.metadata,
   });
 
   factory AdminColumn.fromJson(Map<String, Object?> json) =>
@@ -104,6 +105,9 @@ class AdminColumn {
   /// The ID of the column's label, if it has a custom label.
   @JsonKey(name: 'label_id')
   final String? labelId;
+
+  /// The column's metadata.
+  final dynamic metadata;
 
   Map<String, Object?> toJson() => _$AdminColumnToJson(this);
 }

@@ -57,11 +57,11 @@ class StoreCustomerAddress {
 
   /// The address's first name.
   @JsonKey(name: 'first_name')
-  final String firstName;
+  final String? firstName;
 
   /// The address's last name.
   @JsonKey(name: 'last_name')
-  final String lastName;
+  final String? lastName;
 
   /// The address's first line.
   @JsonKey(name: 'address_1')

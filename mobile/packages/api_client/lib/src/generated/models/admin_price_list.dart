@@ -39,7 +39,7 @@ class AdminPriceList {
   final String title;
 
   /// The price list's description.
-  final String description;
+  final String? description;
 
   /// The price list's rules.
   final dynamic rules;
@@ -71,7 +71,7 @@ class AdminPriceList {
 
   /// The date the price list was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// Key-value pairs of custom data.
   final dynamic metadata;

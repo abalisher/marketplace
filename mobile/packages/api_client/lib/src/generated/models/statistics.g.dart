@@ -17,8 +17,8 @@ Statistics _$StatisticsFromJson(Map<String, dynamic> json) => Statistics(
 
 Map<String, dynamic> _$StatisticsToJson(Statistics instance) =>
     <String, dynamic>{
-      'by_locale': instance.byLocale,
-      'expected': instance.expected,
-      'translated': instance.translated,
-      'missing': instance.missing,
+      'by_locale': ?instance.byLocale,
+      'expected': ?instance.expected,
+      'translated': ?instance.translated,
+      'missing': ?instance.missing,
     };

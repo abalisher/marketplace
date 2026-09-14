@@ -10,6 +10,6 @@ Output _$OutputFromJson(Map<String, dynamic> json) =>
     Output(output: json['output'], compensateInput: json['compensateInput']);
 
 Map<String, dynamic> _$OutputToJson(Output instance) => <String, dynamic>{
-  'output': instance.output,
-  'compensateInput': instance.compensateInput,
+  'output': ?instance.output,
+  'compensateInput': ?instance.compensateInput,
 };

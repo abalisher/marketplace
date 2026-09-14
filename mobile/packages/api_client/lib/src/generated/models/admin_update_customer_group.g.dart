@@ -15,4 +15,4 @@ AdminUpdateCustomerGroup _$AdminUpdateCustomerGroupFromJson(
 
 Map<String, dynamic> _$AdminUpdateCustomerGroupToJson(
   AdminUpdateCustomerGroup instance,
-) => <String, dynamic>{'name': instance.name, 'metadata': instance.metadata};
+) => <String, dynamic>{'name': ?instance.name, 'metadata': ?instance.metadata};

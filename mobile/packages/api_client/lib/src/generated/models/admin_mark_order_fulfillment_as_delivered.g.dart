@@ -14,4 +14,4 @@ _$AdminMarkOrderFulfillmentAsDeliveredFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminMarkOrderFulfillmentAsDeliveredToJson(
   AdminMarkOrderFulfillmentAsDelivered instance,
-) => <String, dynamic>{'no_notification': instance.noNotification};
+) => <String, dynamic>{'no_notification': ?instance.noNotification};

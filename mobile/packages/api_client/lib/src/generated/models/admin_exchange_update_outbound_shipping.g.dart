@@ -17,7 +17,7 @@ _$AdminExchangeUpdateOutboundShippingFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$AdminExchangeUpdateOutboundShippingToJson(
   AdminExchangeUpdateOutboundShipping instance,
 ) => <String, dynamic>{
-  'custom_amount': instance.customAmount,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'custom_amount': ?instance.customAmount,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };

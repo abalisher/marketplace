@@ -12,4 +12,4 @@ StoreCartsIdCustomerRequestBody _$StoreCartsIdCustomerRequestBodyFromJson(
 
 Map<String, dynamic> _$StoreCartsIdCustomerRequestBodyToJson(
   StoreCartsIdCustomerRequestBody instance,
-) => <String, dynamic>{'additional_data': instance.additionalData};
+) => <String, dynamic>{'additional_data': ?instance.additionalData};

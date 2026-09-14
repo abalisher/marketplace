@@ -10,7 +10,7 @@ CampaignResponse _$CampaignResponseFromJson(Map<String, dynamic> json) =>
     CampaignResponse(
       id: json['id'] as String,
       name: json['name'] as String,
-      description: json['description'] as String,
+      description: json['description'] as String?,
       currency: json['currency'] as String,
       campaignIdentifier: json['campaign_identifier'] as String,
       startsAt: json['starts_at'] as String,
@@ -22,7 +22,7 @@ Map<String, dynamic> _$CampaignResponseToJson(CampaignResponse instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
-      'description': instance.description,
+      'description': ?instance.description,
       'currency': instance.currency,
       'campaign_identifier': instance.campaignIdentifier,
       'starts_at': instance.startsAt,

@@ -18,7 +18,7 @@ Map<String, dynamic> _$AdminCreateExchangeToJson(
   AdminCreateExchange instance,
 ) => <String, dynamic>{
   'order_id': instance.orderId,
-  'description': instance.description,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'description': ?instance.description,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };

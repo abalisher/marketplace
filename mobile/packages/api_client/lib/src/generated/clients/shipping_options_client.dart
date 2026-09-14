@@ -22,6 +22,8 @@ abstract class ShippingOptionsClient {
   ///
   /// The shipping options also be sorted or paginated.
   ///
+  /// For a shipping option whose `price_type` is `calculated`, the returned `amount` isn't reliable, as its price is computed on the fly by the fulfillment provider. To retrieve its price, use the [Calculate Shipping Option Price API route](https://docs.medusajs.com/api/store#shipping-options_postshippingoptionsidcalculate).
+  ///
   /// [xPublishableApiKey] - Publishable API Key created in the Medusa Admin.
   ///
   /// [xMedusaLocale] - The locale in BCP 47 format to retrieve localized content.
@@ -60,7 +62,9 @@ abstract class ShippingOptionsClient {
 
   /// Calculate Shipping Option Price.
   ///
-  /// Calculate the price of a shipping option in a cart.
+  /// Calculate the price of a shipping option in a cart. Use this API route for shipping options whose `price_type` is `calculated`, as their price isn't stored but computed on the fly by the associated fulfillment provider against the cart.
+  ///
+  /// If the fulfillment provider fails to calculate the price, this route returns an error.
   ///
   /// [id] - The shipping option's ID.
   ///
@@ -68,11 +72,9 @@ abstract class ShippingOptionsClient {
   ///
   /// [xMedusaLocale] - The locale in BCP 47 format to retrieve localized content.
   ///
-  /// [fields] - Comma-separated fields that should be included in the returned data.
-  /// if a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields.
-  /// without prefix it will replace the entire default fields.
-  ///
   /// [locale] - The locale in BCP 47 format to retrieve localized content.
+  ///
+  /// [fields] - Comma-separated fields that should be included in the returned data. If a field is prefixed with `+` it will be added to the default fields, using `-` will remove it from the default fields. Without prefix it will replace the entire default fields.
   ///
   /// [body] - The calculation's details.
   @POST('/store/shipping-options/{id}/calculate')
@@ -81,7 +83,7 @@ abstract class ShippingOptionsClient {
     @Header('x-publishable-api-key') required String xPublishableApiKey,
     @Body() required StoreShippingOptionsIdCalculateRequestBody body,
     @Header('x-medusa-locale') String? xMedusaLocale,
-    @Query('fields') String? fields,
     @Query('locale') String? locale,
+    @Query('fields') String? fields,
   });
 }

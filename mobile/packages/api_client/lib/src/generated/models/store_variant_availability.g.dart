@@ -21,7 +21,7 @@ Map<String, dynamic> _$StoreVariantAvailabilityToJson(
   StoreVariantAvailability instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'title': instance.title,
-  'sku': instance.sku,
+  'title': ?instance.title,
+  'sku': ?instance.sku,
   'cities': instance.cities,
 };

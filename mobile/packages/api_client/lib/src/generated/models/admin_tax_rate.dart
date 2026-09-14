@@ -69,7 +69,7 @@ class AdminTaxRate {
 
   /// The date the tax rate was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The ID of the user that created the tax rate.
   @JsonKey(name: 'created_by')

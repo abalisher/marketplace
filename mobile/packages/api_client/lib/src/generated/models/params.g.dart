@@ -15,9 +15,9 @@ Params _$ParamsFromJson(Map<String, dynamic> json) => Params(
 );
 
 Map<String, dynamic> _$ParamsToJson(Params instance) => <String, dynamic>{
-  'area': instance.area,
-  'volume': instance.volume,
-  'length': instance.length,
-  'height': instance.height,
-  'count': instance.count,
+  'area': ?instance.area,
+  'volume': ?instance.volume,
+  'length': ?instance.length,
+  'height': ?instance.height,
+  'count': ?instance.count,
 };

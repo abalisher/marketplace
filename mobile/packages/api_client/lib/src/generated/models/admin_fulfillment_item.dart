@@ -36,10 +36,10 @@ class AdminFulfillmentItem {
   final num quantity;
 
   /// The item's SKU.
-  final String sku;
+  final String? sku;
 
   /// The item's barcode.
-  final String barcode;
+  final String? barcode;
 
   /// The ID of the order's line item to be fulfilled.
   @JsonKey(name: 'line_item_id')
@@ -63,7 +63,7 @@ class AdminFulfillmentItem {
 
   /// The date the item was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminFulfillmentItemToJson(this);
 }

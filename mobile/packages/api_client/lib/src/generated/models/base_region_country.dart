@@ -22,7 +22,7 @@ class BaseRegionCountry {
       _$BaseRegionCountryFromJson(json);
 
   /// The country's ID.
-  final String id;
+  final String? id;
 
   /// The country's iso 2.
   @JsonKey(name: 'iso_2')

@@ -26,16 +26,16 @@ StoreCartLineItemTaxLines _$StoreCartLineItemTaxLinesFromJson(
 Map<String, dynamic> _$StoreCartLineItemTaxLinesToJson(
   StoreCartLineItemTaxLines instance,
 ) => <String, dynamic>{
-  'item': instance.item,
+  'item': ?instance.item,
   'item_id': instance.itemId,
   'total': instance.total,
   'subtotal': instance.subtotal,
   'id': instance.id,
-  'description': instance.description,
-  'tax_rate_id': instance.taxRateId,
+  'description': ?instance.description,
+  'tax_rate_id': ?instance.taxRateId,
   'code': instance.code,
   'rate': instance.rate,
-  'provider_id': instance.providerId,
+  'provider_id': ?instance.providerId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

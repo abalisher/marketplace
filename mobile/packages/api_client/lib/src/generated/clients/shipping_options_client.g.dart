@@ -79,13 +79,13 @@ class _ShippingOptionsClient implements ShippingOptionsClient {
     required String xPublishableApiKey,
     required StoreShippingOptionsIdCalculateRequestBody body,
     String? xMedusaLocale,
-    String? fields,
     String? locale,
+    String? fields,
   }) async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{
-      r'fields': fields,
       r'locale': locale,
+      r'fields': fields,
     };
     queryParameters.removeWhere((k, v) => v == null);
     final _headers = <String, dynamic>{

@@ -22,7 +22,7 @@ class StorePlaceOrder {
   @JsonKey(name: 'cart_id')
   final String cartId;
 
-  /// Способ получения: доставка (приёмка по коду получения) или самовывоз у окна склада (по накладной). Продажа у окна (counter) покупателю недоступна — оформляется продавцом.
+  /// Способ получения заказа. После пивота 2026-07-22 единственный способ — доставка (приёмка по коду получения).
   @JsonKey(name: 'delivery_method')
   final StorePlaceOrderDeliveryMethod deliveryMethod;
 

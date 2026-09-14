@@ -30,6 +30,7 @@ class AdminInventoryItem {
     this.thumbnail,
     this.metadata,
     this.locationLevels,
+    this.unitOfMeasure,
   });
 
   factory AdminInventoryItem.fromJson(Map<String, Object?> json) =>
@@ -95,6 +96,10 @@ class AdminInventoryItem {
   /// The inventory item's reserved quantity.
   @JsonKey(name: 'reserved_quantity')
   final num reservedQuantity;
+
+  /// The inventory's unit of measure.
+  @JsonKey(name: 'unit_of_measure')
+  final String? unitOfMeasure;
 
   Map<String, Object?> toJson() => _$AdminInventoryItemToJson(this);
 }

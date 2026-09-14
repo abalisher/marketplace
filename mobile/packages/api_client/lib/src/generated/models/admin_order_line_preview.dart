@@ -136,10 +136,10 @@ class AdminOrderLinePreview {
   final num discountTaxTotal;
 
   /// The item's subtitle.
-  final String subtitle;
+  final String? subtitle;
 
   /// The URL of the item's thumbnail.
-  final String thumbnail;
+  final String? thumbnail;
 
   /// The ID of the associated variant.
   @JsonKey(name: 'variant_id')

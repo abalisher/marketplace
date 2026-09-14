@@ -27,7 +27,7 @@ AdminBatchTranslationSettings _$AdminBatchTranslationSettingsFromJson(
 Map<String, dynamic> _$AdminBatchTranslationSettingsToJson(
   AdminBatchTranslationSettings instance,
 ) => <String, dynamic>{
-  'create': instance.create,
-  'update': instance.update,
-  'delete': instance.delete,
+  'create': ?instance.create,
+  'update': ?instance.update,
+  'delete': ?instance.delete,
 };

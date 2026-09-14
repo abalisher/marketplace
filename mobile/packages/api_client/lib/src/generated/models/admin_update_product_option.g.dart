@@ -20,10 +20,10 @@ AdminUpdateProductOption _$AdminUpdateProductOptionFromJson(
 Map<String, dynamic> _$AdminUpdateProductOptionToJson(
   AdminUpdateProductOption instance,
 ) => <String, dynamic>{
-  'title': instance.title,
-  'values': instance.values,
-  'id': instance.id,
-  'ranks': instance.ranks,
-  'is_exclusive': instance.isExclusive,
-  'metadata': instance.metadata,
+  'title': ?instance.title,
+  'values': ?instance.values,
+  'id': ?instance.id,
+  'ranks': ?instance.ranks,
+  'is_exclusive': ?instance.isExclusive,
+  'metadata': ?instance.metadata,
 };

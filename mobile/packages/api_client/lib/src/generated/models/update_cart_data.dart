@@ -36,7 +36,10 @@ class UpdateCartData {
   @JsonKey(name: 'customer_id')
   final String? customerId;
 
-  /// The ID of the associated sales channel. Only products available in this channel can be added to the cart.
+  /// The ID of the associated sales channel.
+  ///
+  /// A product's availability in a sales channel only filters the products you retrieve. Medusa doesn't reject a variant added to the cart when its product isn't available in the cart's sales channel. Refer to the guide in the external documentation to learn how to enforce that validation.
+  ///
   @JsonKey(name: 'sales_channel_id')
   final String? salesChannelId;
 

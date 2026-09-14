@@ -11,7 +11,9 @@ AdminPromotion _$AdminPromotionFromJson(Map<String, dynamic> json) =>
       id: json['id'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
-      deletedAt: DateTime.parse(json['deleted_at'] as String),
+      deletedAt: json['deleted_at'] == null
+          ? null
+          : DateTime.parse(json['deleted_at'] as String),
       applicationMethod: json['application_method'] == null
           ? null
           : AdminApplicationMethod.fromJson(
@@ -39,21 +41,21 @@ AdminPromotion _$AdminPromotionFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminPromotionToJson(AdminPromotion instance) =>
     <String, dynamic>{
-      'application_method': instance.applicationMethod,
-      'rules': instance.rules,
+      'application_method': ?instance.applicationMethod,
+      'rules': ?instance.rules,
       'id': instance.id,
-      'code': instance.code,
-      'type': _$AdminPromotionTypeEnumMap[instance.type],
-      'is_automatic': instance.isAutomatic,
-      'campaign_id': instance.campaignId,
-      'campaign': instance.campaign,
+      'code': ?instance.code,
+      'type': ?_$AdminPromotionTypeEnumMap[instance.type],
+      'is_automatic': ?instance.isAutomatic,
+      'campaign_id': ?instance.campaignId,
+      'campaign': ?instance.campaign,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'deleted_at': instance.deletedAt.toIso8601String(),
-      'status': _$AdminPromotionStatusEnumMap[instance.status],
-      'is_tax_inclusive': instance.isTaxInclusive,
-      'limit': instance.limit,
-      'used': instance.used,
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
+      'status': ?_$AdminPromotionStatusEnumMap[instance.status],
+      'is_tax_inclusive': ?instance.isTaxInclusive,
+      'limit': ?instance.limit,
+      'used': ?instance.used,
     };
 
 const _$AdminPromotionTypeEnumMap = {

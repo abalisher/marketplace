@@ -21,8 +21,8 @@ _$AdminUpdateShippingOptionPriceWithCurrencyFromJson(
 Map<String, dynamic> _$AdminUpdateShippingOptionPriceWithCurrencyToJson(
   AdminUpdateShippingOptionPriceWithCurrency instance,
 ) => <String, dynamic>{
-  'id': instance.id,
-  'currency_code': instance.currencyCode,
-  'amount': instance.amount,
-  'rules': instance.rules,
+  'id': ?instance.id,
+  'currency_code': ?instance.currencyCode,
+  'amount': ?instance.amount,
+  'rules': ?instance.rules,
 };

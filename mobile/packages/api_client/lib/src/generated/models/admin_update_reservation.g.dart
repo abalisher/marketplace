@@ -18,8 +18,8 @@ AdminUpdateReservation _$AdminUpdateReservationFromJson(
 Map<String, dynamic> _$AdminUpdateReservationToJson(
   AdminUpdateReservation instance,
 ) => <String, dynamic>{
-  'location_id': instance.locationId,
-  'quantity': instance.quantity,
-  'description': instance.description,
-  'metadata': instance.metadata,
+  'location_id': ?instance.locationId,
+  'quantity': ?instance.quantity,
+  'description': ?instance.description,
+  'metadata': ?instance.metadata,
 };

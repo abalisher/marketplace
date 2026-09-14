@@ -27,9 +27,9 @@ Map<String, dynamic> _$StoreSpendLimitToJson(StoreSpendLimit instance) =>
       'amount': instance.amount,
       'currency_code': instance.currencyCode,
       'period': _$StoreSpendLimitPeriodEnumMap[instance.period]!,
-      'employee_id': instance.employeeId,
-      'created_at': instance.createdAt?.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
+      'employee_id': ?instance.employeeId,
+      'created_at': ?instance.createdAt?.toIso8601String(),
+      'updated_at': ?instance.updatedAt?.toIso8601String(),
     };
 
 const _$StoreSpendLimitPeriodEnumMap = {

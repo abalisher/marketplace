@@ -24,5 +24,5 @@ Map<String, dynamic> _$DeleteStoreCartsIdLineItemsLineIdResponseToJson(
   'id': instance.id,
   'object': instance.object,
   'deleted': instance.deleted,
-  'parent': instance.parent,
+  'parent': ?instance.parent,
 };

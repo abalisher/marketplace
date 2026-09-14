@@ -46,7 +46,7 @@ Map<String, dynamic> _$StoreShippingOptionListResponseShippingOptionsToJson(
   'type': _$TypeEnumMap[instance.type]!,
   'shipping_profile_id': instance.shippingProfileId,
   'amount': instance.amount,
-  'data': instance.data,
+  'data': ?instance.data,
   'prices': instance.prices,
   'calculated_price': instance.calculatedPrice,
   'insufficient_inventory': instance.insufficientInventory,

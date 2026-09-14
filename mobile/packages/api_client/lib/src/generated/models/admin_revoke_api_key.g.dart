@@ -10,4 +10,4 @@ AdminRevokeApiKey _$AdminRevokeApiKeyFromJson(Map<String, dynamic> json) =>
     AdminRevokeApiKey(revokeIn: json['revoke_in'] as num?);
 
 Map<String, dynamic> _$AdminRevokeApiKeyToJson(AdminRevokeApiKey instance) =>
-    <String, dynamic>{'revoke_in': instance.revokeIn};
+    <String, dynamic>{'revoke_in': ?instance.revokeIn};

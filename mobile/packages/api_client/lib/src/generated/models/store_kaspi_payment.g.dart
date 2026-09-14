@@ -21,9 +21,9 @@ Map<String, dynamic> _$StoreKaspiPaymentToJson(StoreKaspiPayment instance) =>
       'payment_collection_id': instance.paymentCollectionId,
       'payment_session_id': instance.paymentSessionId,
       'status': _$StoreKaspiPaymentStatusEnumMap[instance.status]!,
-      'kaspi_state': instance.kaspiState,
-      'qr_payload': instance.qrPayload,
-      'payment_url': instance.paymentUrl,
+      'kaspi_state': ?instance.kaspiState,
+      'qr_payload': ?instance.qrPayload,
+      'payment_url': ?instance.paymentUrl,
     };
 
 const _$StoreKaspiPaymentStatusEnumMap = {

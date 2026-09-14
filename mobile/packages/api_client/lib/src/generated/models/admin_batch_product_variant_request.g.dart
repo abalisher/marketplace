@@ -26,7 +26,7 @@ AdminBatchProductVariantRequest _$AdminBatchProductVariantRequestFromJson(
 Map<String, dynamic> _$AdminBatchProductVariantRequestToJson(
   AdminBatchProductVariantRequest instance,
 ) => <String, dynamic>{
-  'create': instance.create,
-  'update': instance.update,
-  'delete': instance.delete,
+  'create': ?instance.create,
+  'update': ?instance.update,
+  'delete': ?instance.delete,
 };

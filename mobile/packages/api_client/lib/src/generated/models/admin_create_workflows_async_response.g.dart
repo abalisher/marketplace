@@ -25,9 +25,9 @@ Map<String, dynamic> _$AdminCreateWorkflowsAsyncResponseToJson(
 ) => <String, dynamic>{
   'transaction_id': instance.transactionId,
   'step_id': instance.stepId,
-  'response': instance.response,
-  'compensate_input': instance.compensateInput,
-  'action': _$AdminCreateWorkflowsAsyncResponseActionEnumMap[instance.action],
+  'response': ?instance.response,
+  'compensate_input': ?instance.compensateInput,
+  'action': ?_$AdminCreateWorkflowsAsyncResponseActionEnumMap[instance.action],
 };
 
 const _$AdminCreateWorkflowsAsyncResponseActionEnumMap = {

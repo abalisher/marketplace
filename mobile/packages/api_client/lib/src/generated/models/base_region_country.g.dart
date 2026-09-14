@@ -8,7 +8,7 @@ part of 'base_region_country.dart';
 
 BaseRegionCountry _$BaseRegionCountryFromJson(Map<String, dynamic> json) =>
     BaseRegionCountry(
-      id: json['id'] as String,
+      id: json['id'] as String?,
       iso2: json['iso_2'] as String?,
       iso3: json['iso_3'] as String?,
       numCode: json['num_code'] as String?,
@@ -18,10 +18,10 @@ BaseRegionCountry _$BaseRegionCountryFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$BaseRegionCountryToJson(BaseRegionCountry instance) =>
     <String, dynamic>{
-      'id': instance.id,
-      'iso_2': instance.iso2,
-      'iso_3': instance.iso3,
-      'num_code': instance.numCode,
-      'name': instance.name,
-      'display_name': instance.displayName,
+      'id': ?instance.id,
+      'iso_2': ?instance.iso2,
+      'iso_3': ?instance.iso3,
+      'num_code': ?instance.numCode,
+      'name': ?instance.name,
+      'display_name': ?instance.displayName,
     };

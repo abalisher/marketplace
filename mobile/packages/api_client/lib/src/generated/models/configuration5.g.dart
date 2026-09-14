@@ -26,8 +26,8 @@ Map<String, dynamic> _$Configuration5ToJson(Configuration5 instance) =>
     <String, dynamic>{
       'visible_columns': instance.visibleColumns,
       'column_order': instance.columnOrder,
-      'column_widths': instance.columnWidths,
-      'filters': instance.filters,
-      'sorting': instance.sorting,
-      'search': instance.search,
+      'column_widths': ?instance.columnWidths,
+      'filters': ?instance.filters,
+      'sorting': ?instance.sorting,
+      'search': ?instance.search,
     };

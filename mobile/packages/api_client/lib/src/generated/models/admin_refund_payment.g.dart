@@ -15,7 +15,7 @@ AdminRefundPayment _$AdminRefundPaymentFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminRefundPaymentToJson(AdminRefundPayment instance) =>
     <String, dynamic>{
-      'amount': instance.amount,
-      'refund_reason_id': instance.refundReasonId,
-      'note': instance.note,
+      'amount': ?instance.amount,
+      'refund_reason_id': ?instance.refundReasonId,
+      'note': ?instance.note,
     };

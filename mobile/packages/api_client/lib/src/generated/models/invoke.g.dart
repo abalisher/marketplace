@@ -13,5 +13,5 @@ Invoke _$InvokeFromJson(Map<String, dynamic> json) => Invoke(
 );
 
 Map<String, dynamic> _$InvokeToJson(Invoke instance) => <String, dynamic>{
-  'output': instance.output,
+  'output': ?instance.output,
 };

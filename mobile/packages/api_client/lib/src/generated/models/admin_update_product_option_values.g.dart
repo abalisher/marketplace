@@ -18,6 +18,6 @@ Map<String, dynamic> _$AdminUpdateProductOptionValuesToJson(
   AdminUpdateProductOptionValues instance,
 ) => <String, dynamic>{
   'product_option_id': instance.productOptionId,
-  'add': instance.add,
-  'remove': instance.remove,
+  'add': ?instance.add,
+  'remove': ?instance.remove,
 };

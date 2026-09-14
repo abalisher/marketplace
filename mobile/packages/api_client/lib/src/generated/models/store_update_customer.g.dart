@@ -18,9 +18,9 @@ StoreUpdateCustomer _$StoreUpdateCustomerFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$StoreUpdateCustomerToJson(
   StoreUpdateCustomer instance,
 ) => <String, dynamic>{
-  'company_name': instance.companyName,
-  'first_name': instance.firstName,
-  'last_name': instance.lastName,
-  'phone': instance.phone,
-  'metadata': instance.metadata,
+  'company_name': ?instance.companyName,
+  'first_name': ?instance.firstName,
+  'last_name': ?instance.lastName,
+  'phone': ?instance.phone,
+  'metadata': ?instance.metadata,
 };

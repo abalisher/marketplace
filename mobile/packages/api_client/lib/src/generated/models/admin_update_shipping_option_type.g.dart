@@ -17,7 +17,7 @@ AdminUpdateShippingOptionType _$AdminUpdateShippingOptionTypeFromJson(
 Map<String, dynamic> _$AdminUpdateShippingOptionTypeToJson(
   AdminUpdateShippingOptionType instance,
 ) => <String, dynamic>{
-  'code': instance.code,
-  'description': instance.description,
-  'label': instance.label,
+  'code': ?instance.code,
+  'description': ?instance.description,
+  'label': ?instance.label,
 };

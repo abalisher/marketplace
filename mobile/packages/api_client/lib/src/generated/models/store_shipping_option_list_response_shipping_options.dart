@@ -66,7 +66,7 @@ class StoreShippingOptionListResponseShippingOptions {
   @JsonKey(name: 'shipping_profile_id')
   final String shippingProfileId;
 
-  /// The shipping option's amount.
+  /// The shipping option's amount for the cart. For a shipping option whose `price_type` is `calculated`, this amount is computed on the fly by the fulfillment provider against the cart.
   final num amount;
 
   /// The shipping option's data, useful for the provider handling fulfillment.

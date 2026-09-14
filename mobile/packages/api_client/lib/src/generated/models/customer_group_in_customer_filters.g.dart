@@ -19,9 +19,9 @@ CustomerGroupInCustomerFilters _$CustomerGroupInCustomerFiltersFromJson(
 Map<String, dynamic> _$CustomerGroupInCustomerFiltersToJson(
   CustomerGroupInCustomerFilters instance,
 ) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'created_at': instance.createdAt,
-  'updated_at': instance.updatedAt,
-  'deleted_at': instance.deletedAt,
+  'id': ?instance.id,
+  'name': ?instance.name,
+  'created_at': ?instance.createdAt,
+  'updated_at': ?instance.updatedAt,
+  'deleted_at': ?instance.deletedAt,
 };

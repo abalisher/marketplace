@@ -22,24 +22,40 @@ StoreOrderLifecycleRes _$StoreOrderLifecycleResFromJson(
           json['delivery_method'] as String,
         ),
   deliveryCode: json['delivery_code'] as String?,
+  deliveryDate: json['delivery_date'] == null
+      ? null
+      : DateTime.parse(json['delivery_date'] as String),
+  deliveryWindow: json['delivery_window'] == null
+      ? null
+      : StoreOrderLifecycleResDeliveryWindow.fromJson(
+          json['delivery_window'] as String,
+        ),
 );
 
 Map<String, dynamic> _$StoreOrderLifecycleResToJson(
   StoreOrderLifecycleRes instance,
 ) => <String, dynamic>{
   'order_id': instance.orderId,
-  'status': instance.status,
-  'previous_status': instance.previousStatus,
-  'note': instance.note,
+  'status': ?instance.status,
+  'previous_status': ?instance.previousStatus,
+  'note': ?instance.note,
   'delivery_method':
-      _$StoreOrderLifecycleResDeliveryMethodEnumMap[instance.deliveryMethod],
-  'delivery_code': instance.deliveryCode,
+      ?_$StoreOrderLifecycleResDeliveryMethodEnumMap[instance.deliveryMethod],
+  'delivery_code': ?instance.deliveryCode,
+  'delivery_date': ?instance.deliveryDate?.toIso8601String(),
+  'delivery_window':
+      ?_$StoreOrderLifecycleResDeliveryWindowEnumMap[instance.deliveryWindow],
   'history': instance.history,
 };
 
 const _$StoreOrderLifecycleResDeliveryMethodEnumMap = {
   StoreOrderLifecycleResDeliveryMethod.delivery: 'delivery',
-  StoreOrderLifecycleResDeliveryMethod.pickup: 'pickup',
-  StoreOrderLifecycleResDeliveryMethod.counter: 'counter',
   StoreOrderLifecycleResDeliveryMethod.$unknown: r'$unknown',
+};
+
+const _$StoreOrderLifecycleResDeliveryWindowEnumMap = {
+  StoreOrderLifecycleResDeliveryWindow.morning: 'morning',
+  StoreOrderLifecycleResDeliveryWindow.day: 'day',
+  StoreOrderLifecycleResDeliveryWindow.evening: 'evening',
+  StoreOrderLifecycleResDeliveryWindow.$unknown: r'$unknown',
 };

@@ -18,8 +18,8 @@ AdminUpdateSalesChannel _$AdminUpdateSalesChannelFromJson(
 Map<String, dynamic> _$AdminUpdateSalesChannelToJson(
   AdminUpdateSalesChannel instance,
 ) => <String, dynamic>{
-  'name': instance.name,
-  'description': instance.description,
-  'is_disabled': instance.isDisabled,
-  'metadata': instance.metadata,
+  'name': ?instance.name,
+  'description': ?instance.description,
+  'is_disabled': ?instance.isDisabled,
+  'metadata': ?instance.metadata,
 };

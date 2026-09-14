@@ -19,7 +19,7 @@ Map<String, dynamic> _$AuthMfaFactorsRequestBodyToJson(
   AuthMfaFactorsRequestBody instance,
 ) => <String, dynamic>{
   'provider': instance.provider,
-  'label': instance.label,
-  'issuer': instance.issuer,
-  'metadata': instance.metadata,
+  'label': ?instance.label,
+  'issuer': ?instance.issuer,
+  'metadata': ?instance.metadata,
 };

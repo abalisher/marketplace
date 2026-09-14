@@ -17,5 +17,5 @@ Map<String, dynamic> _$AuthVerificationConfirmRequestBodyToJson(
   AuthVerificationConfirmRequestBody instance,
 ) => <String, dynamic>{
   'code': instance.code,
-  'code_provider': instance.codeProvider,
+  'code_provider': ?instance.codeProvider,
 };

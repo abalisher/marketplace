@@ -51,13 +51,13 @@ AdminCounterCart _$AdminCounterCartFromJson(
 Map<String, dynamic> _$AdminCounterCartToJson(AdminCounterCart instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'email': instance.email,
+      'email': ?instance.email,
       'currency_code': instance.currencyCode,
-      'region_id': instance.regionId,
-      'sales_channel_id': instance.salesChannelId,
-      'metadata': instance.metadata,
-      'completed_at': instance.completedAt?.toIso8601String(),
-      'created_at': instance.createdAt?.toIso8601String(),
+      'region_id': ?instance.regionId,
+      'sales_channel_id': ?instance.salesChannelId,
+      'metadata': ?instance.metadata,
+      'completed_at': ?instance.completedAt?.toIso8601String(),
+      'created_at': ?instance.createdAt?.toIso8601String(),
       'items': instance.items,
       'subtotal': instance.subtotal,
       'item_total': instance.itemTotal,
@@ -65,6 +65,6 @@ Map<String, dynamic> _$AdminCounterCartToJson(AdminCounterCart instance) =>
       'total': instance.total,
       'credit_lines': instance.creditLines,
       'shipping_methods': instance.shippingMethods,
-      'payment_collection_id': instance.paymentCollectionId,
+      'payment_collection_id': ?instance.paymentCollectionId,
       'payment_sessions': instance.paymentSessions,
     };

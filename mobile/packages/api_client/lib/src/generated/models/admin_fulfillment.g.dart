@@ -32,7 +32,9 @@ AdminFulfillment _$AdminFulfillmentFromJson(Map<String, dynamic> json) =>
       metadata: json['metadata'],
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
-      deletedAt: DateTime.parse(json['deleted_at'] as String),
+      deletedAt: json['deleted_at'] == null
+          ? null
+          : DateTime.parse(json['deleted_at'] as String),
     );
 
 Map<String, dynamic> _$AdminFulfillmentToJson(AdminFulfillment instance) =>
@@ -49,9 +51,9 @@ Map<String, dynamic> _$AdminFulfillmentToJson(AdminFulfillment instance) =>
       'shipped_at': instance.shippedAt,
       'delivered_at': instance.deliveredAt,
       'canceled_at': instance.canceledAt,
-      'data': instance.data,
-      'metadata': instance.metadata,
+      'data': ?instance.data,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'deleted_at': instance.deletedAt.toIso8601String(),
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
     };

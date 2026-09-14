@@ -14,4 +14,4 @@ AdminPostCancelExchangeReqSchema _$AdminPostCancelExchangeReqSchemaFromJson(
 
 Map<String, dynamic> _$AdminPostCancelExchangeReqSchemaToJson(
   AdminPostCancelExchangeReqSchema instance,
-) => <String, dynamic>{'no_notification': instance.noNotification};
+) => <String, dynamic>{'no_notification': ?instance.noNotification};

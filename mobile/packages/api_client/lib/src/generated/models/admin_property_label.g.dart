@@ -23,7 +23,7 @@ Map<String, dynamic> _$AdminPropertyLabelToJson(AdminPropertyLabel instance) =>
       'entity': instance.entity,
       'property': instance.property,
       'label': instance.label,
-      'description': instance.description,
+      'description': ?instance.description,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
     };

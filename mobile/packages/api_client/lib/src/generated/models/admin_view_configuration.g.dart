@@ -29,7 +29,7 @@ Map<String, dynamic> _$AdminViewConfigurationToJson(
   'name': instance.name,
   'user_id': instance.userId,
   'is_system_default': instance.isSystemDefault,
-  'configuration': instance.configuration,
+  'configuration': ?instance.configuration,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

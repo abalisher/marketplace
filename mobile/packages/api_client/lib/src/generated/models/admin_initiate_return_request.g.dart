@@ -21,9 +21,9 @@ Map<String, dynamic> _$AdminInitiateReturnRequestToJson(
   AdminInitiateReturnRequest instance,
 ) => <String, dynamic>{
   'order_id': instance.orderId,
-  'location_id': instance.locationId,
-  'description': instance.description,
-  'internal_note': instance.internalNote,
-  'no_notification': instance.noNotification,
-  'metadata': instance.metadata,
+  'location_id': ?instance.locationId,
+  'description': ?instance.description,
+  'internal_note': ?instance.internalNote,
+  'no_notification': ?instance.noNotification,
+  'metadata': ?instance.metadata,
 };

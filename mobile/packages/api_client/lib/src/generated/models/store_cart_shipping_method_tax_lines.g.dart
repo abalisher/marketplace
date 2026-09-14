@@ -26,16 +26,16 @@ StoreCartShippingMethodTaxLines _$StoreCartShippingMethodTaxLinesFromJson(
 Map<String, dynamic> _$StoreCartShippingMethodTaxLinesToJson(
   StoreCartShippingMethodTaxLines instance,
 ) => <String, dynamic>{
-  'shipping_method': instance.shippingMethod,
+  'shipping_method': ?instance.shippingMethod,
   'shipping_method_id': instance.shippingMethodId,
   'total': instance.total,
   'subtotal': instance.subtotal,
   'id': instance.id,
-  'description': instance.description,
-  'tax_rate_id': instance.taxRateId,
+  'description': ?instance.description,
+  'tax_rate_id': ?instance.taxRateId,
   'code': instance.code,
   'rate': instance.rate,
-  'provider_id': instance.providerId,
+  'provider_id': ?instance.providerId,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

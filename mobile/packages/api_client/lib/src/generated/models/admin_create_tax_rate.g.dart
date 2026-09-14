@@ -26,10 +26,10 @@ Map<String, dynamic> _$AdminCreateTaxRateToJson(AdminCreateTaxRate instance) =>
     <String, dynamic>{
       'name': instance.name,
       'tax_region_id': instance.taxRegionId,
-      'rate': instance.rate,
+      'rate': ?instance.rate,
       'code': instance.code,
-      'rules': instance.rules,
-      'is_default': instance.isDefault,
-      'is_combinable': instance.isCombinable,
-      'metadata': instance.metadata,
+      'rules': ?instance.rules,
+      'is_default': ?instance.isDefault,
+      'is_combinable': ?instance.isCombinable,
+      'metadata': ?instance.metadata,
     };

@@ -25,9 +25,9 @@ _$AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant1ToJson(
   AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant1 instance,
 ) => <String, dynamic>{
   'type': instance.type,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'countryCode': instance.countryCode,
-  'id': instance.id,
+  'id': ?instance.id,
 };
 
 AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant2
@@ -46,10 +46,10 @@ _$AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant2ToJson(
   AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant2 instance,
 ) => <String, dynamic>{
   'type': instance.type,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'countryCode': instance.countryCode,
   'provinceCode': instance.provinceCode,
-  'id': instance.id,
+  'id': ?instance.id,
 };
 
 AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant3
@@ -69,11 +69,11 @@ _$AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant3ToJson(
   AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant3 instance,
 ) => <String, dynamic>{
   'type': instance.type,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'city': instance.city,
   'countryCode': instance.countryCode,
   'provinceCode': instance.provinceCode,
-  'id': instance.id,
+  'id': ?instance.id,
 };
 
 AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant4
@@ -94,10 +94,10 @@ _$AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant4ToJson(
   AdminUpdateFulfillmentSetServiceZoneGeoZonesSealedVariant4 instance,
 ) => <String, dynamic>{
   'type': instance.type,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'city': instance.city,
   'countryCode': instance.countryCode,
   'provinceCode': instance.provinceCode,
-  'postalExpression': instance.postalExpression,
-  'id': instance.id,
+  'postalExpression': ?instance.postalExpression,
+  'id': ?instance.id,
 };

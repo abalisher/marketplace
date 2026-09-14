@@ -25,10 +25,10 @@ Map<String, dynamic> _$AdminRefundToJson(AdminRefund instance) =>
     <String, dynamic>{
       'id': instance.id,
       'amount': instance.amount,
-      'refund_reason_id': instance.refundReasonId,
-      'note': instance.note,
+      'refund_reason_id': ?instance.refundReasonId,
+      'note': ?instance.note,
       'created_at': instance.createdAt.toIso8601String(),
-      'created_by': instance.createdBy,
+      'created_by': ?instance.createdBy,
       'payment': instance.payment,
-      'refund_reason': instance.refundReason,
+      'refund_reason': ?instance.refundReason,
     };

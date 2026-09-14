@@ -19,10 +19,10 @@ StoreCreateCustomer _$StoreCreateCustomerFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$StoreCreateCustomerToJson(
   StoreCreateCustomer instance,
 ) => <String, dynamic>{
-  'email': instance.email,
-  'company_name': instance.companyName,
-  'first_name': instance.firstName,
-  'last_name': instance.lastName,
-  'phone': instance.phone,
-  'metadata': instance.metadata,
+  'email': ?instance.email,
+  'company_name': ?instance.companyName,
+  'first_name': ?instance.firstName,
+  'last_name': ?instance.lastName,
+  'phone': ?instance.phone,
+  'metadata': ?instance.metadata,
 };

@@ -14,6 +14,7 @@ RelationshipFilterConfig _$RelationshipFilterConfigFromJson(
   displayField: json['display_field'] as String,
   multiple: json['multiple'] as bool,
   endpoint: json['endpoint'] as String,
+  filterKey: json['filter_key'] as String?,
 );
 
 Map<String, dynamic> _$RelationshipFilterConfigToJson(
@@ -24,4 +25,5 @@ Map<String, dynamic> _$RelationshipFilterConfigToJson(
   'display_field': instance.displayField,
   'multiple': instance.multiple,
   'endpoint': instance.endpoint,
+  'filter_key': ?instance.filterKey,
 };

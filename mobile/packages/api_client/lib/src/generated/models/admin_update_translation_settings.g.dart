@@ -19,7 +19,7 @@ Map<String, dynamic> _$AdminUpdateTranslationSettingsToJson(
   AdminUpdateTranslationSettings instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'entity_type': instance.entityType,
-  'fields': instance.fields,
-  'is_active': instance.isActive,
+  'entity_type': ?instance.entityType,
+  'fields': ?instance.fields,
+  'is_active': ?instance.isActive,
 };

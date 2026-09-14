@@ -20,6 +20,6 @@ Map<String, dynamic> _$AdminCreateProductOptionToJson(
 ) => <String, dynamic>{
   'title': instance.title,
   'values': instance.values,
-  'ranks': instance.ranks,
-  'is_exclusive': instance.isExclusive,
+  'ranks': ?instance.ranks,
+  'is_exclusive': ?instance.isExclusive,
 };

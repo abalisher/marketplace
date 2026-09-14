@@ -21,7 +21,7 @@ AdminBatchPropertyLabels _$AdminBatchPropertyLabelsFromJson(
 Map<String, dynamic> _$AdminBatchPropertyLabelsToJson(
   AdminBatchPropertyLabels instance,
 ) => <String, dynamic>{
-  'create': instance.create,
-  'update': instance.update,
-  'delete': instance.delete,
+  'create': ?instance.create,
+  'update': ?instance.update,
+  'delete': ?instance.delete,
 };

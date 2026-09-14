@@ -18,8 +18,8 @@ _$AdminPostOrderEditsItemsActionReqSchemaFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$AdminPostOrderEditsItemsActionReqSchemaToJson(
   AdminPostOrderEditsItemsActionReqSchema instance,
 ) => <String, dynamic>{
-  'quantity': instance.quantity,
-  'internal_note': instance.internalNote,
-  'unit_price': instance.unitPrice,
-  'compare_at_unit_price': instance.compareAtUnitPrice,
+  'quantity': ?instance.quantity,
+  'internal_note': ?instance.internalNote,
+  'unit_price': ?instance.unitPrice,
+  'compare_at_unit_price': ?instance.compareAtUnitPrice,
 };

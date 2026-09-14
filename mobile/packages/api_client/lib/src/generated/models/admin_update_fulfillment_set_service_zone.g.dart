@@ -21,4 +21,4 @@ _$AdminUpdateFulfillmentSetServiceZoneFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminUpdateFulfillmentSetServiceZoneToJson(
   AdminUpdateFulfillmentSetServiceZone instance,
-) => <String, dynamic>{'name': instance.name, 'geo_zones': instance.geoZones};
+) => <String, dynamic>{'name': ?instance.name, 'geo_zones': ?instance.geoZones};

@@ -24,16 +24,16 @@ CreateAddress _$CreateAddressFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$CreateAddressToJson(CreateAddress instance) =>
     <String, dynamic>{
-      'customer_id': instance.customerId,
-      'company': instance.company,
-      'first_name': instance.firstName,
-      'last_name': instance.lastName,
-      'address_1': instance.address1,
-      'address_2': instance.address2,
-      'city': instance.city,
-      'country_code': instance.countryCode,
-      'province': instance.province,
-      'postal_code': instance.postalCode,
-      'phone': instance.phone,
-      'metadata': instance.metadata,
+      'customer_id': ?instance.customerId,
+      'company': ?instance.company,
+      'first_name': ?instance.firstName,
+      'last_name': ?instance.lastName,
+      'address_1': ?instance.address1,
+      'address_2': ?instance.address2,
+      'city': ?instance.city,
+      'country_code': ?instance.countryCode,
+      'province': ?instance.province,
+      'postal_code': ?instance.postalCode,
+      'phone': ?instance.phone,
+      'metadata': ?instance.metadata,
     };

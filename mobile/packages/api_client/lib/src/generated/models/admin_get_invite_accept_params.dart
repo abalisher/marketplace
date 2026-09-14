@@ -9,16 +9,21 @@ part 'admin_get_invite_accept_params.g.dart';
 /// The details of the user to be created.
 @JsonSerializable()
 class AdminGetInviteAcceptParams {
-  const AdminGetInviteAcceptParams({required this.token, this.fields});
+  const AdminGetInviteAcceptParams({this.email, this.firstName, this.lastName});
 
   factory AdminGetInviteAcceptParams.fromJson(Map<String, Object?> json) =>
       _$AdminGetInviteAcceptParamsFromJson(json);
 
-  /// The invite's token.
-  final String token;
+  /// The invite's email.
+  final String? email;
 
-  /// The invite's fields.
-  final String? fields;
+  /// The invited user's first name.
+  @JsonKey(name: 'first_name')
+  final String? firstName;
+
+  /// The invited user's last name.
+  @JsonKey(name: 'last_name')
+  final String? lastName;
 
   Map<String, Object?> toJson() => _$AdminGetInviteAcceptParamsToJson(this);
 }

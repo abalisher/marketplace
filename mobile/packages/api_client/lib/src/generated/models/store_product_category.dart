@@ -37,7 +37,7 @@ class StoreProductCategory {
   final String name;
 
   /// The category's description.
-  final String description;
+  final String? description;
 
   /// The category's handle.
   final String handle;
@@ -68,7 +68,7 @@ class StoreProductCategory {
 
   /// The date the category was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The category's products.
   final List<StoreProduct>? products;

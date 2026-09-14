@@ -46,6 +46,7 @@ class AdminOrderChange {
     required this.internalNote,
     this.changeType,
     this.carryOverPromotions,
+    this.noNotification,
   });
 
   factory AdminOrderChange.fromJson(Map<String, Object?> json) =>
@@ -146,6 +147,10 @@ class AdminOrderChange {
   /// The order change's internal note.
   @JsonKey(name: 'internal_note')
   final String internalNote;
+
+  /// Whether to send notifications to the customer regarding the order change's updates.
+  @JsonKey(name: 'no_notification')
+  final bool? noNotification;
 
   Map<String, Object?> toJson() => _$AdminOrderChangeToJson(this);
 }

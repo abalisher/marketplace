@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminStockLocationListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'stock_locations': instance.stockLocations,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

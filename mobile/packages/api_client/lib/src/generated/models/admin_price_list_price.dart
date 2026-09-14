@@ -74,7 +74,7 @@ class AdminPriceListPrice {
 
   /// The date the price was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminPriceListPriceToJson(this);
 }

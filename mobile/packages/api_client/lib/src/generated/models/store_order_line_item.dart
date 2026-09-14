@@ -144,10 +144,10 @@ class StoreOrderLineItem {
   final num refundableTotalPerUnit;
 
   /// The item's subtitle.
-  final String subtitle;
+  final String? subtitle;
 
   /// The item's thumbnail.
-  final String thumbnail;
+  final String? thumbnail;
 
   /// The ID of the associated variant.
   @JsonKey(name: 'variant_id')

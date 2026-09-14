@@ -17,7 +17,7 @@ AdminUpdateProductType _$AdminUpdateProductTypeFromJson(
 Map<String, dynamic> _$AdminUpdateProductTypeToJson(
   AdminUpdateProductType instance,
 ) => <String, dynamic>{
-  'value': instance.value,
-  'metadata': instance.metadata,
-  'external_id': instance.externalId,
+  'value': ?instance.value,
+  'metadata': ?instance.metadata,
+  'external_id': ?instance.externalId,
 };

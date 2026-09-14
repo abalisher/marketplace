@@ -24,10 +24,10 @@ Map<String, dynamic> _$AdminOrderDocumentExportToJson(
   'type': _$AdminOrderDocumentExportTypeEnumMap[instance.type]!,
   'number': instance.number,
   'version': instance.version,
-  'total_money': instance.totalMoney,
-  'total_bonus': instance.totalBonus,
-  'currency_code': instance.currencyCode,
-  'snapshot': instance.snapshot,
+  'total_money': ?instance.totalMoney,
+  'total_bonus': ?instance.totalBonus,
+  'currency_code': ?instance.currencyCode,
+  'snapshot': ?instance.snapshot,
 };
 
 const _$AdminOrderDocumentExportTypeEnumMap = {

@@ -21,8 +21,8 @@ Map<String, dynamic> _$AdminRefundReasonToJson(AdminRefundReason instance) =>
     <String, dynamic>{
       'id': instance.id,
       'label': instance.label,
-      'description': instance.description,
-      'metadata': instance.metadata,
+      'description': ?instance.description,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
       'code': instance.code,

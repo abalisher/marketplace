@@ -21,5 +21,5 @@ Map<String, dynamic> _$AuthVerificationRequestRequestBodyToJson(
   'entity_id': instance.entityId,
   'entity_type': instance.entityType,
   'code_provider': instance.codeProvider,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
 };

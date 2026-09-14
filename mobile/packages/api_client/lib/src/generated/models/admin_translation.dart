@@ -50,7 +50,7 @@ class AdminTranslation {
 
   /// The date that the translation was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminTranslationToJson(this);
 }

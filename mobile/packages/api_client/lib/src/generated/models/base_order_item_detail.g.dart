@@ -29,7 +29,7 @@ Map<String, dynamic> _$BaseOrderItemDetailToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'item_id': instance.itemId,
-  'item': instance.item,
+  'item': ?instance.item,
   'quantity': instance.quantity,
   'fulfilled_quantity': instance.fulfilledQuantity,
   'delivered_quantity': instance.deliveredQuantity,
@@ -38,7 +38,7 @@ Map<String, dynamic> _$BaseOrderItemDetailToJson(
   'return_received_quantity': instance.returnReceivedQuantity,
   'return_dismissed_quantity': instance.returnDismissedQuantity,
   'written_off_quantity': instance.writtenOffQuantity,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'created_at': instance.createdAt.toIso8601String(),
   'updated_at': instance.updatedAt.toIso8601String(),
 };

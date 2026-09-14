@@ -25,9 +25,9 @@ Map<String, dynamic> _$AdminPromotionRuleToJson(
   AdminPromotionRule instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'description': instance.description,
-  'attribute': instance.attribute,
-  'operator': _$AdminPromotionRuleOperatorEnumEnumMap[instance.operatorEnum],
+  'description': ?instance.description,
+  'attribute': ?instance.attribute,
+  'operator': ?_$AdminPromotionRuleOperatorEnumEnumMap[instance.operatorEnum],
   'values': instance.values,
 };
 

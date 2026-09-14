@@ -24,6 +24,6 @@ Map<String, dynamic> _$GetStoreProductVariantsResponseToJson(
   'limit': instance.limit,
   'offset': instance.offset,
   'count': instance.count,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
   'variants': instance.variants,
 };

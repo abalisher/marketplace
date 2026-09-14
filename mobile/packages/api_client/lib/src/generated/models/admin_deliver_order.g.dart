@@ -15,5 +15,5 @@ AdminDeliverOrder _$AdminDeliverOrderFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$AdminDeliverOrderToJson(AdminDeliverOrder instance) =>
     <String, dynamic>{
       'fulfillment_id': instance.fulfillmentId,
-      'delivery_code': instance.deliveryCode,
+      'delivery_code': ?instance.deliveryCode,
     };

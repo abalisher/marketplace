@@ -22,10 +22,10 @@ StoreProductType _$StoreProductTypeFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$StoreProductTypeToJson(StoreProductType instance) =>
     <String, dynamic>{
       'id': instance.id,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'deleted_at': instance.deletedAt?.toIso8601String(),
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
       'value': instance.value,
-      'external_id': instance.externalId,
+      'external_id': ?instance.externalId,
     };

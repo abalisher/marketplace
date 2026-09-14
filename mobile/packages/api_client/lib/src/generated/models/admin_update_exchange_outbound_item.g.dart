@@ -16,6 +16,6 @@ AdminUpdateExchangeOutboundItem _$AdminUpdateExchangeOutboundItemFromJson(
 Map<String, dynamic> _$AdminUpdateExchangeOutboundItemToJson(
   AdminUpdateExchangeOutboundItem instance,
 ) => <String, dynamic>{
-  'quantity': instance.quantity,
-  'internal_note': instance.internalNote,
+  'quantity': ?instance.quantity,
+  'internal_note': ?instance.internalNote,
 };

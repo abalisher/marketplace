@@ -16,7 +16,7 @@ class StoreOpenDispute {
       _$StoreOpenDisputeFromJson(json);
 
   final StoreOpenDisputeCategory category;
-  final String description;
+  final String? description;
 
   Map<String, Object?> toJson() => _$StoreOpenDisputeToJson(this);
 }

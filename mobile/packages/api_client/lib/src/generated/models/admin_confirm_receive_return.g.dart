@@ -13,4 +13,4 @@ AdminConfirmReceiveReturn _$AdminConfirmReceiveReturnFromJson(
 
 Map<String, dynamic> _$AdminConfirmReceiveReturnToJson(
   AdminConfirmReceiveReturn instance,
-) => <String, dynamic>{'no_notification': instance.noNotification};
+) => <String, dynamic>{'no_notification': ?instance.noNotification};

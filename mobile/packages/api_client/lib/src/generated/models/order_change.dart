@@ -42,6 +42,7 @@ class OrderChange {
     required this.updatedAt,
     this.changeType,
     this.carryOverPromotions,
+    this.noNotification,
   });
 
   factory OrderChange.fromJson(Map<String, Object?> json) =>
@@ -134,6 +135,10 @@ class OrderChange {
   /// Whether promotions from the original order should be carried over to the order change (specifically, exchanges).
   @JsonKey(name: 'carry_over_promotions')
   final bool? carryOverPromotions;
+
+  /// Whether to send notifications to the customer regarding the order change's updates.
+  @JsonKey(name: 'no_notification')
+  final bool? noNotification;
 
   Map<String, Object?> toJson() => _$OrderChangeToJson(this);
 }

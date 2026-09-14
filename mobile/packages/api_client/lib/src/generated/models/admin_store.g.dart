@@ -31,7 +31,7 @@ Map<String, dynamic> _$AdminStoreToJson(AdminStore instance) =>
       'default_sales_channel_id': instance.defaultSalesChannelId,
       'default_region_id': instance.defaultRegionId,
       'default_location_id': instance.defaultLocationId,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
       'supported_locales': instance.supportedLocales,

@@ -16,6 +16,6 @@ AdminUpdatePropertyLabel _$AdminUpdatePropertyLabelFromJson(
 Map<String, dynamic> _$AdminUpdatePropertyLabelToJson(
   AdminUpdatePropertyLabel instance,
 ) => <String, dynamic>{
-  'label': instance.label,
-  'description': instance.description,
+  'label': ?instance.label,
+  'description': ?instance.description,
 };

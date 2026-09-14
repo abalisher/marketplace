@@ -26,14 +26,14 @@ AdminUpdatePriceList _$AdminUpdatePriceListFromJson(
 Map<String, dynamic> _$AdminUpdatePriceListToJson(
   AdminUpdatePriceList instance,
 ) => <String, dynamic>{
-  'title': instance.title,
-  'description': instance.description,
-  'starts_at': instance.startsAt,
-  'ends_at': instance.endsAt,
-  'status': _$AdminUpdatePriceListStatusEnumMap[instance.status],
-  'type': _$AdminUpdatePriceListTypeEnumMap[instance.type],
-  'rules': instance.rules,
-  'metadata': instance.metadata,
+  'title': ?instance.title,
+  'description': ?instance.description,
+  'starts_at': ?instance.startsAt,
+  'ends_at': ?instance.endsAt,
+  'status': ?_$AdminUpdatePriceListStatusEnumMap[instance.status],
+  'type': ?_$AdminUpdatePriceListTypeEnumMap[instance.type],
+  'rules': ?instance.rules,
+  'metadata': ?instance.metadata,
 };
 
 const _$AdminUpdatePriceListStatusEnumMap = {

@@ -29,11 +29,11 @@ Map<String, dynamic> _$AdminProductImageToJson(AdminProductImage instance) =>
     <String, dynamic>{
       'id': instance.id,
       'url': instance.url,
-      'created_at': instance.createdAt?.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
-      'deleted_at': instance.deletedAt?.toIso8601String(),
-      'metadata': instance.metadata,
+      'created_at': ?instance.createdAt?.toIso8601String(),
+      'updated_at': ?instance.updatedAt?.toIso8601String(),
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
+      'metadata': ?instance.metadata,
       'rank': instance.rank,
-      'product': instance.product,
-      'variants': instance.variants,
+      'product': ?instance.product,
+      'variants': ?instance.variants,
     };

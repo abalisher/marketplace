@@ -25,7 +25,7 @@ Map<String, dynamic> _$StoreCreateReturnToJson(StoreCreateReturn instance) =>
       'order_id': instance.orderId,
       'items': instance.items,
       'return_shipping': instance.returnShipping,
-      'note': instance.note,
-      'receive_now': instance.receiveNow,
-      'location_id': instance.locationId,
+      'note': ?instance.note,
+      'receive_now': ?instance.receiveNow,
+      'location_id': ?instance.locationId,
     };

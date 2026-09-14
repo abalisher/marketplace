@@ -19,11 +19,11 @@ Items3 _$Items3FromJson(Map<String, dynamic> json) => Items3(
 
 Map<String, dynamic> _$Items3ToJson(Items3 instance) => <String, dynamic>{
   'quantity': instance.quantity,
-  'variant_id': instance.variantId,
-  'title': instance.title,
-  'unit_price': instance.unitPrice,
-  'compare_at_unit_price': instance.compareAtUnitPrice,
-  'internal_note': instance.internalNote,
-  'allow_backorder': instance.allowBackorder,
-  'metadata': instance.metadata,
+  'variant_id': ?instance.variantId,
+  'title': ?instance.title,
+  'unit_price': ?instance.unitPrice,
+  'compare_at_unit_price': ?instance.compareAtUnitPrice,
+  'internal_note': ?instance.internalNote,
+  'allow_backorder': ?instance.allowBackorder,
+  'metadata': ?instance.metadata,
 };

@@ -33,5 +33,5 @@ Map<String, dynamic> _$AdminStockLocationAddressToJson(
   'phone': instance.phone,
   'postal_code': instance.postalCode,
   'province': instance.province,
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
 };

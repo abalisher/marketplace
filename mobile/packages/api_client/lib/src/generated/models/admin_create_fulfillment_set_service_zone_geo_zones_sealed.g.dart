@@ -23,7 +23,7 @@ Map<String, dynamic>
 _$AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant1ToJson(
   AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant1 instance,
 ) => <String, dynamic>{
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'countryCode': instance.countryCode,
   'type': instance.type,
 };
@@ -42,7 +42,7 @@ Map<String, dynamic>
 _$AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant2ToJson(
   AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant2 instance,
 ) => <String, dynamic>{
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'countryCode': instance.countryCode,
   'type': instance.type,
   'provinceCode': instance.provinceCode,
@@ -63,7 +63,7 @@ Map<String, dynamic>
 _$AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant3ToJson(
   AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant3 instance,
 ) => <String, dynamic>{
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'countryCode': instance.countryCode,
   'type': instance.type,
   'provinceCode': instance.provinceCode,
@@ -86,10 +86,10 @@ Map<String, dynamic>
 _$AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant4ToJson(
   AdminCreateFulfillmentSetServiceZoneGeoZonesSealedVariant4 instance,
 ) => <String, dynamic>{
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'countryCode': instance.countryCode,
   'type': instance.type,
   'provinceCode': instance.provinceCode,
   'city': instance.city,
-  'postalExpression': instance.postalExpression,
+  'postalExpression': ?instance.postalExpression,
 };

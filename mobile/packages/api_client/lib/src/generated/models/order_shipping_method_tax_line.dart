@@ -22,6 +22,8 @@ class OrderShippingMethodTaxLine {
     this.description,
     this.taxRateId,
     this.providerId,
+    this.data,
+    this.metadata,
   });
 
   factory OrderShippingMethodTaxLine.fromJson(Map<String, Object?> json) =>
@@ -67,6 +69,12 @@ class OrderShippingMethodTaxLine {
   /// The date the tax line was updated.
   @JsonKey(name: 'updated_at')
   final DateTime updatedAt;
+
+  /// The tax line's data.
+  final dynamic data;
+
+  /// The tax line's metadata. Can hold custom key-value pairs.
+  final dynamic metadata;
 
   Map<String, Object?> toJson() => _$OrderShippingMethodTaxLineToJson(this);
 }

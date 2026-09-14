@@ -17,7 +17,7 @@ AdminUpdatePricePreference _$AdminUpdatePricePreferenceFromJson(
 Map<String, dynamic> _$AdminUpdatePricePreferenceToJson(
   AdminUpdatePricePreference instance,
 ) => <String, dynamic>{
-  'attribute': instance.attribute,
-  'value': instance.value,
-  'is_tax_inclusive': instance.isTaxInclusive,
+  'attribute': ?instance.attribute,
+  'value': ?instance.value,
+  'is_tax_inclusive': ?instance.isTaxInclusive,
 };

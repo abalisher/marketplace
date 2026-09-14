@@ -18,6 +18,6 @@ AdminAddExchangeInboundItems _$AdminAddExchangeInboundItemsFromJson(
 Map<String, dynamic> _$AdminAddExchangeInboundItemsToJson(
   AdminAddExchangeInboundItems instance,
 ) => <String, dynamic>{
-  'items': instance.items,
-  'location_id': instance.locationId,
+  'items': ?instance.items,
+  'location_id': ?instance.locationId,
 };

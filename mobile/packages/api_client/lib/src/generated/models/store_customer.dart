@@ -38,23 +38,23 @@ class StoreCustomer {
 
   /// The ID of the address used for billing by default.
   @JsonKey(name: 'default_billing_address_id')
-  final String defaultBillingAddressId;
+  final String? defaultBillingAddressId;
 
   /// The ID of the address used for shipping by default.
   @JsonKey(name: 'default_shipping_address_id')
-  final String defaultShippingAddressId;
+  final String? defaultShippingAddressId;
 
   /// The customer's company name.
   @JsonKey(name: 'company_name')
-  final String companyName;
+  final String? companyName;
 
   /// The customer's first name.
   @JsonKey(name: 'first_name')
-  final String firstName;
+  final String? firstName;
 
   /// The customer's last name.
   @JsonKey(name: 'last_name')
-  final String lastName;
+  final String? lastName;
 
   /// The customer's addresses.
   final List<StoreCustomerAddress> addresses;

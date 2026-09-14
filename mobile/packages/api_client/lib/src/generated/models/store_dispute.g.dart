@@ -10,7 +10,7 @@ StoreDispute _$StoreDisputeFromJson(Map<String, dynamic> json) => StoreDispute(
   id: json['id'] as String,
   orderId: json['order_id'] as String,
   category: StoreDisputeCategory.fromJson(json['category'] as String),
-  description: json['description'] as String,
+  description: json['description'] as String?,
   status: StoreDisputeStatus.fromJson(json['status'] as String),
   resolution: json['resolution'] as String?,
   createdAt: json['created_at'] == null
@@ -23,10 +23,10 @@ Map<String, dynamic> _$StoreDisputeToJson(StoreDispute instance) =>
       'id': instance.id,
       'order_id': instance.orderId,
       'category': _$StoreDisputeCategoryEnumMap[instance.category]!,
-      'description': instance.description,
+      'description': ?instance.description,
       'status': _$StoreDisputeStatusEnumMap[instance.status]!,
-      'resolution': instance.resolution,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'resolution': ?instance.resolution,
+      'created_at': ?instance.createdAt?.toIso8601String(),
     };
 
 const _$StoreDisputeCategoryEnumMap = {

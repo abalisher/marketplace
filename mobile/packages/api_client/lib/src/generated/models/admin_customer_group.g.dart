@@ -21,7 +21,7 @@ Map<String, dynamic> _$AdminCustomerGroupToJson(AdminCustomerGroup instance) =>
       'id': instance.id,
       'name': instance.name,
       'customers': instance.customers,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
     };

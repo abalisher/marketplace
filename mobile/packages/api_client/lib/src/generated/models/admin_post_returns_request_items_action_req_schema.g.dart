@@ -19,8 +19,8 @@ _$AdminPostReturnsRequestItemsActionReqSchemaFromJson(
 Map<String, dynamic> _$AdminPostReturnsRequestItemsActionReqSchemaToJson(
   AdminPostReturnsRequestItemsActionReqSchema instance,
 ) => <String, dynamic>{
-  'quantity': instance.quantity,
-  'internal_note': instance.internalNote,
-  'reason_id': instance.reasonId,
-  'metadata': instance.metadata,
+  'quantity': ?instance.quantity,
+  'internal_note': ?instance.internalNote,
+  'reason_id': ?instance.reasonId,
+  'metadata': ?instance.metadata,
 };

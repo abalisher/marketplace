@@ -23,13 +23,13 @@ AdminUpdateGiftCardParams _$AdminUpdateGiftCardParamsFromJson(
 Map<String, dynamic> _$AdminUpdateGiftCardParamsToJson(
   AdminUpdateGiftCardParams instance,
 ) => <String, dynamic>{
-  'status': _$AdminUpdateGiftCardParamsStatusEnumMap[instance.status],
-  'value': instance.value,
-  'customer_id': instance.customerId,
-  'currency_code': instance.currencyCode,
-  'note': instance.note,
-  'expires_at': instance.expiresAt,
-  'metadata': instance.metadata,
+  'status': ?_$AdminUpdateGiftCardParamsStatusEnumMap[instance.status],
+  'value': ?instance.value,
+  'customer_id': ?instance.customerId,
+  'currency_code': ?instance.currencyCode,
+  'note': ?instance.note,
+  'expires_at': ?instance.expiresAt,
+  'metadata': ?instance.metadata,
 };
 
 const _$AdminUpdateGiftCardParamsStatusEnumMap = {

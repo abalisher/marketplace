@@ -28,7 +28,7 @@ class StoreDispute {
   @JsonKey(name: 'order_id')
   final String orderId;
   final StoreDisputeCategory category;
-  final String description;
+  final String? description;
   final StoreDisputeStatus status;
   final String? resolution;
   @JsonKey(name: 'created_at')

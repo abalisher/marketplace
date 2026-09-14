@@ -19,7 +19,7 @@ Map<String, dynamic> _$AdminRequestOrderTransferToJson(
   AdminRequestOrderTransfer instance,
 ) => <String, dynamic>{
   'customer_id': instance.customerId,
-  'description': instance.description,
-  'internal_note': instance.internalNote,
+  'description': ?instance.description,
+  'internal_note': ?instance.internalNote,
   'update_order_email': instance.updateOrderEmail,
 };

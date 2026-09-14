@@ -14,4 +14,4 @@ AdminDismissItems _$AdminDismissItemsFromJson(Map<String, dynamic> json) =>
     );
 
 Map<String, dynamic> _$AdminDismissItemsToJson(AdminDismissItems instance) =>
-    <String, dynamic>{'items': instance.items};
+    <String, dynamic>{'items': ?instance.items};

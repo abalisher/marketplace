@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminDraftOrderListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'draft_orders': instance.draftOrders,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

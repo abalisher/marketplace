@@ -19,5 +19,5 @@ Map<String, dynamic> _$AdminCreateTranslationSettingsToJson(
 ) => <String, dynamic>{
   'entity_type': instance.entityType,
   'fields': instance.fields,
-  'is_active': instance.isActive,
+  'is_active': ?instance.isActive,
 };

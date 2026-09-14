@@ -16,6 +16,6 @@ StoreRequestOrderTransfer _$StoreRequestOrderTransferFromJson(
 Map<String, dynamic> _$StoreRequestOrderTransferToJson(
   StoreRequestOrderTransfer instance,
 ) => <String, dynamic>{
-  'description': instance.description,
+  'description': ?instance.description,
   'update_order_email': instance.updateOrderEmail,
 };

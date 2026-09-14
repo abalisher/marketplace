@@ -23,5 +23,5 @@ Map<String, dynamic> _$AdminProductOptionValueDeleteResponseToJson(
   'id': instance.id,
   'object': instance.object,
   'deleted': instance.deleted,
-  'parent': instance.parent,
+  'parent': ?instance.parent,
 };

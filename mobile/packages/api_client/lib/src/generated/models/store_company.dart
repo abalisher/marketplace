@@ -18,6 +18,7 @@ class StoreCompany {
     required this.status,
     this.rejectionReason,
     this.documents,
+    this.resubmittedAt,
     this.createdAt,
     this.updatedAt,
   });
@@ -34,6 +35,10 @@ class StoreCompany {
   @JsonKey(name: 'rejection_reason')
   final String? rejectionReason;
   final List<StoreCompanyDocument>? documents;
+
+  /// Момент повторной подачи заявки после отказа модератора; null — заявку не переподавали.
+  @JsonKey(name: 'resubmitted_at')
+  final DateTime? resubmittedAt;
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
   @JsonKey(name: 'updated_at')

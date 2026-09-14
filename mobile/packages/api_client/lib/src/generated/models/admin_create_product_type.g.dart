@@ -17,7 +17,7 @@ AdminCreateProductType _$AdminCreateProductTypeFromJson(
 Map<String, dynamic> _$AdminCreateProductTypeToJson(
   AdminCreateProductType instance,
 ) => <String, dynamic>{
-  'metadata': instance.metadata,
+  'metadata': ?instance.metadata,
   'value': instance.value,
-  'external_id': instance.externalId,
+  'external_id': ?instance.externalId,
 };

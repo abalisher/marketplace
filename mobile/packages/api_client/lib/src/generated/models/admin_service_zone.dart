@@ -57,7 +57,7 @@ class AdminServiceZone {
 
   /// The service zone's deleted at.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminServiceZoneToJson(this);
 }

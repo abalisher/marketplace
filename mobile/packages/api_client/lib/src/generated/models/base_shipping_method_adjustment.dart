@@ -11,6 +11,7 @@ part 'base_shipping_method_adjustment.g.dart';
 class BaseShippingMethodAdjustment {
   const BaseShippingMethodAdjustment({
     required this.shippingMethod,
+    required this.shippingMethodId,
     required this.id,
     required this.amount,
     required this.cartId,
@@ -25,9 +26,12 @@ class BaseShippingMethodAdjustment {
   factory BaseShippingMethodAdjustment.fromJson(Map<String, Object?> json) =>
       _$BaseShippingMethodAdjustmentFromJson(json);
 
-  /// The details of the method that the adjustment belongs to.
   @JsonKey(name: 'shipping_method')
   final dynamic shippingMethod;
+
+  /// The ID of the shipping method this adjustment applies on.
+  @JsonKey(name: 'shipping_method_id')
+  final String shippingMethodId;
 
   /// The adjustment's ID.
   final String id;

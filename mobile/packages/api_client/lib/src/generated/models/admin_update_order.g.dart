@@ -22,9 +22,9 @@ AdminUpdateOrder _$AdminUpdateOrderFromJson(
 
 Map<String, dynamic> _$AdminUpdateOrderToJson(AdminUpdateOrder instance) =>
     <String, dynamic>{
-      'email': instance.email,
-      'shipping_address': instance.shippingAddress,
-      'billing_address': instance.billingAddress,
-      'metadata': instance.metadata,
-      'locale': instance.locale,
+      'email': ?instance.email,
+      'shipping_address': ?instance.shippingAddress,
+      'billing_address': ?instance.billingAddress,
+      'metadata': ?instance.metadata,
+      'locale': ?instance.locale,
     };

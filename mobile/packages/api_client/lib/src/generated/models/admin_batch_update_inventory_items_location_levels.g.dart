@@ -22,7 +22,7 @@ Map<String, dynamic> _$AdminBatchUpdateInventoryItemsLocationLevelsToJson(
 ) => <String, dynamic>{
   'location_id': instance.locationId,
   'inventory_item_id': instance.inventoryItemId,
-  'stocked_quantity': instance.stockedQuantity,
-  'incoming_quantity': instance.incomingQuantity,
-  'id': instance.id,
+  'stocked_quantity': ?instance.stockedQuantity,
+  'incoming_quantity': ?instance.incomingQuantity,
+  'id': ?instance.id,
 };

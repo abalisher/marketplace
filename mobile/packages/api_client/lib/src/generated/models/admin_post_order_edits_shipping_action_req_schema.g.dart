@@ -18,7 +18,7 @@ _$AdminPostOrderEditsShippingActionReqSchemaFromJson(
 Map<String, dynamic> _$AdminPostOrderEditsShippingActionReqSchemaToJson(
   AdminPostOrderEditsShippingActionReqSchema instance,
 ) => <String, dynamic>{
-  'custom_amount': instance.customAmount,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'custom_amount': ?instance.customAmount,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };

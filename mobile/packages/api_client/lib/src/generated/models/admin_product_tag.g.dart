@@ -28,8 +28,8 @@ Map<String, dynamic> _$AdminProductTagToJson(AdminProductTag instance) =>
       'value': instance.value,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'deleted_at': instance.deletedAt?.toIso8601String(),
-      'metadata': instance.metadata,
-      'translations': instance.translations,
-      'external_id': instance.externalId,
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
+      'metadata': ?instance.metadata,
+      'translations': ?instance.translations,
+      'external_id': ?instance.externalId,
     };

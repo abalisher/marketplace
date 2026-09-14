@@ -16,4 +16,4 @@ AdminAddDraftOrderItems _$AdminAddDraftOrderItemsFromJson(
 
 Map<String, dynamic> _$AdminAddDraftOrderItemsToJson(
   AdminAddDraftOrderItems instance,
-) => <String, dynamic>{'items': instance.items};
+) => <String, dynamic>{'items': ?instance.items};

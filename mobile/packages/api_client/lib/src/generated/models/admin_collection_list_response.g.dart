@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminCollectionListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'collections': instance.collections,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

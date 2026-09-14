@@ -20,8 +20,8 @@ Map<String, dynamic> _$AdminUpdateDraftOrderItemToJson(
   AdminUpdateDraftOrderItem instance,
 ) => <String, dynamic>{
   'quantity': instance.quantity,
-  'unit_price': instance.unitPrice,
-  'compare_at_unit_price': instance.compareAtUnitPrice,
-  'internal_note': instance.internalNote,
-  'metadata': instance.metadata,
+  'unit_price': ?instance.unitPrice,
+  'compare_at_unit_price': ?instance.compareAtUnitPrice,
+  'internal_note': ?instance.internalNote,
+  'metadata': ?instance.metadata,
 };

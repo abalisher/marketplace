@@ -5,6 +5,9 @@
 import 'package:json_annotation/json_annotation.dart';
 
 import 'admin_order_lifecycle_event_actor_type.dart';
+import 'admin_order_lifecycle_event_from_slot_window.dart';
+import 'admin_order_lifecycle_event_kind.dart';
+import 'admin_order_lifecycle_event_to_slot_window.dart';
 
 part 'admin_order_lifecycle_event.g.dart';
 
@@ -18,6 +21,12 @@ class AdminOrderLifecycleEvent {
     this.actorId,
     this.reason,
     this.createdAt,
+    this.actorName,
+    this.kind,
+    this.fromSlotDate,
+    this.toSlotDate,
+    this.fromSlotWindow,
+    this.toSlotWindow,
   });
 
   factory AdminOrderLifecycleEvent.fromJson(Map<String, Object?> json) =>
@@ -35,6 +44,29 @@ class AdminOrderLifecycleEvent {
   final String? reason;
   @JsonKey(name: 'created_at')
   final DateTime? createdAt;
+
+  /// Имя человека, сделавшего переход (учётка сотрудника или покупатель). null — переход системы или удалённая учётка: тогда подписью остаётся одна роль.
+  @JsonKey(name: 'actor_name')
+  final String? actorName;
+
+  /// Род записи: переход статуса или перенос слота доставки (T5.6b).
+  final AdminOrderLifecycleEventKind? kind;
+
+  /// Дата слота до переноса (kind=slot).
+  @JsonKey(name: 'from_slot_date')
+  final String? fromSlotDate;
+
+  /// Дата слота после переноса (kind=slot).
+  @JsonKey(name: 'to_slot_date')
+  final String? toSlotDate;
+
+  /// Окно до переноса (kind=slot).
+  @JsonKey(name: 'from_slot_window')
+  final AdminOrderLifecycleEventFromSlotWindow? fromSlotWindow;
+
+  /// Окно после переноса (kind=slot).
+  @JsonKey(name: 'to_slot_window')
+  final AdminOrderLifecycleEventToSlotWindow? toSlotWindow;
 
   Map<String, Object?> toJson() => _$AdminOrderLifecycleEventToJson(this);
 }

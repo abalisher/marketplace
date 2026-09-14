@@ -17,6 +17,6 @@ _$AdminPostReturnsDismissItemsActionReqSchemaFromJson(
 Map<String, dynamic> _$AdminPostReturnsDismissItemsActionReqSchemaToJson(
   AdminPostReturnsDismissItemsActionReqSchema instance,
 ) => <String, dynamic>{
-  'quantity': instance.quantity,
-  'internal_note': instance.internalNote,
+  'quantity': ?instance.quantity,
+  'internal_note': ?instance.internalNote,
 };

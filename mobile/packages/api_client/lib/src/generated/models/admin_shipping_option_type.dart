@@ -36,13 +36,13 @@ class AdminShippingOptionType {
 
   /// The date the shipping option was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   /// The type's label.
   final String label;
 
   /// The type's description.
-  final String description;
+  final String? description;
 
   /// The type's code.
   final String code;

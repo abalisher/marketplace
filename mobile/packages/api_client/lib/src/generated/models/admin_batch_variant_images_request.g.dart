@@ -15,4 +15,4 @@ AdminBatchVariantImagesRequest _$AdminBatchVariantImagesRequestFromJson(
 
 Map<String, dynamic> _$AdminBatchVariantImagesRequestToJson(
   AdminBatchVariantImagesRequest instance,
-) => <String, dynamic>{'add': instance.add, 'remove': instance.remove};
+) => <String, dynamic>{'add': ?instance.add, 'remove': ?instance.remove};

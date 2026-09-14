@@ -32,7 +32,7 @@ class CampaignResponse {
   final String name;
 
   /// The campaign's description.
-  final String description;
+  final String? description;
 
   /// The campaign's currency.
   final String currency;

@@ -31,13 +31,13 @@ Map<String, dynamic> _$AdminOrderDocumentToJson(AdminOrderDocument instance) =>
       'number': instance.number,
       'version': instance.version,
       'is_latest': instance.isLatest,
-      'file_id': instance.fileId,
-      'file_url': instance.fileUrl,
-      'total_money': instance.totalMoney,
-      'total_bonus': instance.totalBonus,
-      'currency_code': instance.currencyCode,
-      'note': instance.note,
-      'created_at': instance.createdAt?.toIso8601String(),
+      'file_id': ?instance.fileId,
+      'file_url': ?instance.fileUrl,
+      'total_money': ?instance.totalMoney,
+      'total_bonus': ?instance.totalBonus,
+      'currency_code': ?instance.currencyCode,
+      'note': ?instance.note,
+      'created_at': ?instance.createdAt?.toIso8601String(),
     };
 
 const _$AdminOrderDocumentTypeEnumMap = {

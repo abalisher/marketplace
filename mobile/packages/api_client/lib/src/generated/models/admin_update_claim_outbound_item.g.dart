@@ -17,7 +17,7 @@ AdminUpdateClaimOutboundItem _$AdminUpdateClaimOutboundItemFromJson(
 Map<String, dynamic> _$AdminUpdateClaimOutboundItemToJson(
   AdminUpdateClaimOutboundItem instance,
 ) => <String, dynamic>{
-  'quantity': instance.quantity,
-  'reason_id': instance.reasonId,
-  'internal_note': instance.internalNote,
+  'quantity': ?instance.quantity,
+  'reason_id': ?instance.reasonId,
+  'internal_note': ?instance.internalNote,
 };

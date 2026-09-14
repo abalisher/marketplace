@@ -46,7 +46,7 @@ class AdminStoreLocale {
 
   /// The date the locale was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminStoreLocaleToJson(this);
 }

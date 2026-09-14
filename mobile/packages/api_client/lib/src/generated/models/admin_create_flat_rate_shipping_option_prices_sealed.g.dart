@@ -27,7 +27,7 @@ _$AdminCreateFlatRateShippingOptionPricesSealedVariant1ToJson(
 ) => <String, dynamic>{
   'currencyCode': instance.currencyCode,
   'amount': instance.amount,
-  'rules': instance.rules,
+  'rules': ?instance.rules,
 };
 
 AdminCreateFlatRateShippingOptionPricesSealedVariant2
@@ -47,5 +47,5 @@ _$AdminCreateFlatRateShippingOptionPricesSealedVariant2ToJson(
 ) => <String, dynamic>{
   'regionId': instance.regionId,
   'amount': instance.amount,
-  'rules': instance.rules,
+  'rules': ?instance.rules,
 };

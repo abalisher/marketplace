@@ -19,6 +19,6 @@ Map<String, dynamic> _$BaseCaptureToJson(BaseCapture instance) =>
       'id': instance.id,
       'amount': instance.amount,
       'created_at': instance.createdAt.toIso8601String(),
-      'created_by': instance.createdBy,
-      'payment': instance.payment,
+      'created_by': ?instance.createdBy,
+      'payment': ?instance.payment,
     };

@@ -23,7 +23,7 @@ Filter _$FilterFromJson(Map<String, dynamic> json) => Filter(
 
 Map<String, dynamic> _$FilterToJson(Filter instance) => <String, dynamic>{
   'enabled': instance.enabled,
-  'operators': instance.operators,
-  'enumValues': instance.enumValues,
-  'relationship': instance.relationship,
+  'operators': ?instance.operators,
+  'enumValues': ?instance.enumValues,
+  'relationship': ?instance.relationship,
 };

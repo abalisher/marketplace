@@ -33,7 +33,7 @@ class AdminRbacRole {
   final String name;
 
   /// The description of the RBAC role.
-  final String description;
+  final String? description;
 
   /// The ID of the parent RBAC role.
   @JsonKey(name: 'parent_id')
@@ -55,7 +55,7 @@ class AdminRbacRole {
 
   /// The date the RBAC role was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminRbacRoleToJson(this);
 }

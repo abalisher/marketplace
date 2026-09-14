@@ -23,13 +23,13 @@ AdminUpdateProductCategory _$AdminUpdateProductCategoryFromJson(
 Map<String, dynamic> _$AdminUpdateProductCategoryToJson(
   AdminUpdateProductCategory instance,
 ) => <String, dynamic>{
-  'name': instance.name,
-  'description': instance.description,
-  'handle': instance.handle,
-  'is_internal': instance.isInternal,
-  'is_active': instance.isActive,
-  'parent_category_id': instance.parentCategoryId,
-  'metadata': instance.metadata,
-  'rank': instance.rank,
-  'external_id': instance.externalId,
+  'name': ?instance.name,
+  'description': ?instance.description,
+  'handle': ?instance.handle,
+  'is_internal': ?instance.isInternal,
+  'is_active': ?instance.isActive,
+  'parent_category_id': ?instance.parentCategoryId,
+  'metadata': ?instance.metadata,
+  'rank': ?instance.rank,
+  'external_id': ?instance.externalId,
 };

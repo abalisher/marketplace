@@ -25,5 +25,5 @@ Map<String, dynamic> _$StoreProductTagListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'product_tags': instance.productTags,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

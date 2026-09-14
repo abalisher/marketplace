@@ -25,13 +25,13 @@ class AdminCreateFulfillmentItem {
   final String title;
 
   /// The item's SKU.
-  final String sku;
+  final String? sku;
 
   /// The quantity to fulfill of the item.
   final num quantity;
 
   /// The item's barcode.
-  final String barcode;
+  final String? barcode;
 
   /// The ID of the associated line item.
   @JsonKey(name: 'line_item_id')

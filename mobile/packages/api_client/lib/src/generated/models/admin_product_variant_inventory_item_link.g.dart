@@ -26,8 +26,8 @@ Map<String, dynamic> _$AdminProductVariantInventoryItemLinkToJson(
 ) => <String, dynamic>{
   'id': instance.id,
   'variant_id': instance.variantId,
-  'variant': instance.variant,
+  'variant': ?instance.variant,
   'inventory_item_id': instance.inventoryItemId,
-  'inventory': instance.inventory,
-  'required_quantity': instance.requiredQuantity,
+  'inventory': ?instance.inventory,
+  'required_quantity': ?instance.requiredQuantity,
 };

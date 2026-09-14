@@ -25,5 +25,5 @@ Map<String, dynamic> _$AdminUserListResponseToJson(
   'offset': instance.offset,
   'count': instance.count,
   'users': instance.users,
-  'estimate_count': instance.estimateCount,
+  'estimate_count': ?instance.estimateCount,
 };

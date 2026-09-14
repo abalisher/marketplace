@@ -12,4 +12,4 @@ AdminDraftOrderParams _$AdminDraftOrderParamsFromJson(
 
 Map<String, dynamic> _$AdminDraftOrderParamsToJson(
   AdminDraftOrderParams instance,
-) => <String, dynamic>{'fields': instance.fields};
+) => <String, dynamic>{'fields': ?instance.fields};

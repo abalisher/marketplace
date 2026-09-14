@@ -19,6 +19,6 @@ Map<String, dynamic> _$AdminBatchCreateInventoryItemLocationLevelsToJson(
   AdminBatchCreateInventoryItemLocationLevels instance,
 ) => <String, dynamic>{
   'location_id': instance.locationId,
-  'stocked_quantity': instance.stockedQuantity,
-  'incoming_quantity': instance.incomingQuantity,
+  'stocked_quantity': ?instance.stockedQuantity,
+  'incoming_quantity': ?instance.incomingQuantity,
 };

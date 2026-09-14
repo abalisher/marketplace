@@ -16,19 +16,19 @@ part 'base_cart.g.dart';
 class BaseCart {
   const BaseCart({
     required this.itemTotal,
+    required this.originalShippingTaxTotal,
     required this.originalShippingSubtotal,
     required this.originalShippingTotal,
     required this.shippingTaxTotal,
     required this.shippingSubtotal,
-    required this.shippingTotal,
     required this.currencyCode,
+    required this.giftCardTaxTotal,
     required this.giftCardTotal,
     required this.discountTaxTotal,
     required this.discountTotal,
     required this.taxTotal,
-    required this.subtotal,
     required this.id,
-    required this.originalShippingTaxTotal,
+    required this.subtotal,
     required this.originalTaxTotal,
     required this.originalItemTotal,
     required this.originalItemSubtotal,
@@ -38,7 +38,8 @@ class BaseCart {
     required this.itemTaxTotal,
     required this.originalTotal,
     required this.originalSubtotal,
-    required this.giftCardTaxTotal,
+    required this.shippingTotal,
+    this.completedAt,
     this.createdAt,
     this.paymentCollection,
     this.shippingMethods,
@@ -189,6 +190,10 @@ class BaseCart {
   /// The sum of all shipping methods' original tax totals before discounts.
   @JsonKey(name: 'original_shipping_tax_total')
   final num originalShippingTaxTotal;
+
+  /// The date the cart was completed.
+  @JsonKey(name: 'completed_at')
+  final DateTime? completedAt;
 
   Map<String, Object?> toJson() => _$BaseCartToJson(this);
 }

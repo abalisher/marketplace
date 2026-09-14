@@ -15,4 +15,7 @@ StoreCreateReturnShipping _$StoreCreateReturnShippingFromJson(
 
 Map<String, dynamic> _$StoreCreateReturnShippingToJson(
   StoreCreateReturnShipping instance,
-) => <String, dynamic>{'option_id': instance.optionId, 'price': instance.price};
+) => <String, dynamic>{
+  'option_id': instance.optionId,
+  'price': ?instance.price,
+};

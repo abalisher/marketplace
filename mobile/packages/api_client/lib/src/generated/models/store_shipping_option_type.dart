@@ -30,7 +30,7 @@ class StoreShippingOptionType {
   final String label;
 
   /// The type's description.
-  final String description;
+  final String? description;
 
   /// The type's code.
   final String code;
@@ -49,7 +49,7 @@ class StoreShippingOptionType {
 
   /// The date the type was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$StoreShippingOptionTypeToJson(this);
 }

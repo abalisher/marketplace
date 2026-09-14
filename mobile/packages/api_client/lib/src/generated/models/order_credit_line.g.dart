@@ -23,10 +23,10 @@ Map<String, dynamic> _$OrderCreditLineToJson(OrderCreditLine instance) =>
     <String, dynamic>{
       'id': instance.id,
       'order_id': instance.orderId,
-      'order': instance.order,
+      'order': ?instance.order,
       'reference': instance.reference,
       'reference_id': instance.referenceId,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
       'amount': instance.amount,

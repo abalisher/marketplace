@@ -53,7 +53,7 @@ class AdminUpdateShippingOption {
   @JsonKey(name: 'type_id')
   final String? typeId;
 
-  /// The shipping option's prices.
+  /// The shipping option's prices. This array replaces the shipping option's existing prices - a price with a matching `id` is updated, a price without an `id` is created, and any existing price whose `id` isn't included is deleted. Omit this property to leave the existing prices unchanged.
   final List<AdminUpdateShippingOptionPricesSealed>? prices;
 
   /// The shipping option's rules.

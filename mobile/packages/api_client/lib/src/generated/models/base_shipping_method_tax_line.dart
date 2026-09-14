@@ -27,7 +27,6 @@ class BaseShippingMethodTaxLine {
   factory BaseShippingMethodTaxLine.fromJson(Map<String, Object?> json) =>
       _$BaseShippingMethodTaxLineFromJson(json);
 
-  /// The details of the method that the tax line belongs to.
   @JsonKey(name: 'shipping_method')
   final dynamic shippingMethod;
 

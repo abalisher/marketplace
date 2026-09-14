@@ -43,13 +43,14 @@ AdminOrderChange _$AdminOrderChangeFromJson(
       ? null
       : AdminOrderChangeChangeType.fromJson(json['change_type'] as String),
   carryOverPromotions: json['carry_over_promotions'] as bool?,
+  noNotification: json['no_notification'] as bool?,
 );
 
 Map<String, dynamic> _$AdminOrderChangeToJson(AdminOrderChange instance) =>
     <String, dynamic>{
       'id': instance.id,
       'version': instance.version,
-      'change_type': _$AdminOrderChangeChangeTypeEnumMap[instance.changeType],
+      'change_type': ?_$AdminOrderChangeChangeTypeEnumMap[instance.changeType],
       'order_id': instance.orderId,
       'return_id': instance.returnId,
       'exchange_id': instance.exchangeId,
@@ -66,15 +67,16 @@ Map<String, dynamic> _$AdminOrderChangeToJson(AdminOrderChange instance) =>
       'confirmed_at': instance.confirmedAt.toIso8601String(),
       'declined_by': instance.declinedBy,
       'declined_reason': instance.declinedReason,
-      'metadata': instance.metadata,
+      'metadata': ?instance.metadata,
       'declined_at': instance.declinedAt.toIso8601String(),
       'canceled_by': instance.canceledBy,
       'canceled_at': instance.canceledAt.toIso8601String(),
       'created_at': instance.createdAt.toIso8601String(),
       'updated_at': instance.updatedAt.toIso8601String(),
-      'carry_over_promotions': instance.carryOverPromotions,
+      'carry_over_promotions': ?instance.carryOverPromotions,
       'created_by': instance.createdBy,
       'internal_note': instance.internalNote,
+      'no_notification': ?instance.noNotification,
     };
 
 const _$AdminOrderChangeChangeTypeEnumMap = {

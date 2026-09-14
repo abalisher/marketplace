@@ -42,12 +42,12 @@ Map<String, dynamic> _$AdminCreateCalculatedShippingOptionToJson(
   'name': instance.name,
   'service_zone_id': instance.serviceZoneId,
   'shipping_profile_id': instance.shippingProfileId,
-  'data': instance.data,
+  'data': ?instance.data,
   'provider_id': instance.providerId,
-  'type': instance.type,
-  'type_id': instance.typeId,
-  'rules': instance.rules,
-  'metadata': instance.metadata,
+  'type': ?instance.type,
+  'type_id': ?instance.typeId,
+  'rules': ?instance.rules,
+  'metadata': ?instance.metadata,
 };
 
 const _$AdminCreateCalculatedShippingOptionPriceTypeEnumMap = {

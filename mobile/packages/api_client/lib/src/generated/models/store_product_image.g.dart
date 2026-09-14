@@ -27,9 +27,9 @@ Map<String, dynamic> _$StoreProductImageToJson(StoreProductImage instance) =>
     <String, dynamic>{
       'id': instance.id,
       'url': instance.url,
-      'created_at': instance.createdAt?.toIso8601String(),
-      'updated_at': instance.updatedAt?.toIso8601String(),
-      'deleted_at': instance.deletedAt?.toIso8601String(),
-      'metadata': instance.metadata,
+      'created_at': ?instance.createdAt?.toIso8601String(),
+      'updated_at': ?instance.updatedAt?.toIso8601String(),
+      'deleted_at': ?instance.deletedAt?.toIso8601String(),
+      'metadata': ?instance.metadata,
       'rank': instance.rank,
     };

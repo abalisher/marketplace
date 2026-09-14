@@ -46,10 +46,10 @@ class AdminReservation {
 
   /// An ID in an external system
   @JsonKey(name: 'external_id')
-  final String externalId;
+  final String? externalId;
 
   /// The reservation's description.
-  final String description;
+  final String? description;
 
   /// The ID of the inventory item this reservation is associated with.
   @JsonKey(name: 'inventory_item_id')

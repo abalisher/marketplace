@@ -16,6 +16,6 @@ AdminUpdateOrderChange _$AdminUpdateOrderChangeFromJson(
 Map<String, dynamic> _$AdminUpdateOrderChangeToJson(
   AdminUpdateOrderChange instance,
 ) => <String, dynamic>{
-  'carry_over_promotions': instance.carryOverPromotions,
-  'internal_note': instance.internalNote,
+  'carry_over_promotions': ?instance.carryOverPromotions,
+  'internal_note': ?instance.internalNote,
 };

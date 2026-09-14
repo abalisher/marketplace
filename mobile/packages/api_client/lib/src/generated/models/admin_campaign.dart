@@ -35,7 +35,7 @@ class AdminCampaign {
   final String name;
 
   /// The campaign's description.
-  final String description;
+  final String? description;
 
   /// The campaign's currency.
   final String currency;
@@ -65,7 +65,7 @@ class AdminCampaign {
 
   /// The date the campaign was deleted.
   @JsonKey(name: 'deleted_at')
-  final DateTime deletedAt;
+  final DateTime? deletedAt;
 
   Map<String, Object?> toJson() => _$AdminCampaignToJson(this);
 }

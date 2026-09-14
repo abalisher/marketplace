@@ -20,8 +20,8 @@ AdminUpdateViewConfiguration _$AdminUpdateViewConfigurationFromJson(
 Map<String, dynamic> _$AdminUpdateViewConfigurationToJson(
   AdminUpdateViewConfiguration instance,
 ) => <String, dynamic>{
-  'set_active': instance.setActive,
-  'name': instance.name,
-  'is_system_default': instance.isSystemDefault,
-  'configuration': instance.configuration,
+  'set_active': ?instance.setActive,
+  'name': ?instance.name,
+  'is_system_default': ?instance.isSystemDefault,
+  'configuration': ?instance.configuration,
 };

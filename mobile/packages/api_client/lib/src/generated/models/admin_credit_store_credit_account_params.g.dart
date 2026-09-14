@@ -15,4 +15,4 @@ _$AdminCreditStoreCreditAccountParamsFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$AdminCreditStoreCreditAccountParamsToJson(
   AdminCreditStoreCreditAccountParams instance,
-) => <String, dynamic>{'amount': instance.amount, 'note': instance.note};
+) => <String, dynamic>{'amount': instance.amount, 'note': ?instance.note};

@@ -20,8 +20,8 @@ Map<String, dynamic> _$AdminUpdateTranslationToJson(
   AdminUpdateTranslation instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'reference': instance.reference,
-  'reference_id': instance.referenceId,
-  'locale_code': instance.localeCode,
-  'translations': instance.translations,
+  'reference': ?instance.reference,
+  'reference_id': ?instance.referenceId,
+  'locale_code': ?instance.localeCode,
+  'translations': ?instance.translations,
 };

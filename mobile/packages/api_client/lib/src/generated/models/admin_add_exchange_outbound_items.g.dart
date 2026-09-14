@@ -16,4 +16,4 @@ AdminAddExchangeOutboundItems _$AdminAddExchangeOutboundItemsFromJson(
 
 Map<String, dynamic> _$AdminAddExchangeOutboundItemsToJson(
   AdminAddExchangeOutboundItems instance,
-) => <String, dynamic>{'items': instance.items};
+) => <String, dynamic>{'items': ?instance.items};
