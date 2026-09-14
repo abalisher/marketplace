@@ -1,0 +1,578 @@
+{
+  "paths": {
+    "/admin/logistics/trips": {
+      "get": {
+        "operationId": "GetLogisticsTrips",
+        "summary": "List Trips",
+        "description": "Список рейсов водителей (новые сверху). Исполнительный слой доставки поверх order-lifecycle; водитель работает из partner-app под admin-аутентификацией.",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "responses": {
+          "200": {
+            "description": "Список рейсов.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTripListRes" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostLogisticsTrips",
+        "summary": "Create Trip",
+        "description": "Создать рейс (planned): водитель + склад загрузки.",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminCreateTrip" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Созданный рейс.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTripRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/trips/{id}": {
+      "get": {
+        "operationId": "GetLogisticsTripsId",
+        "summary": "Get Trip",
+        "description": "Рейс + его точки (сортировка по sequence).",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Рейс с точками.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTripDetailRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/trips/{id}/status": {
+      "post": {
+        "operationId": "PostLogisticsTripsIdStatus",
+        "summary": "Set Trip Status",
+        "description": "Перевод рейса по стейт-машине (planned→loading→en_route→completed; отмена из незавершённого). Недопустимый переход → 400.",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminSetTripStatus" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Рейс после перехода.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTripRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/trips/{id}/stops": {
+      "post": {
+        "operationId": "PostLogisticsTripsIdStops",
+        "summary": "Add Trip Stop",
+        "description": "Добавить точку рейса (выдача заказа или забор возврата). Порядок точек — вручную (sequence).",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminAddTripStop" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Добавленная точка.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTripStopRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/trips/{id}/stops/{stop_id}/status": {
+      "post": {
+        "operationId": "PostLogisticsTripsIdStopsStopIdStatus",
+        "summary": "Set Trip Stop Status",
+        "description": "Перевод точки по стейт-машине (pending→arrived→done; failed из pending/arrived) + proof (фото/подпись выдачи) / checklist (осмотр возврата). Для выдачи delivery-точки (done) с fulfillment_id — триггерит deliver-order (заказ → delivered по коду покупателя). Недопустимый переход / неверный код → 400.",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "stop_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSetTripStopStatus"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Точка после перехода.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTripStopRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/trips/{id}/gps": {
+      "post": {
+        "operationId": "PostLogisticsTripsIdGps",
+        "summary": "Record GPS Ping",
+        "description": "Принять GPS-пинг водителя (append в поток).",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AdminRecordGpsPing" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Принятый пинг.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminGpsPingRes" }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "GetLogisticsTripsIdGps",
+        "summary": "Get Latest Position",
+        "description": "Последняя известная позиция по рейсу (polling; realtime-канал отложен за MVP). Нет пингов → position: null.",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Последняя позиция или null.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminGpsPositionRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/tariffs": {
+      "get": {
+        "operationId": "GetLogisticsTariffs",
+        "summary": "List Delivery Tariffs",
+        "description": "Администрируемая сетка тарифов доставки (зона + база + ставки за вес/объём).",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "responses": {
+          "200": {
+            "description": "Список тарифов.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTariffListRes" }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "PostLogisticsTariffs",
+        "summary": "Upsert Delivery Tariff",
+        "description": "Создать/править тариф доставки (upsert по zone). Цены в минорных единицах (тенге).",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminUpsertDeliveryTariff"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Тариф после upsert.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminTariffRes" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/logistics/tariffs/{id}": {
+      "delete": {
+        "operationId": "DeleteLogisticsTariffsId",
+        "summary": "Delete Delivery Tariff",
+        "description": "Удалить тариф доставки. Несуществующий id → 404.",
+        "tags": ["Logistics"],
+        "security": [{ "jwt_token": [] }, { "cookie_auth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Результат удаления.",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AdminDeleteRes" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminCreateTrip": {
+        "type": "object",
+        "required": ["driver_id", "location_id"],
+        "properties": {
+          "driver_id": { "type": "string" },
+          "location_id": { "type": "string" },
+          "note": { "type": "string", "nullable": true }
+        }
+      },
+      "AdminSetTripStatus": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["planned", "loading", "en_route", "completed", "canceled"]
+          }
+        }
+      },
+      "AdminAddTripStop": {
+        "type": "object",
+        "required": ["order_id"],
+        "properties": {
+          "order_id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["delivery", "return_pickup"]
+          },
+          "sequence": { "type": "integer", "minimum": 0 },
+          "address_snapshot": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        }
+      },
+      "AdminSetTripStopStatus": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["pending", "arrived", "done", "failed"]
+          },
+          "proof": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Фото-URL'ы и подпись выдачи."
+          },
+          "checklist": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true,
+            "description": "Чек-лист осмотра при заборе возврата."
+          },
+          "note": { "type": "string", "nullable": true },
+          "fulfillment_id": {
+            "type": "string",
+            "description": "Для выдачи delivery-точки: триггерит deliver-order (заказ → delivered)."
+          },
+          "delivery_code": {
+            "type": "string",
+            "description": "Код получения от покупателя (обязателен для delivery в deliver-order)."
+          }
+        }
+      },
+      "AdminRecordGpsPing": {
+        "type": "object",
+        "required": ["driver_id", "lat", "lng"],
+        "properties": {
+          "driver_id": { "type": "string" },
+          "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+          "lng": { "type": "number", "minimum": -180, "maximum": 180 }
+        }
+      },
+      "AdminUpsertDeliveryTariff": {
+        "type": "object",
+        "required": ["zone", "base_price", "price_per_kg", "price_per_m3"],
+        "properties": {
+          "zone": { "type": "string" },
+          "base_price": { "type": "number", "minimum": 0 },
+          "price_per_kg": { "type": "number", "minimum": 0 },
+          "price_per_m3": { "type": "number", "minimum": 0 },
+          "active": { "type": "boolean" }
+        }
+      },
+      "AdminTrip": {
+        "type": "object",
+        "required": ["id", "driver_id", "location_id", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "driver_id": { "type": "string" },
+          "location_id": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "loading", "en_route", "completed", "canceled"]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "note": { "type": "string", "nullable": true }
+        }
+      },
+      "AdminTripStop": {
+        "type": "object",
+        "required": ["id", "order_id", "type", "sequence", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "order_id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["delivery", "return_pickup"]
+          },
+          "sequence": { "type": "integer" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "arrived", "done", "failed"]
+          },
+          "address_snapshot": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "proof": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "checklist": {
+            "type": "object",
+            "additionalProperties": true,
+            "nullable": true
+          },
+          "note": { "type": "string", "nullable": true }
+        }
+      },
+      "AdminDeliveryTariff": {
+        "type": "object",
+        "required": [
+          "id",
+          "zone",
+          "base_price",
+          "price_per_kg",
+          "price_per_m3",
+          "active"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "zone": { "type": "string" },
+          "base_price": { "type": "number" },
+          "price_per_kg": { "type": "number" },
+          "price_per_m3": { "type": "number" },
+          "active": { "type": "boolean" }
+        }
+      },
+      "AdminGpsPing": {
+        "type": "object",
+        "required": ["id", "trip_id", "driver_id", "lat", "lng", "recorded_at"],
+        "properties": {
+          "id": { "type": "string" },
+          "trip_id": { "type": "string" },
+          "driver_id": { "type": "string" },
+          "lat": { "type": "number" },
+          "lng": { "type": "number" },
+          "recorded_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AdminTripRes": {
+        "type": "object",
+        "required": ["trip"],
+        "properties": {
+          "trip": { "$ref": "#/components/schemas/AdminTrip" }
+        }
+      },
+      "AdminTripListRes": {
+        "type": "object",
+        "required": ["trips"],
+        "properties": {
+          "trips": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminTrip" }
+          }
+        }
+      },
+      "AdminTripDetailRes": {
+        "type": "object",
+        "required": ["trip", "stops"],
+        "properties": {
+          "trip": { "$ref": "#/components/schemas/AdminTrip" },
+          "stops": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminTripStop" }
+          }
+        }
+      },
+      "AdminTripStopRes": {
+        "type": "object",
+        "required": ["stop"],
+        "properties": {
+          "stop": { "$ref": "#/components/schemas/AdminTripStop" }
+        }
+      },
+      "AdminGpsPingRes": {
+        "type": "object",
+        "required": ["ping"],
+        "properties": {
+          "ping": { "$ref": "#/components/schemas/AdminGpsPing" }
+        }
+      },
+      "AdminGpsPositionRes": {
+        "type": "object",
+        "required": ["position"],
+        "properties": {
+          "position": {
+            "oneOf": [{ "$ref": "#/components/schemas/AdminGpsPing" }],
+            "nullable": true
+          }
+        }
+      },
+      "AdminTariffRes": {
+        "type": "object",
+        "required": ["tariff"],
+        "properties": {
+          "tariff": { "$ref": "#/components/schemas/AdminDeliveryTariff" }
+        }
+      },
+      "AdminTariffListRes": {
+        "type": "object",
+        "required": ["tariffs"],
+        "properties": {
+          "tariffs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminDeliveryTariff" }
+          }
+        }
+      },
+      "AdminDeleteRes": {
+        "type": "object",
+        "required": ["id", "object", "deleted"],
+        "properties": {
+          "id": { "type": "string" },
+          "object": { "type": "string" },
+          "deleted": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

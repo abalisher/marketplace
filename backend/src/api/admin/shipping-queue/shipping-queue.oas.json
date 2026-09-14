@@ -1,0 +1,201 @@
+{
+  "paths": {
+    "/admin/shipping-queue": {
+      "get": {
+        "operationId": "GetShippingQueue",
+        "summary": "List Shipping Queue",
+        "description": "Рабочий стол отгрузки: заказы, которые ещё не уехали, — плитками категорий сборки, стадией («собирается» / «готов к отгрузке» / «нехватка») и готовой целью перехода «передать водителю». Стадия выводится из заданий сборки, а не из статуса заказа: жизненный цикл догоняет факт сборки только при закрытии последнего задания. Очередь просматривается до потолка scan_cap, страница режется в памяти — счётчики стадий при этом полные.",
+        "tags": [
+          "Assembly"
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "stage",
+            "in": "query",
+            "required": false,
+            "description": "Фильтр по стадии заказа в очереди отгрузки.",
+            "schema": {
+              "type": "string",
+              "enum": ["assembling", "ready", "shortage"]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 20 }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "integer", "default": 0 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Заказы очереди отгрузки со счётчиками по стадиям.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminShippingQueueRes"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminShippingCategoryTile": {
+        "type": "object",
+        "description": "Плитка категории в строке заказа: статус задания, кто собирает, сколько позиций отмечено и сколько не набралось. Списка позиций в плитке нет — отгрузке нужен светофор по категориям.",
+        "required": [
+          "id",
+          "order_id",
+          "category_handle",
+          "category_name",
+          "status",
+          "items_total",
+          "items_marked",
+          "items_missing"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "order_id": { "type": "string" },
+          "order_display_id": { "type": "number", "nullable": true },
+          "customer_name": { "type": "string", "nullable": true },
+          "category_handle": { "type": "string" },
+          "category_name": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "picking", "assembled", "shortage"]
+          },
+          "assignee_id": { "type": "string", "nullable": true },
+          "assignee_name": {
+            "type": "string",
+            "nullable": true,
+            "description": "Кто взял задание (имя учётки сборщика)."
+          },
+          "completed_by": { "type": "string", "nullable": true },
+          "completed_by_name": { "type": "string", "nullable": true },
+          "started_at": { "type": "string", "format": "date-time", "nullable": true },
+          "completed_at": { "type": "string", "format": "date-time", "nullable": true },
+          "note": { "type": "string", "nullable": true },
+          "created_at": { "type": "string", "format": "date-time", "nullable": true },
+          "items_total": { "type": "number" },
+          "items_marked": { "type": "number" },
+          "items_missing": { "type": "number" }
+        }
+      },
+      "AdminShipTarget": {
+        "type": "object",
+        "description": "Цель перехода «передать водителю»: fulfillment под отгрузку и реально набранные позиции.",
+        "required": ["fulfillment_id", "items"],
+        "properties": {
+          "fulfillment_id": { "type": "string" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminOrderLineInput" }
+          }
+        }
+      },
+      "AdminShippingQueueOrder": {
+        "type": "object",
+        "required": [
+          "order_id",
+          "order_status",
+          "stage",
+          "summary",
+          "categories",
+          "can_ship"
+        ],
+        "properties": {
+          "order_id": { "type": "string" },
+          "order": {
+            "allOf": [{ "$ref": "#/components/schemas/AdminOrderLifecycleOrder" }],
+            "nullable": true
+          },
+          "order_status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "confirmed",
+              "assembling",
+              "partially_assembled",
+              "assembled"
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "enum": ["assembling", "ready", "shortage"]
+          },
+          "summary": { "$ref": "#/components/schemas/AdminOrderAssemblySummary" },
+          "categories": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminShippingCategoryTile" }
+          },
+          "can_ship": {
+            "type": "boolean",
+            "description": "Переход «передать водителю» разрешён: сборка окончена, статус заказа это допускает и есть что отгружать."
+          },
+          "ship_target": {
+            "allOf": [{ "$ref": "#/components/schemas/AdminShipTarget" }],
+            "nullable": true
+          }
+        }
+      },
+      "AdminShippingQueueCounts": {
+        "type": "object",
+        "required": ["total", "by_stage"],
+        "properties": {
+          "total": { "type": "number" },
+          "by_stage": {
+            "type": "object",
+            "required": ["assembling", "ready", "shortage"],
+            "properties": {
+              "assembling": { "type": "number" },
+              "ready": { "type": "number" },
+              "shortage": { "type": "number" }
+            }
+          }
+        }
+      },
+      "AdminShippingQueueRes": {
+        "type": "object",
+        "required": [
+          "shipping_orders",
+          "counts",
+          "count",
+          "offset",
+          "limit",
+          "scan_cap"
+        ],
+        "properties": {
+          "shipping_orders": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/AdminShippingQueueOrder" }
+          },
+          "counts": { "$ref": "#/components/schemas/AdminShippingQueueCounts" },
+          "count": { "type": "number" },
+          "offset": { "type": "number" },
+          "limit": { "type": "number" },
+          "scan_cap": {
+            "type": "number",
+            "description": "Потолок просмотра очереди: заказов в очереди может быть больше — экран честно об этом говорит."
+          }
+        }
+      }
+    }
+  }
+}

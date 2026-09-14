@@ -1,0 +1,139 @@
+/*
+ * Экран «Отгрузка» (T10.13): очередь заказов, каждый — плитками категорий
+ * сборки. Своя раскладка, а не DataTable: у строки не одна высота — в ней
+ * от одной до четырёх плиток, и таблица со вложенной сеткой читалась бы хуже
+ * простого списка карточек (идиома сводки дашборда).
+ *
+ * Почему свои классы, а не утилиты Tailwind: дашборд Medusa поставляется уже
+ * собранным CSS — произвольных утилит (сеток, размеров) в нём нет.
+ * Цвета — ТОЛЬКО токены бренда (styles/brand.css). Чипы-фильтры общие с
+ * очередью заказов (styles/orders.css).
+ */
+
+.sm-ship-order {
+  padding: 16px 24px;
+}
+
+/* Шапка строки: номер и покупатель слева, стадия и действие справа. */
+.sm-ship-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sm-ship-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgb(var(--sm-ink));
+}
+
+/* Номер заказа ведёт в карточку — очередь при этом остаётся на экране. */
+.sm-ship-link {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.sm-ship-link:hover {
+  color: rgb(var(--sm-accent));
+  text-decoration: underline;
+}
+
+.sm-ship-sub {
+  margin-top: 2px;
+  font-size: 13px;
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-ship-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* --- Плитки категорий: светофор сборки --- */
+
+.sm-ship-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.sm-ship-tile {
+  border: 1px solid rgb(var(--sm-border));
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgb(var(--sm-surface));
+}
+
+/* Нехватка — единственное, что требует решения человека: плитку видно сразу. */
+.sm-ship-tile-shortage {
+  border-color: rgb(var(--sm-error) / 0.5);
+  background: rgb(var(--sm-error) / 0.06);
+}
+
+.sm-ship-tile-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgb(var(--sm-ink));
+}
+
+.sm-ship-tile-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgb(var(--sm-ink-secondary));
+}
+
+.sm-ship-tile-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgb(var(--sm-ink-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Предупреждение о нехватке над плитками --- */
+
+.sm-ship-warning {
+  margin-top: 10px;
+  font-size: 13px;
+  color: rgb(var(--sm-error));
+}
+
+/* --- Подвал: пагинация и потолок очереди --- */
+
+.sm-ship-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  font-size: 13px;
+  color: rgb(var(--sm-ink-muted));
+  font-variant-numeric: tabular-nums;
+}
+
+.sm-ship-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sm-ship-empty {
+  padding: 40px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: rgb(var(--sm-ink-muted));
+}
