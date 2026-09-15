@@ -82,9 +82,26 @@ echo "Адрес стенда: $origin"
   --dart-define=MEDUSA_PUBLISHABLE_KEY="$pk" \
   --dart-define=FEATURE_COMPANIES=false)
 
+# Хэш в имя бандла. Flutter кладёт `main.dart.js` под одним и тем же именем, а
+# Cloudflare переписывает наш `Cache-Control: no-cache` в `max-age=14400` —
+# мобильный браузер четыре часа держал старый бандл. С хэшем в имени новая
+# сборка — это новый URL: бандл кэшируется навсегда, а сменяется вместе с
+# `flutter_bootstrap.js`, который nginx отдаёт с `no-store` (его Cloudflare не
+# трогает). Путь к бандлу загрузчик берёт из `mainJsPath` в buildConfig.
+web=mobile/apps/partner/build/web
+find "$web" -maxdepth 1 -name 'main.*.dart.js' -delete
+bundle_hash=$(sha256sum "$web/main.dart.js" | cut -c1-12)
+mv "$web/main.dart.js" "$web/main.$bundle_hash.dart.js"
+sed -i "s/\"mainJsPath\":\"main.dart.js\"/\"mainJsPath\":\"main.$bundle_hash.dart.js\"/" "$web/flutter_bootstrap.js"
+if ! grep -q "main.$bundle_hash.dart.js" "$web/flutter_bootstrap.js"; then
+  echo "В flutter_bootstrap.js не найден mainJsPath — формат загрузчика Flutter сменился" >&2
+  exit 1
+fi
+echo "Бандл сборщика: main.$bundle_hash.dart.js"
+
 say "Доставляю окно сборщика под /picker/"
 ssh "$HOST" "mkdir -p ~/$REMOTE_DIR/infra/prod/picker && rm -rf ~/$REMOTE_DIR/infra/prod/picker/*"
-tar -czf - -C mobile/apps/partner/build/web . \
+tar -czf - -C "$web" . \
   | ssh "$HOST" "tar -xzf - -C ~/$REMOTE_DIR/infra/prod/picker"
 
 say "Готово"

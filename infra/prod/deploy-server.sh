@@ -203,6 +203,10 @@ fi
 
 say "Поднимаю витрину и nginx"
 docker compose up -d
+# Конфиги nginx примонтированы поодиночке и привязаны к inode: доставка tar'ом
+# создаёт файлы заново, и без пересоздания контейнер молча живёт со старыми
+# маршрутами и заголовками кэша (README, «Кэш Cloudflare»).
+docker compose up -d --force-recreate nginx
 
 say "Состояние"
 docker compose ps
