@@ -258,6 +258,28 @@ export const readOnecFile = (
       records.push(record)
     }
 
+    // Одно наименование без кода в разных единицах (гипсокартон «за лист» и
+    // «за кв.м») — разные товары с разной ценой, а не повтор: единица уходит в
+    // название и в ключ позиции, иначе вторая строка терялась бы как повтор.
+    const unitsByName = new Map<string, Set<string>>()
+    for (const record of records) {
+      const key = record.__map_key as string | undefined
+      if (key) {
+        const units = unitsByName.get(key) ?? new Set<string>()
+        units.add(cellText(record[CANONICAL_KEY.unit] as Cell).toLowerCase())
+        unitsByName.set(key, units)
+      }
+    }
+    for (const record of records) {
+      const key = record.__map_key as string | undefined
+      const unit = cellText(record[CANONICAL_KEY.unit] as Cell)
+      if (key && unit && (unitsByName.get(key)?.size ?? 0) > 1) {
+        const name = `${key} (${unit})`
+        record[CANONICAL_KEY.name] = name
+        record.__map_key = name
+      }
+    }
+
     const parsed = parseOnecItems(records)
     const issues = parsed.issues.map(({ key, name, message }) => ({
       key,
