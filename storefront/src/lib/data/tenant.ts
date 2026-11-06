@@ -137,6 +137,9 @@ export type TenantShowcaseItem = {
   category: string | null
   price: number | null
   in_stock: number
+  // Можно купить сейчас: есть остаток или остаток не ведётся (каталог Excel
+  // без остатков — наличие продавец подтверждает при заказе).
+  available: boolean
 }
 
 export const listTenantShowcase = cache(
@@ -171,6 +174,7 @@ export const listTenantShowcase = cache(
           categories?: { name: string }[] | null
           variants?:
             | {
+                manage_inventory?: boolean | null
                 inventory_quantity?: number | null
                 calculated_price?: { calculated_amount?: number | null } | null
               }[]
@@ -178,6 +182,10 @@ export const listTenantShowcase = cache(
         }[]
       }
       return products.map((product) => {
+        const inStock = (product.variants ?? []).reduce(
+          (sum, variant) => sum + Math.max(0, variant.inventory_quantity ?? 0),
+          0
+        )
         const prices = (product.variants ?? [])
           .map((variant) => variant.calculated_price?.calculated_amount)
           .filter((amount): amount is number => typeof amount === "number")
@@ -187,10 +195,10 @@ export const listTenantShowcase = cache(
           thumbnail: product.thumbnail,
           category: product.categories?.[0]?.name ?? null,
           price: prices.length ? Math.min(...prices) : null,
-          in_stock: (product.variants ?? []).reduce(
-            (sum, variant) => sum + Math.max(0, variant.inventory_quantity ?? 0),
-            0
-          ),
+          in_stock: inStock,
+          available:
+            inStock > 0 ||
+            (product.variants ?? []).some((variant) => variant.manage_inventory === false),
         }
       })
     } catch {

@@ -38,6 +38,7 @@ const existingFor = (
     key: source.key,
     code: desired.code,
     sku: desired.sku,
+    manage_inventory: desired.manage_inventory,
     brand: desired.brand,
     present: true,
     product_id: `prod_${source.key}`,
@@ -394,3 +395,28 @@ describe("бренд", () => {
 const onecMetadataBrand = (desired: ReturnType<typeof desiredProduct>) =>
   onecMetadata(desired.key, desired.code, desired.onec_fields, desired.feed, desired.brand)
     .brand
+
+describe("учёт остатков каталога Excel", () => {
+  it("файл без остатков — товар без учёта остатков; с остатками — с учётом; 1С — всегда с учётом", () => {
+    expect(desiredProduct("nurstroi", item(), ["price"], false, "file").manage_inventory).toBe(false)
+    expect(desiredProduct("nurstroi", item(), ["price", "stock"], false, "file").manage_inventory).toBe(true)
+    expect(desiredProduct("orgstroy", item(), ["price"]).manage_inventory).toBe(true)
+  })
+
+  it("в файле появилась колонка остатков — учёт включается", () => {
+    const source = item()
+    const before = existingFor(source, { manage_inventory: false })
+    const update = diffProduct(
+      before,
+      desiredProduct("orgstroy", source, ["price", "stock"], false, "file")
+    )
+    expect(update?.manage_inventory).toBe(true)
+  })
+
+  it("у товаров 1С учёт остатков синхронизация не трогает", () => {
+    const source = item()
+    expect(
+      diffProduct(existingFor(source, { manage_inventory: false }), desiredProduct("orgstroy", source))
+    ).toBeNull()
+  })
+})

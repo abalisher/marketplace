@@ -102,6 +102,9 @@ type LevelRow = {
 type VariantRow = {
   id: string
   title?: string | null
+  // false — остаток не ведётся (каталог Excel без остатков): вариант доступен,
+  // наличие продавец подтверждает при заказе.
+  manage_inventory?: boolean | null
   prices?: PriceRow[]
   inventory_items?: { inventory?: { location_levels?: LevelRow[] } }[]
 }
@@ -151,7 +154,7 @@ const variantAvailable = (
   locationIds: Set<string> | null
 ): number | null => {
   const items = variant.inventory_items ?? []
-  if (!items.length) {
+  if (variant.manage_inventory === false || !items.length) {
     // Остаток не ведётся — продаётся без склада.
     return Number.POSITIVE_INFINITY
   }
@@ -318,6 +321,7 @@ export const searchProductsTool: AssistantTool = {
       "categories.name",
       "variants.id",
       "variants.title",
+      "variants.manage_inventory",
       "variants.prices.amount",
       "variants.prices.currency_code",
       "variants.inventory_items.inventory.location_levels.location_id",

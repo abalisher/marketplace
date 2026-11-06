@@ -422,3 +422,27 @@ describe("search_products: бренд", () => {
     expect(calls).toHaveLength(2)
   })
 })
+
+describe("search_products: остаток не ведётся", () => {
+  it("вариант без учёта остатков — в наличии, даже если уровень склада 0", async () => {
+    const container = makeContainer([
+      {
+        id: "p1",
+        title: "Затирка FIXLINE 2 кг AlinEX",
+        status: "published",
+        variants: [
+          {
+            id: "v1",
+            manage_inventory: false,
+            prices: [{ amount: 1500, currency_code: "kzt" }],
+            inventory_items: [
+              { inventory: { location_levels: [{ stocked_quantity: 0, reserved_quantity: 0 }] } },
+            ],
+          },
+        ],
+      },
+    ])
+    const out = await searchProductsTool.execute(container, { query: "затирка" }, { attachments: [] })
+    expect(out.products).toMatchObject([{ variants: [{ variant_id: "v1", in_stock: true }] }])
+  })
+})

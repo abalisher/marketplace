@@ -14,6 +14,8 @@ import { loadChannelAssortment } from "../../../../../lib/tenants/scope"
 const SEGMENTS = ["economy", "comfort", "business"] as const
 
 type VariantRow = {
+  // false — остаток не ведётся: вариант всегда «в наличии».
+  manage_inventory?: boolean | null
   prices?: { amount: number; currency_code: string }[]
   inventory_items?: {
     inventory?: {
@@ -43,7 +45,11 @@ const priceAndStock = (
 ) => {
   let best: number | null = null
   let available = 0
+  let untracked = false
   for (const variant of product.variants ?? []) {
+    if (variant.manage_inventory === false) {
+      untracked = true
+    }
     const price = (variant.prices ?? []).find(
       (p) => p.currency_code === currency
     )
@@ -60,7 +66,7 @@ const priceAndStock = (
       }
     }
   }
-  return { price: best, in_stock: available > 0 }
+  return { price: best, in_stock: untracked || available > 0 }
 }
 
 // GET /store/estimates/:id/suggestions?currency_code=kzt — подборка товаров под
@@ -144,6 +150,7 @@ export async function GET(
           "products.title",
           "products.status",
           "products.product_card.segment",
+          "products.variants.manage_inventory",
           "products.variants.prices.amount",
           "products.variants.prices.currency_code",
           "products.variants.inventory_items.inventory.location_levels.location_id",

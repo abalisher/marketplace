@@ -115,7 +115,16 @@ export const loadTenantTransparency = async (
       ),
       db.raw(
         `select count(*)::int as skus,
-           count(*) filter (where stocked_quantity - reserved_quantity > 0)::int as in_stock,
+           count(*) filter (
+             where stocked_quantity - reserved_quantity > 0
+               -- остаток не ведётся (каталог Excel без остатков) — позиция в наличии
+               or exists (
+                 select 1 from product_variant_inventory_item pvii
+                 join product_variant v on v.id = pvii.variant_id and v.deleted_at is null
+                 where pvii.inventory_item_id = inventory_level.inventory_item_id
+                   and pvii.deleted_at is null and v.manage_inventory = false
+               )
+           )::int as in_stock,
            max(updated_at) as updated_at
          from inventory_level
          where deleted_at is null and location_id ${inLocations}`,

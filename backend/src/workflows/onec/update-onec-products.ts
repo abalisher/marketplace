@@ -27,7 +27,8 @@ export type UpdateOnecProductsWorkflowInput = {
   }[]
   // Артикул варианта: у позиций Excel без кода он строится из присвоенного
   // порядкового номера.
-  variants?: { id: string; sku: string }[]
+  // Учёт остатка выключается у каталога Excel без колонки остатков.
+  variants?: { id: string; sku?: string; manage_inventory?: boolean }[]
   cards: { product_card_id: string; unit: string }[]
   // Отметки позиций 1С: есть ли в ответе, себестоимость и код позиции.
   items: {

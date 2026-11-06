@@ -71,7 +71,7 @@ export const importOnecProductsWorkflow = createWorkflow(
           {
             title: product.unit,
             sku: product.sku,
-            manage_inventory: true,
+            manage_inventory: product.manage_inventory,
             options: { [ONEC_OPTION_TITLE]: product.unit },
             // Цену при создании ставим, только если её ведёт 1С; иначе её
             // проставит продавец на «Ценах и остатках».

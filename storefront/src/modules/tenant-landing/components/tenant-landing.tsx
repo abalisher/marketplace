@@ -78,7 +78,7 @@ const TenantLanding = async ({
     fill(t.whatsappGreeting, { name: tenant.name })
   )
   const warehouse = transparency?.locations[0] ?? null
-  const inStock = showcase.filter((item) => item.in_stock > 0).length
+  const inStock = showcase.filter((item) => item.available).length
 
   const links = [
     { name: t.navMore.assortment, href: "#assortment" },

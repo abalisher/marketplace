@@ -28,7 +28,7 @@ const TenantShowcase = ({
   const shown = [...items]
     .sort(
       (a, b) =>
-        Number(b.in_stock > 0) - Number(a.in_stock > 0) ||
+        Number(b.available) - Number(a.available) ||
         Number(!!b.thumbnail) - Number(!!a.thumbnail)
     )
     .slice(0, SHOWCASE_SIZE)
@@ -89,14 +89,16 @@ const TenantShowcase = ({
                   )}
                   <span
                     className={`absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                      item.in_stock > 0
+                      item.available
                         ? "bg-success text-on-accent"
                         : "bg-surface text-ink-secondary border border-line"
                     }`}
                   >
                     {item.in_stock > 0
                       ? fill(t.inStock, { qty: formatQty(item.in_stock) })
-                      : t.onOrder}
+                      : item.available
+                        ? t.available
+                        : t.onOrder}
                   </span>
                 </div>
                 <div className="flex flex-col flex-1 p-3.5 sm:p-4">

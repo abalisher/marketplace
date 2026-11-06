@@ -106,6 +106,10 @@ export type OnecDesiredProduct = {
   category_guessed: boolean
   price: number | null
   stock: number
+  // Вести остаток варианта (manage_inventory). Excel без колонки остатков —
+  // без учёта: остатка взять неоткуда, и «0 на складе» означал бы «нет в
+  // наличии» для всего каталога. Наличие продавец подтверждает при заказе.
+  manage_inventory: boolean
   // Опубликовать при создании: 1С ведёт цену и она больше нуля.
   published: boolean
   // Поля, которые ведёт 1С (см. OnecManagedField).
@@ -126,6 +130,7 @@ export type OnecExistingProduct = {
   code: string | null
   // Артикул варианта (SKU) — строится из кода.
   sku: string | null
+  manage_inventory: boolean
   brand: string | null
   present: boolean
   product_id: string
@@ -157,6 +162,8 @@ export type OnecProductUpdate = {
   // Код позиции сменился (Excel: присвоен порядковый номер) — новый код и
   // артикул варианта.
   code?: { code: string | null; sku: string }
+  // Учёт остатка варианта включается или выключается (только каталог Excel).
+  manage_inventory?: boolean
   unit?: string
   price?: { old: number | null; new: number }
   stock?: { old: number | null; new: number }
@@ -316,6 +323,7 @@ export const desiredProduct = (
     category_guessed: !byTitle && !byGroup,
     price: item.price,
     stock,
+    manage_inventory: feed === "file" ? managed.includes("stock") : true,
     published,
     onec_fields: managed,
     cost: costKnown ? item.cost : null,
@@ -413,6 +421,9 @@ export const diffProduct = (
   if (desired.feed === "file" && desired.code && existing.code !== desired.code) {
     update.code = { code: desired.code, sku: desired.sku }
   }
+  if (desired.feed === "file" && existing.manage_inventory !== desired.manage_inventory) {
+    update.manage_inventory = desired.manage_inventory
+  }
   if (existing.product_card_id && existing.unit !== desired.unit) {
     update.unit = desired.unit
   }
@@ -441,6 +452,7 @@ export const diffProduct = (
   const changed =
     Object.keys(update.product).length > 0 ||
     update.code !== undefined ||
+    update.manage_inventory !== undefined ||
     update.unit !== undefined ||
     update.price !== undefined ||
     update.stock !== undefined ||

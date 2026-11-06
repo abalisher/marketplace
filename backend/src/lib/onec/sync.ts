@@ -282,6 +282,7 @@ const PRODUCT_FIELDS = [
   "variants.id",
   "variants.title",
   "variants.sku",
+  "variants.manage_inventory",
   "variants.prices.amount",
   "variants.prices.currency_code",
   "variants.prices.rules_count",
@@ -368,6 +369,7 @@ const loadExisting = async (
       cost: item.cost == null ? null : Number(item.cost),
       variant_title: variant.title ?? null,
       sku: variant.sku ?? null,
+      manage_inventory: variant.manage_inventory !== false,
       inventory_item_id: variant.inventory_items?.[0]?.inventory?.id ?? null,
       carry_prices: price.carry_prices,
       price_editable: price.editable,
@@ -716,14 +718,16 @@ export const runOnecSync = async (
                 : {}),
             })),
           variants: batch
-            .filter(
-              (update) =>
-                update.code !== undefined && update.existing.sku !== update.code.sku
-            )
             .map((update) => ({
               id: update.existing.variant_id,
-              sku: update.code!.sku,
-            })),
+              ...(update.code !== undefined && update.existing.sku !== update.code.sku
+                ? { sku: update.code.sku }
+                : {}),
+              ...(update.manage_inventory !== undefined
+                ? { manage_inventory: update.manage_inventory }
+                : {}),
+            }))
+            .filter((variant) => Object.keys(variant).length > 1),
           cards: batch
             .filter(
               (update) =>

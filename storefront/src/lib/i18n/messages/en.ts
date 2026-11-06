@@ -995,6 +995,7 @@ export const en = {
       title: "What is in the warehouse now",
       text: "Platform prices and the company warehouse stock right now. Can't find what you need — ask the assistant, it will check availability on order.",
       inStock: "In stock: {qty}",
+      available: "In stock",
       onOrder: "On order",
       from: "from {price}",
       order: "Order",
