@@ -1,5 +1,6 @@
 "use client"
 
+import { orderLabel } from "@lib/util/order-label"
 import { OrderLifecycle } from "@lib/data/order-lifecycle"
 import { formatDate } from "@lib/i18n/format-date"
 import { useLocale, useMessages } from "@lib/i18n/i18n-context"
@@ -45,7 +46,7 @@ const OrderRow = ({
           <span className="text-title-medium text-ink">
             {m.assistant.order.number.replace(
               "{id}",
-              String(order.display_id ?? "")
+              orderLabel(lifecycle?.number, order.display_id)
             )}
           </span>
           {stage && <OrderStageBadge status={stage} />}

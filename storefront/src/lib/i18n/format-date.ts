@@ -49,3 +49,48 @@ export const formatDate = (
     year: "numeric",
   })
 }
+
+// Сутки Астаны: с 1 марта 2024 года весь Казахстан живёт по UTC+5.
+const ASTANA_OFFSET_MS = 5 * 60 * 60 * 1000
+
+const pad2 = (value: number) => String(value).padStart(2, "0")
+
+// Короткая дата «dd.mm.yyyy» в сутках Астаны — срок возврата долга. Формат
+// одинаков во всех локалях. Сдвиг считаем сами, а не через Intl с
+// `timeZone`: таблицы поясов в браузерах отстают (Asia/Almaty ещё UTC+6), и
+// сервер с клиентом разошлись бы на гидратации. null — дата не разобралась.
+export const formatShortDate = (
+  value: string | Date | null | undefined
+): string | null => {
+  if (!value) {
+    return null
+  }
+  const time = new Date(value).getTime()
+  if (Number.isNaN(time)) {
+    return null
+  }
+  const date = new Date(time + ASTANA_OFFSET_MS)
+
+  return `${pad2(date.getUTCDate())}.${pad2(
+    date.getUTCMonth() + 1
+  )}.${date.getUTCFullYear()}`
+}
+
+// Дата и время «dd.mm, HH:MM» в Астане — отметки хода заказа («30.10, 16:48»).
+// Тот же расчёт сдвига, что у formatShortDate, и формат один во всех локалях.
+export const formatShortDateTime = (
+  value: string | Date | null | undefined
+): string | null => {
+  if (!value) {
+    return null
+  }
+  const time = new Date(value).getTime()
+  if (Number.isNaN(time)) {
+    return null
+  }
+  const date = new Date(time + ASTANA_OFFSET_MS)
+
+  return `${pad2(date.getUTCDate())}.${pad2(date.getUTCMonth() + 1)}, ${pad2(
+    date.getUTCHours()
+  )}:${pad2(date.getUTCMinutes())}`
+}

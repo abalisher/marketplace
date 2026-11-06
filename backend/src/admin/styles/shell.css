@@ -55,6 +55,22 @@ html:root
   > div:has(> div > a[href="/app/shipping"]) {
   order: 4;
 }
+/* Доставка — заказы в пути и вручение по коду: следующий шаг после
+   отгрузки. */
+html:root
+  nav
+  .flex.flex-col.gap-y-3
+  > div:has(> div > a[href="/app/delivery"]) {
+  order: 4;
+}
+/* Сборка — экран заданий сборщика; администратору площадки — рядом с
+   отгрузкой (у продавцов пункт скрыт ниже). */
+html:root
+  nav
+  .flex.flex-col.gap-y-3
+  > div:has(> div > a[href="/app/picker"]) {
+  order: 4;
+}
 /* Реестр документов (T4.9) — сразу после заказов: счёт и накладная живут в том
    же рабочем дне оператора и управляющего. */
 html:root
@@ -70,6 +86,14 @@ html:root
   .flex.flex-col.gap-y-3
   > div:has(> div > a[href="/app/disputes"]) {
   order: 6;
+}
+/* Оплаты и долги — рядом с документами и претензиями: деньги по заказам,
+   журнал поступлений и долги покупателей. */
+html:root
+  nav
+  .flex.flex-col.gap-y-3
+  > div:has(> div > a[href="/app/payments"]) {
+  order: 5;
 }
 html:root nav .flex.flex-col.gap-y-3 > div:has(> div > a[href="/app/reviews"]) {
   order: 7;
@@ -89,6 +113,11 @@ html:root
   nav
   .flex.flex-col.gap-y-3
   > div:has(> div > a[href="/app/price-stock"]) {
+  order: 9;
+}
+/* Интеграция 1С — рядом с ценами и остатками: каталог компании, её цены и
+   остатки приходят оттуда. */
+html:root nav .flex.flex-col.gap-y-3 > div:has(> div > a[href="/app/onec"]) {
   order: 9;
 }
 html:root
@@ -224,7 +253,17 @@ html[data-sm-shell="seller"]
 html[data-sm-shell="seller"]
   nav
   .flex.flex-col.gap-y-3
-  > div:has(> div > a[href="/app/products"]) {
+  > div:has(> div > a[href="/app/products"]),
+/* Сборку ведут сборщики, вручение по коду в пути — водители: продавцу эти
+   пункты ни к чему (вручает он из карточки заказа). */
+html[data-sm-shell="seller"]
+  nav
+  .flex.flex-col.gap-y-3
+  > div:has(> div > a[href="/app/picker"]),
+html[data-sm-shell="seller"]
+  nav
+  .flex.flex-col.gap-y-3
+  > div:has(> div > a[href="/app/delivery"]) {
   display: none;
 }
 
@@ -297,22 +336,61 @@ html[data-sm-shell="seller"] a[href*="github.com/medusajs"] {
   display: none;
 }
 
-/* --- Сборщик: панель ему не рабочее место (решение владельца 2026-09-06) ---
-   Рабочее место сборщика — мобильное приложение `apps/partner`: он ходит по
-   складу с телефоном, а не сидит за компьютером (T10.12). В панели ему
-   оставлена одна страница-заглушка со ссылкой на приложение, поэтому сайдбар
-   пустой целиком: скрываем и наши пункты, и ядровые, и разделы настроек.
-   Увести с любого другого адреса — задача `shell-redirect.ts`; CSS лишь убирает
-   то, на что нечего нажимать.
-   Как и весь слой, это НЕ права доступа: admin-API ядра одинаково доступно
-   всем admin-пользователям. */
-html[data-sm-shell="picker"] nav .flex.flex-col.gap-y-3 > div:not(:first-child),
+/* --- Сборщик: сборка, отгрузка, склад, отзывы ---
+   В сайдбаре сборщика — только его четыре раздела (порядок — общий, выше);
+   остальные пункты, настройки и ссылки на документацию ядра скрыты. Увести с
+   любого другого адреса — задача `shell-redirect.ts`, права — бэкенда
+   (api/utils/tenant-access.ts); CSS лишь убирает то, что ему не откроется. */
+html[data-sm-shell="picker"]
+  nav
+  .flex.flex-col.gap-y-3
+  > div:not(:first-child):not(:has(> div > a[href="/app/picker"])):not(
+    :has(> div > a[href="/app/shipping"])
+  ):not(:has(> div > a[href="/app/price-stock"])):not(
+    :has(> div > a[href="/app/reviews"])
+  ),
 html[data-sm-shell="picker"] nav a[href="/app/settings"],
 html[data-sm-shell="picker"] nav div:has(> a[href="/app/settings"]),
 html[data-sm-shell="picker"] aside a[href^="/app/settings/"],
 html[data-sm-shell="picker"] aside div:has(> a[href^="/app/settings/"]),
 html[data-sm-shell="picker"] a[href*="medusajs.com"],
 html[data-sm-shell="picker"] a[href*="github.com/medusajs"] {
+  display: none;
+}
+
+/* --- Водитель: только «Доставка» ---
+   Заказы компании в доставке и вручение по коду получения; остальные пункты,
+   настройки и ссылки на документацию ядра скрыты. Увести с других адресов —
+   `shell-redirect.ts`, права — бэкенда (api/utils/tenant-access.ts). */
+html[data-sm-shell="driver"]
+  nav
+  .flex.flex-col.gap-y-3
+  > div:not(:first-child):not(:has(> div > a[href="/app/delivery"])),
+html[data-sm-shell="driver"] nav a[href="/app/settings"],
+html[data-sm-shell="driver"] nav div:has(> a[href="/app/settings"]),
+html[data-sm-shell="driver"] aside a[href^="/app/settings/"],
+html[data-sm-shell="driver"] aside div:has(> a[href^="/app/settings/"]),
+html[data-sm-shell="driver"] a[href*="medusajs.com"],
+html[data-sm-shell="driver"] a[href*="github.com/medusajs"] {
+  display: none;
+}
+
+/* --- Продавец компании: сборку и отгрузку ведут её сборщики ---
+   Атрибут `data-sm-tenant` ставит lib/shell-mode.ts по ответу /admin/tenant.
+   Права — в api/utils/tenant-access.ts: очередь отгрузки продавцу компании
+   ответит 403, здесь лишь не показываем пункт, который ему не откроется. */
+html[data-sm-tenant="seller"]
+  nav
+  .flex.flex-col.gap-y-3
+  > div:has(> div > a[href="/app/shipping"]) {
+  display: none;
+}
+/* Ядровое «Создать» в «Клиентах» ведёт на POST /admin/customers — продавцу
+   компании это 403; своего клиента он заводит кнопкой виджета
+   widgets/tenant-customer-create.tsx. Так же убираем «Изменить» карточки
+   клиента — ядровая правка покупателя компании закрыта. */
+html[data-sm-tenant="seller"] a[href="/app/customers/create"],
+html[data-sm-tenant="seller"] a[href$="/edit"][href^="/app/customers/"] {
   display: none;
 }
 

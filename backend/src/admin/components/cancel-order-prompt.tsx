@@ -1,10 +1,11 @@
+import { orderLabel } from "../lib/order-label"
 import { Label, Prompt, Textarea } from "@medusajs/ui"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 type CancelOrderPromptProps = {
   // null — диалог закрыт
-  order: { id: string; display_id?: number } | null
+  order: { id: string; display_id?: number; order_number?: string | null } | null
   onClose: () => void
   onSubmit: (id: string, reason: string | null) => void
   isPending: boolean
@@ -41,8 +42,8 @@ const CancelOrderPrompt = ({
           <Prompt.Title>{t("order.transition.cancel")}</Prompt.Title>
           <Prompt.Description>
             {order
-              ? order.display_id
-                ? t("order.cancel.titleNamed", { id: order.display_id })
+              ? order.display_id || order.order_number
+                ? t("order.cancel.titleNamed", { id: orderLabel(order.order_number, order.display_id) })
                 : t("order.cancel.titleGeneric")
               : ""}
           </Prompt.Description>

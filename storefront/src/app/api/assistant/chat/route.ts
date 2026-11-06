@@ -1,4 +1,5 @@
 import { getAuthHeaders } from "@lib/data/cookies"
+import { getStorefrontPublishableKey } from "@lib/data/tenant"
 import { getLocaleHeader } from "@lib/util/get-locale-header"
 
 // Прокси обычного (непотокового) хода ассистента: браузер → этот route handler
@@ -15,7 +16,8 @@ const MEDUSA_BACKEND_URL =
 
 export async function POST(request: Request) {
   const headers: Record<string, string> = { "content-type": "application/json" }
-  const publishableKey = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
+  // Ключ витрины текущего продавца: по нему бэкенд выбирает канал корзины.
+  const publishableKey = await getStorefrontPublishableKey()
   if (publishableKey) {
     headers["x-publishable-api-key"] = publishableKey
   }

@@ -44,32 +44,30 @@ const AccountInfo = ({
   }, [isSuccess, close])
 
   return (
-    <div className="text-body-medium" data-testid={dataTestid}>
-      <div className="flex items-end justify-between">
-        <div className="flex flex-col">
-          <span className="uppercase text-ink">{label}</span>
-          <div className="flex items-center flex-1 basis-0 justify-end gap-x-4">
-            {typeof currentInfo === "string" ? (
-              <span className="font-semibold" data-testid="current-info">
-                {currentInfo}
-              </span>
-            ) : (
-              currentInfo
-            )}
-          </div>
+    <div className="py-3" data-testid={dataTestid}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="text-body-medium text-ink-secondary">{label}</span>
+          {typeof currentInfo === "string" ? (
+            <span
+              className="truncate text-body-large font-semibold text-ink"
+              data-testid="current-info"
+            >
+              {currentInfo}
+            </span>
+          ) : (
+            currentInfo
+          )}
         </div>
-        <div>
-          <Button
-            variant="secondary"
-            className="w-[100px] min-h-[25px] py-1"
-            onClick={handleToggle}
-            type={state ? "reset" : "button"}
-            data-testid="edit-button"
-            data-active={state}
-          >
-            {state ? m.account.cancel : m.common.edit}
-          </Button>
-        </div>
+        <button
+          className="inline-flex min-h-[36px] shrink-0 items-center rounded-full border border-line px-3.5 text-body-medium font-semibold text-ink transition-colors hover:bg-surface-dim"
+          onClick={handleToggle}
+          type={state ? "reset" : "button"}
+          data-testid="edit-button"
+          data-active={state}
+        >
+          {state ? m.account.cancel : m.common.edit}
+        </button>
       </div>
 
       {/* Success state */}
@@ -85,7 +83,7 @@ const AccountInfo = ({
           )}
           data-testid="success-message"
         >
-          <Badge className="p-2 my-4" color="green">
+          <Badge className="mt-2 px-2 py-1" color="green">
             <span>
               {label} {m.account.updatedSuccessfully}
             </span>
@@ -106,7 +104,7 @@ const AccountInfo = ({
           )}
           data-testid="error-message"
         >
-          <Badge className="p-2 my-4" color="red">
+          <Badge className="mt-2 px-2 py-1" color="red">
             <span>{errorMessage ?? m.account.errorOccurred}</span>
           </Badge>
         </Disclosure.Panel>
@@ -116,10 +114,14 @@ const AccountInfo = ({
         <Disclosure.Panel
           static
           className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-visible",
+            "transition-[max-height,opacity] duration-300 ease-in-out",
             {
-              "max-h-[1000px] opacity-100": state,
-              "max-h-0 opacity-0": !state,
+              "max-h-[1000px] opacity-100 overflow-visible": state,
+              // Закрытая форма — не просто прозрачная: иначе её поля и кнопка
+              // «Сохранить» свисали поверх соседних блоков и ловили нажатия
+              // (нажатие «Добавить адрес» сохраняло телефон).
+              "max-h-0 opacity-0 overflow-hidden invisible pointer-events-none":
+                !state,
             }
           )}
         >

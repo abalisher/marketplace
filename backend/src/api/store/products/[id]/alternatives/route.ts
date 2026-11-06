@@ -1,16 +1,18 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MedusaResponse, MedusaStoreRequest } from "@medusajs/framework/http"
 import {
   ContainerRegistrationKeys,
   MedusaError,
 } from "@medusajs/framework/utils"
 import { RemoteQueryFilters } from "@medusajs/framework/types"
 import { StoreGetAlternativesParamsType } from "../../validators"
+import { requestSalesChannelId } from "../../../../../lib/tenants/storefront"
+import { loadChannelAssortment } from "../../../../../lib/tenants/scope"
 
 // GET /store/products/:id/alternatives — подбор альтернатив при отсутствии
 // товара (ТЗ): опубликованные товары той же категории и того же сегмента.
 // Двухшагово, как и фильтр по сегменту: ids карточек сегмента из модуля
 // catalog → фильтр товаров ядра.
-export async function GET(req: MedusaRequest, res: MedusaResponse) {
+export async function GET(req: MedusaStoreRequest, res: MedusaResponse) {
   const { limit } = req.validatedQuery as StoreGetAlternativesParamsType
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
@@ -39,10 +41,19 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
     fields: ["id", "product.id"],
     filters: { segment },
   })
+  // Альтернативы — только из каталога витрины запроса: товар другой компании
+  // в корзину этой витрины не положить.
+  const salesChannelId = requestSalesChannelId(req)
+  const channelProducts = salesChannelId
+    ? new Set((await loadChannelAssortment(req.scope, salesChannelId)).productIds)
+    : null
   const candidateIds = cards
     .map((card: { product?: { id: string } | null }) => card.product?.id)
     .filter(
-      (id: string | undefined): id is string => Boolean(id) && id !== product.id
+      (id: string | undefined): id is string =>
+        Boolean(id) &&
+        id !== product.id &&
+        (!channelProducts || channelProducts.has(id as string))
     )
 
   if (!candidateIds.length) {

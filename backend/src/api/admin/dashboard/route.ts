@@ -9,6 +9,8 @@ import { PROCUREMENT_MODULE } from "../../../modules/procurement"
 import ProcurementModuleService from "../../../modules/procurement/service"
 import { REVIEWS_MODULE } from "../../../modules/reviews"
 import ReviewsModuleService from "../../../modules/reviews/service"
+import { loadChannelOrderIds } from "../../../lib/tenants/scope"
+import { getTenantScope } from "../../utils/tenant-access"
 import { buildDashboardSummary } from "./summary"
 
 // GET /admin/dashboard — сводка дня для экрана «Дашборд» админки продавца:
@@ -25,6 +27,8 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
   const lifecycle = req.scope.resolve<OrderLifecycleModuleService>(
     ORDER_LIFECYCLE_MODULE
   )
+  // Продавец компании видит сводку только по своему каналу продаж.
+  const tenant = getTenantScope(req)
 
   res.json(
     await buildDashboardSummary(
@@ -32,7 +36,12 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
       procurement,
       req.scope.resolve(Modules.ORDER),
       reviews,
-      lifecycle
+      lifecycle,
+      tenant && {
+        sales_channel_id: tenant.sales_channel_id,
+        stock_location_ids: tenant.stock_location_ids,
+        order_ids: await loadChannelOrderIds(req.scope, tenant.sales_channel_id),
+      }
     )
   )
 }

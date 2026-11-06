@@ -33,9 +33,23 @@ import { OrderStageReport, loadOrderStageReport } from "./stages"
 
 type Query = Omit<RemoteQueryFunction, symbol>
 
+// Сводка продавца компании: только заказы её канала, остатки её складов,
+// претензии по её заказам. Модерация карточек и приходы — работа площадки,
+// продавцу компании они приходят пустыми.
+export type DashboardTenantScope = {
+  sales_channel_id: string
+  stock_location_ids: string[]
+  order_ids: string[]
+}
+
+// Фильтр жизненного цикла по каналу продаж (пустой — вся площадка).
+const channelFilter = (tenant: DashboardTenantScope | null) =>
+  tenant ? { sales_channel_id: tenant.sales_channel_id } : {}
+
 export type DashboardOrderRow = {
   order_id: string
   display_id: number | null
+  order_number: string | null
   customer: string | null
   status: OrderStatusValue
   item_count: number
@@ -107,12 +121,13 @@ export type DashboardSummary = {
 // count из metadata, а не пересчёт усечённой выборки.
 async function countByStatus(
   query: Query,
-  status: OrderStatusValue
+  status: OrderStatusValue,
+  tenant: DashboardTenantScope | null
 ): Promise<number> {
   const { metadata } = await query.graph({
     entity: "order_lifecycle",
     fields: ["id"],
-    filters: { status },
+    filters: { status, ...channelFilter(tenant) },
     pagination: { skip: 0, take: 1 },
   })
   return metadata?.count ?? 0
@@ -123,12 +138,13 @@ async function countByStatus(
 // выборке, и через graph `total` приходит неверным (см. loadOrderTotals).
 async function loadQueue(
   query: Query,
-  orderService: IOrderModuleService
+  orderService: IOrderModuleService,
+  tenant: DashboardTenantScope | null
 ): Promise<DashboardOrderRow[]> {
   const { data } = await query.graph({
     entity: "order_lifecycle",
-    fields: ["id", "status", "created_at", "updated_at", "order.id"],
-    filters: { status: OPEN_ORDER_STATUSES },
+    fields: ["id", "number", "status", "created_at", "updated_at", "order.id"],
+    filters: { status: OPEN_ORDER_STATUSES, ...channelFilter(tenant) },
     pagination: {
       skip: 0,
       take: QUEUE_PREVIEW_LIMIT,
@@ -194,6 +210,7 @@ async function loadQueue(
       return {
         order_id: lifecycle.order!.id,
         display_id: order?.display_id ?? null,
+        order_number: (lifecycle as { number?: string | null }).number ?? null,
         customer: customerName(order),
         status: lifecycle.status,
         item_count: order?.items?.length ?? 0,
@@ -216,12 +233,13 @@ async function loadQueue(
 // сигнал «на тебя висит просрочка» — сама панель. Дашборд обязан показывать её
 // числом, иначе карточка ждёт 508 часов и об этом никто не узнаёт.
 async function loadOverdue(
-  query: Query
+  query: Query,
+  tenant: DashboardTenantScope | null
 ): Promise<{ overdue_count: number; oldest_waiting_hours: number | null }> {
   const { data } = await query.graph({
     entity: "order_lifecycle",
     fields: ["id", "status", "created_at", "updated_at"],
-    filters: { status: OPEN_ORDER_STATUSES },
+    filters: { status: OPEN_ORDER_STATUSES, ...channelFilter(tenant) },
     pagination: { skip: 0, take: MONEY_SCAN_CAP },
   })
 
@@ -272,10 +290,17 @@ function customerName(order?: {
 // сколько открыто, что висит третий день»): сколько активных, сколько
 // просрочено по сроку ответа и сколько висит самая старая.
 async function loadDisputes(
-  reviewsService: ReviewsModuleService
+  reviewsService: ReviewsModuleService,
+  tenant: DashboardTenantScope | null
 ): Promise<DashboardSummary["disputes"]> {
+  if (tenant && !tenant.order_ids.length) {
+    return { open_count: 0, overdue_count: 0, oldest_waiting_hours: null }
+  }
   const active = (await reviewsService.listDisputes(
-    { status: ACTIVE_DISPUTE_STATUSES },
+    {
+      status: ACTIVE_DISPUTE_STATUSES,
+      ...(tenant ? { order_id: tenant.order_ids } : {}),
+    },
     { select: ["id", "created_at"], order: { created_at: "ASC" } }
   )) as { created_at?: Date | string | null }[]
 
@@ -325,10 +350,16 @@ async function loadModeration(
 // 2026-09-02, «мешает» №4). Теперь плитка и экран считают по одному срезу — их
 // числа расходиться не могут, а безкарточные складские позиции остаются в
 // ядровом «Складе» у владельца (их место — приёмка, а не витрина).
-async function loadStock(query: Query): Promise<DashboardSummary["stock"]> {
-  const { rows, counts, threshold } = await loadPriceStockSlice(query, {
-    stock: "low",
-  })
+async function loadStock(
+  query: Query,
+  tenant: DashboardTenantScope | null
+): Promise<DashboardSummary["stock"]> {
+  const { rows, counts, threshold } = await loadPriceStockSlice(
+    query,
+    { stock: "low" },
+    tenant?.stock_location_ids,
+    tenant?.sales_channel_id
+  )
 
   const low = [...rows].sort((a, b) => a.available - b.available)
 
@@ -380,12 +411,25 @@ async function loadReceipts(
 
 // --- Сводка -----------------------------------------------------------------
 
+const NO_MODERATION: DashboardSummary["moderation"] = {
+  pending_count: 0,
+  oldest_waiting_hours: null,
+}
+
+const NO_RECEIPTS: DashboardSummary["receipts"] = {
+  open_count: 0,
+  draft_count: 0,
+  ai_count: 0,
+  items: [],
+}
+
 export async function buildDashboardSummary(
   query: Query,
   procurement: ProcurementModuleService,
   orderService: IOrderModuleService,
   reviewsService: ReviewsModuleService,
-  lifecycleService: OrderLifecycleModuleService
+  lifecycleService: OrderLifecycleModuleService,
+  tenant: DashboardTenantScope | null = null
 ): Promise<DashboardSummary> {
   const [
     statusCounts,
@@ -401,17 +445,27 @@ export async function buildDashboardSummary(
     Promise.all(
       OPEN_ORDER_STATUSES.map(async (status) => ({
         status,
-        count: await countByStatus(query, status),
+        count: await countByStatus(query, status, tenant),
       }))
     ),
-    loadQueue(query, orderService),
-    loadOverdue(query),
-    loadModeration(query),
-    loadStock(query),
-    loadReceipts(procurement),
-    loadDisputes(reviewsService),
-    loadDashboardMoney(query, orderService),
-    loadOrderStageReport(query, lifecycleService),
+    loadQueue(query, orderService, tenant),
+    loadOverdue(query, tenant),
+    tenant ? NO_MODERATION : loadModeration(query),
+    loadStock(query, tenant),
+    tenant ? NO_RECEIPTS : loadReceipts(procurement),
+    loadDisputes(reviewsService, tenant),
+    loadDashboardMoney(
+      query,
+      orderService,
+      undefined,
+      tenant?.sales_channel_id ?? null
+    ),
+    loadOrderStageReport(
+      query,
+      lifecycleService,
+      undefined,
+      tenant?.sales_channel_id ?? null
+    ),
   ])
 
   const counts: Record<string, number> = {}

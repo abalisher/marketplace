@@ -208,28 +208,34 @@ export const resolveDeliveryTarget = async (
   return { fulfillment_id: fulfillment.id }
 }
 
-// Номера заказов (№28) для точек рейса: водитель называет заказ так же, как
-// продавец в панели, а не по order_01H….
+// Номер заказа точки рейса: для людей (ORG-26-0007) и технический display_id.
+export type DriverOrderRef = { display_id: number | null; number: string | null }
+
+// Номера заказов для точек рейса: водитель называет заказ так же, как продавец
+// в панели («ORG-26-0007»), а не по order_01H….
 export const loadOrderNumbers = async (
   container: MedusaContainer,
   orderIds: string[]
-): Promise<Map<string, number>> => {
+): Promise<Map<string, DriverOrderRef>> => {
   if (!orderIds.length) {
     return new Map()
   }
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
   const { data } = await query.graph({
     entity: "order",
-    fields: ["id", "display_id"],
+    fields: ["id", "display_id", "order_lifecycle.number"],
     filters: { id: orderIds },
     pagination: { skip: 0, take: orderIds.length },
   })
 
-  const numbers = new Map<string, number>()
-  for (const order of data as RawOrder[]) {
-    if (typeof order.display_id === "number") {
-      numbers.set(order.id, order.display_id)
-    }
+  const numbers = new Map<string, DriverOrderRef>()
+  for (const order of data as (RawOrder & {
+    order_lifecycle?: { number?: string | null } | null
+  })[]) {
+    numbers.set(order.id, {
+      display_id: typeof order.display_id === "number" ? order.display_id : null,
+      number: order.order_lifecycle?.number ?? null,
+    })
   }
   return numbers
 }

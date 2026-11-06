@@ -1,3 +1,4 @@
+import { findOrderIdsByNumber } from "../../../lib/orders/order-number"
 import { RemoteQueryFunction } from "@medusajs/framework/types"
 import { DOCUMENT_TYPES } from "../../../modules/documents/models/constants"
 import DocumentsModuleService from "../../../modules/documents/service"
@@ -11,6 +12,7 @@ import DocumentsModuleService from "../../../modules/documents/service"
 export type DocumentRegistryOrder = {
   id: string
   display_id: number | null
+  order_number: string | null
   // Плательщик человекочитаемо: название компании для юрлица, иначе имя из
   // адреса, иначе email — на экране не должно быть технических id (принцип #8).
   buyer: string | null
@@ -20,6 +22,7 @@ export type DocumentRegistryOrder = {
 type OrderRow = {
   id: string
   display_id?: number | null
+  order_lifecycle?: { number?: string | null } | null
   email?: string | null
   billing_address?: { first_name?: string | null; last_name?: string | null } | null
   shipping_address?: { first_name?: string | null; last_name?: string | null } | null
@@ -53,6 +56,7 @@ export const loadRegistryOrders = async (
     fields: [
       "id",
       "display_id",
+      "order_lifecycle.number",
       "email",
       "billing_address.first_name",
       "billing_address.last_name",
@@ -70,6 +74,7 @@ export const loadRegistryOrders = async (
       {
         id: order.id,
         display_id: order.display_id ?? null,
+        order_number: order.order_lifecycle?.number ?? null,
         buyer: buyerLabel(order),
         is_company: !!order.company?.id,
       },
@@ -90,6 +95,11 @@ export const findOrderIdsBySearch = async (
   const displayId = Number(q.replace(/^#/, ""))
   if (Number.isSafeInteger(displayId) && displayId > 0) {
     filters.push({ display_id: displayId })
+  }
+  // Номер нового вида — «ORG-26-0007» или его хвост «7» (lib/orders/order-number).
+  const byNumber = await findOrderIdsByNumber(query, q)
+  if (byNumber.length) {
+    filters.push({ id: byNumber })
   }
 
   const ids = new Set<string>()

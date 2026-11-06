@@ -100,17 +100,23 @@ export const getOrderDocumentsTool: AssistantTool = {
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
     const { data } = await query.graph({
       entity: "order",
-      fields: ["id", "display_id"],
+      fields: ["id", "display_id", "order_lifecycle.number"],
       filters: { id: context.lastOrderId },
     })
-    const displayId =
-      (data as { display_id?: number | null }[])[0]?.display_id ?? null
+    const row = (
+      data as {
+        display_id?: number | null
+        order_lifecycle?: { number?: string | null } | null
+      }[]
+    )[0]
+    const displayId = row?.display_id ?? null
 
     // Read-only вставка «документы» для ленты чата: покупатель открывает PDF по
     // ссылке из карточки.
     const attachment: OrderDocumentsAttachment = {
       type: "documents",
       display_id: displayId,
+      order_number: row?.order_lifecycle?.number ?? null,
       documents,
     }
     context.attachments?.push(attachment)

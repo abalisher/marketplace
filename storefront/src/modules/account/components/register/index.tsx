@@ -2,6 +2,7 @@
 
 import { useActionState } from "react"
 import Input from "@modules/common/components/input"
+import PhoneInput from "@modules/common/components/phone-input"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
@@ -52,11 +53,9 @@ const Register = ({ setCurrentView }: Props) => {
             autoComplete="email"
             data-testid="email-input"
           />
-          <Input
+          <PhoneInput
             label={m.common.address.phone}
             name="phone"
-            type="tel"
-            autoComplete="tel"
             data-testid="phone-input"
           />
           <Input

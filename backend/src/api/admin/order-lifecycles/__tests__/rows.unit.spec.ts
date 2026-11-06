@@ -45,6 +45,7 @@ describe("toRowOrder", () => {
     expect(row).toEqual({
       id: "order_1",
       display_id: 1032,
+      order_number: null,
       email: "bekzat@astanastroy.kz",
       created_at: "2026-08-04T10:24:00.000Z",
       customer_name: "ТОО «АстанаСтрой»",
@@ -54,6 +55,7 @@ describe("toRowOrder", () => {
       total: 486200,
       currency_code: "kzt",
       payment_state: "awaiting",
+      payment_method: null,
       address: "пр. Туран 55/2, Астана",
     })
   })
@@ -188,10 +190,26 @@ describe("loadRowOrders", () => {
     const query = {
       graph: async (args: GraphArgs) => {
         calls.push(args)
+        if (args.entity === "order_payment") {
+          return {
+            data: [
+              { order_id: "order_2", method: "debt", status: "debt_requested", due_date: null },
+            ],
+          }
+        }
         return {
           data: [
-            { id: "order_1", display_id: 10, items: [{ id: "li_1" }] },
-            { id: "order_2", display_id: 11 },
+            {
+              id: "order_1",
+              display_id: 10,
+              items: [{ id: "li_1" }],
+              payment_collections: [{ status: "authorized", authorized_amount: 58900 }],
+            },
+            {
+              id: "order_2",
+              display_id: 11,
+              payment_collections: [{ status: "authorized", authorized_amount: 12000 }],
+            },
           ],
         }
       },
@@ -209,12 +227,21 @@ describe("loadRowOrders", () => {
     expect(rows.get("order_1")?.total).toBe(58900)
     // Заказ, по которому итог не пришёл, показываем прочерком, а не нулём.
     expect(rows.get("order_2")?.total).toBeNull()
-    expect(calls[0].filters).toEqual({ id: ["order_1", "order_2"] })
-    expect(calls[0].pagination?.take).toBe(2)
+    const orderCalls = calls.filter((call) => call.entity === "order")
+    expect(orderCalls[0].filters).toEqual({ id: ["order_1", "order_2"] })
+    expect(orderCalls[0].pagination?.take).toBe(2)
 
+    // Оплата заказа (способ оплаты) сильнее платёжной коллекции ядра: заказ
+    // «в долг» авторизован в ядре, но денег по нему нет.
+    expect(rows.get("order_1")?.payment_state).toBe("paid")
+    expect(rows.get("order_1")?.payment_method).toBeNull()
+    expect(rows.get("order_2")?.payment_state).toBe("debt_requested")
+    expect(rows.get("order_2")?.payment_method).toBe("debt")
+
+    const before = calls.length
     const empty = await loadRowOrders(query, orderService, [])
     expect(empty.size).toBe(0)
-    expect(calls).toHaveLength(1)
+    expect(calls).toHaveLength(before)
   })
 })
 

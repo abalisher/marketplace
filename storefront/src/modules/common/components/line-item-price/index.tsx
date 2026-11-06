@@ -1,4 +1,7 @@
+"use client"
+
 import { getPercentageDiff } from "@lib/util/get-percentage-diff"
+import { useMessages } from "@lib/i18n/i18n-context"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
@@ -14,9 +17,9 @@ const LineItemPrice = ({
   style = "default",
   currencyCode,
 }: LineItemPriceProps) => {
-  const { total, original_total } = item
-  const originalPrice = original_total
-  const currentPrice = total
+  const m = useMessages()
+  const originalPrice = item.original_total ?? 0
+  const currentPrice = item.total ?? 0
   const hasReducedPrice = currentPrice < originalPrice
 
   return (
@@ -26,7 +29,7 @@ const LineItemPrice = ({
           <>
             <p>
               {style === "default" && (
-                <span className="text-ui-fg-subtle">Original: </span>
+                <span className="text-ui-fg-subtle">{m.common.originalPrice} </span>
               )}
               <span
                 className="line-through text-ui-fg-muted"

@@ -1,3 +1,4 @@
+import { findOrderIdsByNumber } from "../../../lib/orders/order-number"
 import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
@@ -7,6 +8,11 @@ import { RemoteQueryFunction } from "@medusajs/framework/types"
 import { REVIEWS_MODULE } from "../../../modules/reviews"
 import ReviewsModuleService from "../../../modules/reviews/service"
 import { registerDisputeWorkflow } from "../../../workflows/register-dispute"
+import {
+  loadChannelOrderIds,
+  orderBelongsToChannel,
+} from "../../../lib/tenants/scope"
+import { getTenantScope } from "../../utils/tenant-access"
 import { serializeDisputeForAdmin } from "../../utils/serialize-review"
 import {
   ACTIVE_DISPUTE_STATUSES,
@@ -41,6 +47,11 @@ async function findOrderIdsBySearch(
   const displayId = Number(q.replace(/^#/, ""))
   if (Number.isSafeInteger(displayId) && displayId > 0) {
     orderFilters.push({ display_id: displayId })
+  }
+  // Номер нового вида — «ORG-26-0007» или его хвост «7» (lib/orders/order-number).
+  const byNumber = await findOrderIdsByNumber(query, q)
+  if (byNumber.length) {
+    orderFilters.push({ id: byNumber })
   }
 
   const ids = new Set<string>()
@@ -98,6 +109,14 @@ export async function GET(
   // База для счётчиков чипов — всё, кроме самого статуса: чипы показывают,
   // сколько претензий в каждом статусе при текущем поиске.
   const baseFilters: Record<string, unknown> = {}
+  // Продавец компании видит претензии только по заказам своего канала.
+  const tenant = getTenantScope(req)
+  if (tenant) {
+    baseFilters.order_id = await loadChannelOrderIds(
+      req.scope,
+      tenant.sales_channel_id
+    )
+  }
   const empty = {
     disputes: [],
     counts: {
@@ -166,6 +185,20 @@ export async function POST(
   req: AuthenticatedMedusaRequest<AdminRegisterDisputeType>,
   res: MedusaResponse
 ) {
+  // Продавец компании регистрирует претензию только по заказу своего канала.
+  const tenant = getTenantScope(req)
+  if (
+    tenant &&
+    !(await orderBelongsToChannel(
+      req.scope,
+      req.validatedBody.order_id,
+      tenant.sales_channel_id
+    ))
+  ) {
+    res.status(404).json({ type: "not_found", message: "Заказ не найден." })
+    return
+  }
+
   const { result } = await registerDisputeWorkflow(req.scope).run({
     input: {
       order_id: req.validatedBody.order_id,

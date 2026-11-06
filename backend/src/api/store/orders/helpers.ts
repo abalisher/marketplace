@@ -23,6 +23,7 @@ export async function requireOwnOrder(
       "display_id",
       "customer_id",
       "order_lifecycle.id",
+      "order_lifecycle.number",
       "order_lifecycle.status",
       "order_lifecycle.previous_status",
       "order_lifecycle.note",

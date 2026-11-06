@@ -4,6 +4,7 @@ import {
 } from "@medusajs/framework/http"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { applyPriceStockWorkflow } from "../../../workflows/apply-price-stock"
+import { syncOnecPublication } from "../../../lib/onec/publication"
 import {
   PRICE_STOCK_SCAN_CAP,
   loadLocationNames,
@@ -17,6 +18,7 @@ import {
   ResolvedChange,
   buildPriceStockRows,
   isNoopChange,
+  isOnecManaged,
   resolveChange,
   trimUnchanged,
   withLocationNames,
@@ -25,6 +27,14 @@ import {
   AdminApplyPriceStockType,
   AdminGetPriceStockParamsType,
 } from "./validators"
+import { getTenantScope } from "../../utils/tenant-access"
+
+// Продавцу компании цена общего товара площадки не правится: она общая для
+// всех. Цену СВОЕГО товара (из её 1С) он задаёт сам, если 1С её не ведёт.
+const lockPrices = (rows: PriceStockRow[]): PriceStockRow[] =>
+  rows.map((row) =>
+    row.managed_by ? row : { ...row, price_editable: false }
+  )
 
 // GET /admin/price-stock — срез экрана «Цены и остатки» (T10.14): цена и
 // остаток одной таблицей, без ядровой цепочки «вариант → price set → цена» и
@@ -43,6 +53,8 @@ export async function GET(
     req.validatedQuery as AdminGetPriceStockParamsType
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  // Продавец компании видит только склады своего канала продаж.
+  const tenant = getTenantScope(req)
 
   // Склады магазина отдаём вместе со срезом: экран рисует выбор склада без
   // второго запроса, а у одного склада выбора и не показывает.
@@ -53,17 +65,19 @@ export async function GET(
     locationNames,
     scope,
     threshold,
-  } = await loadPriceStockSlice(query, {
-    q,
-    category,
-    status,
-    stock,
-    location_id,
-  })
+  } = await loadPriceStockSlice(
+    query,
+    { q, category, status, stock, location_id },
+    tenant?.stock_location_ids,
+    tenant?.sales_channel_id
+  )
   const page = filtered.slice(offset, offset + limit)
 
   res.json({
-    price_rows: withLocationNames(page, locationNames),
+    price_rows: withLocationNames(
+      tenant ? lockPrices(page) : page,
+      locationNames
+    ),
     counts,
     // Счётчики чипов категорий: четвёрка ассортимента + мешок «вне
     // ассортимента». Экран рисует чип с числом и не спрашивает категории
@@ -97,8 +111,13 @@ export async function POST(
   const { changes, source } = req.validatedBody as AdminApplyPriceStockType
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const tenant = getTenantScope(req)
+  const visibleLocationIds = tenant?.stock_location_ids
+  // Продавец компании правит только свой каталог: вариант чужой компании для
+  // него «не найден» (unknown_variant), как и удалённый.
   const products = await loadPriceStockProducts(query, {
     variant_ids: changes.map((change) => change.variant_id),
+    sales_channel_id: tenant?.sales_channel_id,
   })
 
   const found = new Map<
@@ -112,8 +131,9 @@ export async function POST(
   }
 
   // Склады магазина: правку с чужим складом нельзя пропускать в ядро — уровень
-  // остатка завёлся бы на несуществующей площадке.
-  const locationNames = await loadLocationNames(query)
+  // остатка завёлся бы на несуществующей площадке. Продавцу компании «склады
+  // магазина» — только склады её канала.
+  const locationNames = await loadLocationNames(query, visibleLocationIds)
 
   const issues: PriceStockIssue[] = []
   const lines: ResolvedChange[] = []
@@ -130,6 +150,15 @@ export async function POST(
       continue
     }
     seen.add(change.variant_id)
+    const target = found.get(change.variant_id)?.product
+    if (tenant && change.price != null && !(target && isOnecManaged(target))) {
+      issues.push({
+        variant_id: change.variant_id,
+        code: "price_locked",
+        title: found.get(change.variant_id)?.product.title ?? null,
+      })
+      continue
+    }
     if (change.location_id && !locationNames.has(change.location_id)) {
       issues.push({
         variant_id: change.variant_id,
@@ -138,7 +167,11 @@ export async function POST(
       })
       continue
     }
-    const { resolved, issue } = resolveChange(change, found.get(change.variant_id))
+    const { resolved, issue } = resolveChange(
+      change,
+      found.get(change.variant_id),
+      visibleLocationIds
+    )
     if (issue) {
       issues.push(issue)
       continue
@@ -170,6 +203,14 @@ export async function POST(
       },
       throwOnError: true,
     })
+    // Товар из 1С, чью цену ведёт продавец, выходит на витрину с появлением
+    // цены (и уходит с её обнулением) сразу, не дожидаясь синхронизации.
+    const priced = effective
+      .filter((line) => line.new_price != null && !!line.product_id)
+      .map((line) => line.product_id as string)
+    if (priced.length) {
+      await syncOnecPublication(req.scope, priced)
+    }
   }
 
   // Возвращаем свежие строки задетых позиций: экран обновляет таблицу на месте,
@@ -187,12 +228,16 @@ export async function POST(
   )
   const rows: PriceStockRow[] = buildPriceStockRows(
     updated,
-    scopes.size === 1 ? [...scopes][0] : null
+    scopes.size === 1 ? [...scopes][0] : null,
+    visibleLocationIds
   ).filter((row) => touched.has(row.variant_id))
 
   res.json({
     applied: effective.length,
     skipped: lines.length - effective.length,
-    price_rows: withLocationNames(rows, locationNames),
+    price_rows: withLocationNames(
+      tenant ? lockPrices(rows) : rows,
+      locationNames
+    ),
   })
 }

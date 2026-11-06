@@ -7,6 +7,7 @@ import { DriverPoolOrder } from "../../../lib/orders/driver-pool"
 export type DriverPoolOrderView = {
   order_id: string
   display_id: number | null
+  order_number: string | null
   created_at: string | null
   address: string | null
   city: string | null
@@ -19,6 +20,7 @@ export const toDriverPoolOrderView = (
 ): DriverPoolOrderView => ({
   order_id: order.order_id,
   display_id: order.display_id ?? null,
+  order_number: order.order_number ?? null,
   created_at: order.created_at,
   address: order.address,
   city: order.city,

@@ -41,7 +41,9 @@ module.exports = {
         success: "rgb(var(--sm-success) / <alpha-value>)",
         warning: "rgb(var(--sm-warning) / <alpha-value>)",
         error: "rgb(var(--sm-error) / <alpha-value>)",
+        info: "rgb(var(--sm-info) / <alpha-value>)",
         kaspi: "rgb(var(--sm-kaspi) / <alpha-value>)",
+        "on-kaspi": "rgb(var(--sm-on-kaspi) / <alpha-value>)",
         surface: {
           DEFAULT: "rgb(var(--sm-surface) / <alpha-value>)",
           dim: "rgb(var(--sm-surface-dim) / <alpha-value>)",
@@ -204,6 +206,12 @@ module.exports = {
           "0%, 60%, 100%": { opacity: "0.25", transform: "translateY(0)" },
           "30%": { opacity: "1", transform: "translateY(-2px)" },
         },
+        // Мягкое появление блока (мобильное меню, ответ FAQ, плавающая
+        // кнопка лендинга).
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
@@ -220,6 +228,7 @@ module.exports = {
         "slide-in": "slide-in 1.2s cubic-bezier(.41,.73,.51,1.02)",
         leave: "leave 150ms ease-in forwards",
         "typing-dot": "typing-dot 1.2s ease-in-out infinite",
+        "fade-in": "fade-in 200ms ease-out",
       },
     },
   },

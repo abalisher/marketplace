@@ -283,7 +283,81 @@ Next.js на сборке, а публикуемый ключ появляетс
 Скрипт идемпотентен: повторный запуск догоняет состояние, `.env` не
 перезаписывается, сиды и создание учёток безопасны к повтору.
 
+## Выкладка 2026-10-01: разграничение доступа продавцов компаний
+
+Релиз меняет схему (связь `tenant ↔ user`, `order_lifecycle.sales_channel_id`, колонки `tenant`) и
+переносит данные первой версии мультипродавца. Порядок важен: новый код бэкенда читает новую схему,
+поэтому миграции и перенос идут ДО перезапуска бэкенда.
+
+```bash
+cd ~/stroymarket/infra/prod
+set -a; . ./.env; set +a
+
+# 0. Резервная копия базы.
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > ~/db-before-2026-10-01.sql
+
+# 1. Новый образ бэкенда (старый контейнер продолжает работать).
+docker compose build backend
+
+# 2. Миграции схемы — одноразовым контейнером из нового образа, БЕЗ миграционных скриптов
+#    (initial-data-seed засеял бы стартовый каталог). Если команда зависнет — scripts/migrate-remote.sh.
+docker compose run --rm --no-deps backend sh -lc \
+  'cd /app && npx medusa db:migrate --execute-safe-links --skip-scripts < /dev/null'
+
+# 3. Перенос данных: доставка компаний с их ценами, продавцы — связью, канал у заказов,
+#    очистка метаданных покупателей, удаление колонок с ключами Kaspi. Повтор безопасен.
+docker compose run --rm --no-deps backend sh -lc \
+  'cd /app && npx medusa exec ./src/scripts/migrate-tenant-isolation.ts'
+
+# 4. Перезапуск бэкенда и пересборка витрины.
+docker compose up -d backend
+docker compose build storefront && docker compose up -d storefront
+docker compose up -d --force-recreate nginx
+```
+
+После выкладки:
+- кнопка «Оплатить тестово» на витрине видна только при `NEXT_PUBLIC_KASPI_MOCK=true` в `.env`
+  (флаг вшивается в сборку витрины — после смены нужна пересборка);
+- страницы компаний переехали на `/kz/t/<slug>`, старые `/kz/companya|companyb` ведут туда же;
+- новую компанию заводит `src/scripts/setup-tenant.ts` (параметры — в шапке скрипта);
+- проверка: вход `seller-orgstroy@…` в панель — видны только заказы «Компании А» (с 2026-10-08 — ИП ORGSTROY, slug `orgstroy`), а запрос `GET /admin/api-keys` от его имени — 403.
+
+## Выкладка 2026-10-05: сборщики компаний, очистка тестовых заказов
+
+Схема не меняется — только код бэкенда (роли в компании, экран сборщика в панели, ассистент
+находит последний заказ покупателя). Перед запуском убраны тестовые заказы.
+
+```bash
+cd ~/stroymarket/infra/prod
+set -a; . ./.env; set +a
+
+# 0. Резервная копия базы.
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" > ~/db-before-cleanup-2026-10-05.sql
+
+# 1. Новый образ и перезапуск бэкенда.
+docker compose build backend && docker compose up -d backend
+
+# 2. Очистка тестовых данных (одна транзакция; что удаляется — в шапке файла).
+docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -v ON_ERROR_STOP=1 -f - < cleanup-test-orders.sql
+docker compose exec -T backend sh -c 'rm -f /app/.medusa/server/static/*-invoice-* /app/.medusa/server/static/*-waybill-*'
+
+# 3. Сборщик компании (пароль — свой; повторный запуск с другим e-mail добавит ещё одного).
+docker compose exec -T -e TENANT_SLUG=orgstroy -e TENANT_NAME='ИП ORGSTROY' \
+  -e TENANT_PICKER_EMAIL=picker-orgstroy@stroymarket.kz -e TENANT_PICKER_PASSWORD='…' \
+  -e TENANT_LINK_CATALOG=false backend sh -lc 'cd /app && npx medusa exec ./src/scripts/setup-tenant.ts'
+```
+
+Кто что делает с заказом компании:
+- **продавец** (`seller-orgstroy@…`): подтверждает, отменяет, переносит доставку, вручает по коду, закрывает;
+- **сборщик** (`picker-orgstroy@…`): в панели «Сборка» (задания подтверждённых заказов своей компании),
+  «Отгрузка» (собранное передаётся в доставку), «Склад» (остатки своего склада) и «Отзывы» (чтение).
+
 ## Эксплуатация
+
+Сессии входа в панель хранятся в Redis (`projectConfig.redisUrl`): перезапуск и выкладка бэкенда
+сотрудников не разлогинивают. Покупатели и приложение сборщика входят по токену — их перезапуск не
+затрагивал и раньше.
 
 ```bash
 cd ~/stroymarket/infra/prod

@@ -16,6 +16,12 @@ import {
   ORDER_STATUSES,
   OrderStatusValue,
 } from "../../../modules/order-lifecycle/models/statuses"
+import type { PaymentMethod } from "../../../modules/order-payment/models/values"
+import {
+  loadOrderPaymentStates,
+  PanelOrderPayment,
+  PanelPaymentState,
+} from "../../../lib/payments/panel-state"
 
 type Query = Omit<RemoteQueryFunction, symbol>
 
@@ -24,6 +30,7 @@ type Query = Omit<RemoteQueryFunction, symbol>
 const ORDER_ROW_FIELDS = [
   "id",
   "display_id",
+  "order_lifecycle.number",
   "email",
   "created_at",
   "currency_code",
@@ -41,15 +48,18 @@ const ORDER_ROW_FIELDS = [
   "shipping_address.city",
 ]
 
-// Состояние оплаты для панели: продавцу важно одно — деньги есть или ждём.
-// Нормализуем сами (правило — на бэкенде), клиент только подписывает.
-export type OrderPaymentState = "paid" | "awaiting" | "canceled"
+// Состояние оплаты для панели: деньги есть, ждём перевод, долг (просит, одобрен,
+// просрочен), к возврату. Нормализуем сами (правило — на бэкенде), клиент
+// только подписывает. Значения — lib/payments/panel-state.ts.
+export type OrderPaymentState = PanelPaymentState
 
 // Заказ в строке очереди: ровно то, что рисует таблица 1b. Технических id, кроме
 // собственно id заказа и компании (нужны для переходов), здесь нет.
 export type AdminOrderLifecycleRowOrder = {
   id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number: string | null
   email: string | null
   created_at: string | null
   customer_name: string | null
@@ -59,6 +69,9 @@ export type AdminOrderLifecycleRowOrder = {
   total: number | null
   currency_code: string | null
   payment_state: OrderPaymentState | null
+  // Способ оплаты (Kaspi QR, перевод, в долг); null — заказ оформлен до
+  // появления способов оплаты.
+  payment_method: PaymentMethod | null
   address: string | null
 }
 
@@ -67,6 +80,7 @@ export type AdminOrderLifecycleRowOrder = {
 type RawOrder = {
   id: string
   display_id?: number | null
+  order_lifecycle?: { number?: string | null } | null
   email?: string | null
   created_at?: string | Date | null
   currency_code?: string | null
@@ -154,7 +168,13 @@ function deliveryAddress(order: RawOrder): string | null {
 // ОБА поля; авторизованные без списания остаются валидным «оплачен» — так
 // читаются заказы, размещённые до правки, и платежи, у которых capture не
 // прошёл (их находит скрипт `check-order-captures`).
-export function paymentState(order: RawOrder): OrderPaymentState | null {
+export function paymentState(
+  order: RawOrder,
+  payment: PanelOrderPayment | null = null
+): OrderPaymentState | null {
+  if (payment) {
+    return payment.state
+  }
   const collections = order.payment_collections ?? []
   if (!collections.length) {
     return null
@@ -188,7 +208,8 @@ export function paymentState(order: RawOrder): OrderPaymentState | null {
 
 export function toRowOrder(
   order: RawOrder,
-  total: number | null = null
+  total: number | null = null,
+  payment: PanelOrderPayment | null = null
 ): AdminOrderLifecycleRowOrder {
   const company = order.customer?.employee?.company ?? null
   const companyName = company?.name?.trim() || null
@@ -196,6 +217,7 @@ export function toRowOrder(
   return {
     id: order.id,
     display_id: order.display_id ?? null,
+    order_number: order.order_lifecycle?.number ?? null,
     email: order.email ?? null,
     created_at: isoDate(order.created_at),
     customer_name: customerName(order, companyName),
@@ -204,7 +226,8 @@ export function toRowOrder(
     item_count: order.items?.length ?? 0,
     total,
     currency_code: order.currency_code ?? null,
-    payment_state: paymentState(order),
+    payment_state: paymentState(order, payment),
+    payment_method: payment?.method ?? null,
     address: deliveryAddress(order),
   }
 }
@@ -245,7 +268,7 @@ export async function loadRowOrders(
     return new Map()
   }
 
-  const [{ data }, totals] = await Promise.all([
+  const [{ data }, totals, payments] = await Promise.all([
     query.graph({
       entity: "order",
       fields: ORDER_ROW_FIELDS,
@@ -253,12 +276,17 @@ export async function loadRowOrders(
       pagination: { skip: 0, take: orderIds.length },
     }),
     loadOrderTotals(orderService, orderIds),
+    loadOrderPaymentStates(query, orderIds),
   ])
 
   return new Map(
     (data as RawOrder[]).map((order) => [
       order.id,
-      toRowOrder(order, totals.get(order.id) ?? null),
+      toRowOrder(
+        order,
+        totals.get(order.id) ?? null,
+        payments.get(order.id) ?? null
+      ),
     ])
   )
 }

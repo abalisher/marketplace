@@ -1,21 +1,24 @@
 "use client"
 
-import React, { useEffect, useState, useActionState } from "react"
+import React, { useEffect, useRef, useState, useActionState } from "react"
 import { PencilSquare as Edit, Trash } from "@medusajs/icons"
 import { Button, Heading, Text, clx } from "@medusajs/ui"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
-import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
+import PhoneInput from "@modules/common/components/phone-input"
 import Modal from "@modules/common/components/modal"
 import Spinner from "@modules/common/icons/spinner"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import { HttpTypes } from "@medusajs/types"
 import {
   deleteCustomerAddress,
+  setDefaultShippingAddress,
   updateCustomerAddress,
 } from "@lib/data/customer"
 import { useMessages } from "@lib/i18n/i18n-context"
+import { formatPhone } from "@lib/util/format-phone"
+import AddressMapFields from "@modules/account/components/address-map-fields"
 
 type EditAddressProps = {
   region: HttpTypes.StoreRegion
@@ -30,6 +33,16 @@ const EditAddress: React.FC<EditAddressProps> = ({
 }) => {
   const m = useMessages()
   const [removing, setRemoving] = useState(false)
+  const address1Ref = useRef<HTMLInputElement>(null)
+  // Точка, если адрес уже выбирали на карте: карта откроется на ней.
+  const savedLat = Number(address.metadata?.lat)
+  const savedLng = Number(address.metadata?.lng)
+  const savedPoint =
+    Number.isFinite(savedLat) &&
+    Number.isFinite(savedLng) &&
+    (savedLat || savedLng)
+      ? { lat: savedLat, lng: savedLng }
+      : null
   const [successState, setSuccessState] = useState(false)
   const { state, open, close: closeModal } = useToggleState(false)
 
@@ -63,73 +76,142 @@ const EditAddress: React.FC<EditAddressProps> = ({
     setRemoving(false)
   }
 
+  const [makingDefault, setMakingDefault] = useState(false)
+  const makeDefault = async () => {
+    setMakingDefault(true)
+    await setDefaultShippingAddress(address.id)
+    setMakingDefault(false)
+  }
+
   return (
     <>
-      <div
+      <li
         className={clx(
-          "border rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between transition-colors",
-          {
-            "border-ink": isActive,
-          }
+          "flex items-start gap-3 py-3.5",
+          isActive && "bg-surface-dim"
         )}
         data-testid="address-container"
       >
-        <div className="flex flex-col">
-          <Heading
-            className="text-left text-body-large font-semibold"
+        <span
+          aria-hidden="true"
+          className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-container text-accent"
+        >
+          <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]">
+            <path
+              d="M10 17.5s5.5-4.8 5.5-9.3a5.5 5.5 0 00-11 0c0 4.5 5.5 9.3 5.5 9.3zM10 10.3a2 2 0 100-4 2 2 0 000 4z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span
+              className="text-body-large font-semibold text-ink"
+              data-testid="address-address"
+            >
+              {address.address_1}
+            </span>
+            {address.is_default_shipping && (
+              <span className="rounded-full bg-success/10 px-2 py-0.5 text-[12px] font-semibold text-success">
+                {m.cabinet.profile.defaultAddress}
+              </span>
+            )}
+          </div>
+          {address.address_2 && (
+            <span className="text-body-medium text-ink">
+              {/* Только номер («308») — это квартира или офис: так и пишем. */}
+              {/^\d+[а-яa-z]?$/i.test(address.address_2.trim())
+                ? m.cabinet.profile.apartment.replace(
+                    "{value}",
+                    address.address_2.trim()
+                  )
+                : address.address_2}
+            </span>
+          )}
+          <span
+            className="text-body-medium text-ink-secondary"
             data-testid="address-name"
           >
-            {address.first_name} {address.last_name}
-          </Heading>
-          {address.company && (
-            <Text
-              className="text-body-medium text-ink"
-              data-testid="address-company"
-            >
-              {address.company}
-            </Text>
+            {[
+              [address.first_name, address.last_name].filter(Boolean).join(" "),
+              address.phone ? formatPhone(address.phone) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+          {savedPoint && (
+            <span className="inline-flex items-center gap-1 text-[12px] font-semibold text-accent">
+              <svg
+                viewBox="0 0 20 20"
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M4.5 10.5l3.5 3.5 7.5-8"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              {m.cabinet.profile.onMap}
+            </span>
           )}
-          <Text className="flex flex-col text-left text-body-large mt-2">
-            <span data-testid="address-address">
-              {address.address_1}
-              {address.address_2 && <span>, {address.address_2}</span>}
-            </span>
-            <span data-testid="address-postal-city">
-              {address.postal_code}, {address.city}
-            </span>
-            <span data-testid="address-province-country">
-              {address.province && `${address.province}, `}
-              {address.country_code?.toUpperCase()}
-            </span>
-          </Text>
+          {!address.is_default_shipping && (
+            <button
+              type="button"
+              onClick={makeDefault}
+              disabled={makingDefault}
+              className="mt-1 inline-flex w-fit items-center gap-1.5 text-body-medium font-semibold text-accent transition-colors hover:text-accent-pressed disabled:opacity-60"
+              data-testid="address-make-default-button"
+            >
+              {makingDefault && <Spinner />}
+              {m.cabinet.profile.makeDefault}
+            </button>
+          )}
         </div>
-        <div className="flex items-center gap-x-4">
+
+        <div className="flex shrink-0 items-center gap-1">
           <button
-            className="text-body-medium text-ink flex items-center gap-x-2"
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-surface-dim hover:text-ink"
             onClick={open}
+            aria-label={m.common.edit}
+            title={m.common.edit}
             data-testid="address-edit-button"
           >
             <Edit />
-            {m.common.edit}
           </button>
           <button
-            className="text-body-medium text-ink flex items-center gap-x-2"
+            type="button"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-ink-secondary transition-colors hover:bg-error/10 hover:text-error"
             onClick={removeAddress}
+            aria-label={m.account.remove}
+            title={m.account.remove}
             data-testid="address-delete-button"
           >
             {removing ? <Spinner /> : <Trash />}
-            {m.account.remove}
           </button>
         </div>
-      </div>
+      </li>
 
-      <Modal isOpen={state} close={close} data-testid="edit-address-modal">
+      <Modal
+        isOpen={state}
+        close={close}
+        size="large"
+        data-testid="edit-address-modal"
+      >
         <Modal.Title>
           <Heading className="mb-2">{m.account.editAddress}</Heading>
         </Modal.Title>
         <form action={formAction}>
           <input type="hidden" name="addressId" value={address.id} />
-          <Modal.Body>
+          <Modal.Body className="pr-4">
             <div className="grid grid-cols-1 gap-y-2">
               <div className="grid grid-cols-2 gap-x-2">
                 <Input
@@ -149,14 +231,39 @@ const EditAddress: React.FC<EditAddressProps> = ({
                   data-testid="last-name-input"
                 />
               </div>
-              <Input
-                label={m.common.address.company}
+              {/* Город, страна, индекс и область — как были, без полей: магазин
+                  возит только по Астане, а лишние поля путали покупателя. */}
+              <input
+                type="hidden"
+                name="city"
+                value={address.city || "Астана"}
+              />
+              <input
+                type="hidden"
+                name="country_code"
+                value={address.country_code || "kz"}
+              />
+              <input
+                type="hidden"
+                name="postal_code"
+                value={address.postal_code || ""}
+              />
+              <input
+                type="hidden"
+                name="province"
+                value={address.province || ""}
+              />
+              <input
+                type="hidden"
                 name="company"
-                autoComplete="organization"
-                defaultValue={address.company || undefined}
-                data-testid="company-input"
+                value={address.company || ""}
+              />
+              <AddressMapFields
+                address1Ref={address1Ref}
+                initial={savedPoint}
               />
               <Input
+                ref={address1Ref}
                 label={m.common.address.address}
                 name="address_1"
                 required
@@ -171,44 +278,10 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 defaultValue={address.address_2 || undefined}
                 data-testid="address-2-input"
               />
-              <div className="grid grid-cols-[144px_1fr] gap-x-2">
-                <Input
-                  label={m.common.address.postalCode}
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  defaultValue={address.postal_code || undefined}
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label={m.common.address.city}
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  defaultValue={address.city || undefined}
-                  data-testid="city-input"
-                />
-              </div>
-              <Input
-                label={m.account.provinceState}
-                name="province"
-                autoComplete="address-level1"
-                defaultValue={address.province || undefined}
-                data-testid="state-input"
-              />
-              <CountrySelect
-                name="country_code"
-                region={region}
-                required
-                autoComplete="country"
-                defaultValue={address.country_code || undefined}
-                data-testid="country-select"
-              />
-              <Input
+              <PhoneInput
                 label={m.common.address.phone}
                 name="phone"
-                autoComplete="phone"
-                defaultValue={address.phone || undefined}
+                defaultValue={address.phone}
                 data-testid="phone-input"
               />
             </div>

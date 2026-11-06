@@ -81,8 +81,14 @@ class ReviewsModuleService extends MedusaService({
 
   // Сводка рейтинга по объекту: среднее и количество ТОЛЬКО опубликованных
   // отзывов. Для маркетплейса с одним продавцом — глобальная сводка по target.
-  async getRatingSummary(target: ReviewTarget) {
-    const reviews = await this.listReviews({ target, status: "published" })
+  // orderIds — рейтинг только по этим заказам (продавец компании видит рейтинг
+  // своих заказов); без списка — по всей площадке.
+  async getRatingSummary(target: ReviewTarget, orderIds?: string[]) {
+    const reviews = await this.listReviews({
+      target,
+      status: "published",
+      ...(orderIds ? { order_id: orderIds } : {}),
+    })
     const count = reviews.length
     const average =
       count === 0

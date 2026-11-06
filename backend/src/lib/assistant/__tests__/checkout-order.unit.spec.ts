@@ -1,5 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework/types"
-import { checkoutKaspiTool } from "../tools/checkout-kaspi"
+import { checkoutPaymentTool } from "../tools/checkout-payment"
 import { placeOrderTool } from "../tools/place-order"
 import { AssistantContext } from "../types"
 
@@ -19,13 +19,13 @@ const trapContainer = new Proxy(
 ) as unknown as MedusaContainer
 
 describe("assistant checkout/order guards", () => {
-  it("checkout_kaspi without a cart returns an error and skips the container", async () => {
-    const out = await checkoutKaspiTool.execute(trapContainer, { action: "start" }, {})
+  it("checkout_payment without a cart returns an error and skips the container", async () => {
+    const out = await checkoutPaymentTool.execute(trapContainer, { action: "select", method: "kaspi_qr" }, {})
     expect(typeof out.error).toEqual("string")
   })
 
-  it("checkout_kaspi check without a cart returns an error and skips the container", async () => {
-    const out = await checkoutKaspiTool.execute(trapContainer, { action: "check" }, {})
+  it("checkout_payment check without a cart returns an error and skips the container", async () => {
+    const out = await checkoutPaymentTool.execute(trapContainer, { action: "check" }, {})
     expect(typeof out.error).toEqual("string")
   })
 
@@ -35,11 +35,11 @@ describe("assistant checkout/order guards", () => {
   })
 
   // T10.8: деньги и заказ принадлежат учётке — гостевой checkout отменён.
-  it("checkout_kaspi требует входа: гостю — карточка входа, БД не трогаем", async () => {
+  it("checkout_payment требует входа: гостю — карточка входа, БД не трогаем", async () => {
     const context: AssistantContext = { cartId: "cart_1", attachments: [] }
-    const out = await checkoutKaspiTool.execute(
+    const out = await checkoutPaymentTool.execute(
       trapContainer,
-      { action: "start" },
+      { action: "select", method: "kaspi_qr" },
       context
     )
 

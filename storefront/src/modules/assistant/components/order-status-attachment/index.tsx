@@ -1,6 +1,8 @@
 "use client"
 
+import { orderLabel } from "@lib/util/order-label"
 import { AssistantOrderStatus } from "@lib/data/assistant"
+import OrderStageBadge from "@modules/cabinet/components/order-stage-badge"
 import { useMessages } from "@lib/i18n/i18n-context"
 import { formatDeliverySlot } from "@lib/util/delivery-slot"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -66,14 +68,16 @@ const OrderStatusAttachment = ({
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-title-medium text-ink">
-          {order.display_id !== null
-            ? m.assistant.order.number.replace("{id}", String(order.display_id))
+          {order.display_id !== null || order.order_number
+            ? m.assistant.order.number.replace(
+                "{id}",
+                orderLabel(order.order_number, order.display_id)
+              )
             : m.assistant.attachment.orderStatus}
         </span>
-        {stageLabel && (
-          <span className="rounded-chip bg-accent-container px-2 py-1 text-body-medium font-semibold text-accent">
-            {stageLabel}
-          </span>
+        {/* Тот же бейдж стадии, что в кабинете: цвет — по смыслу стадии. */}
+        {stageLabel && order.delivery_stage && (
+          <OrderStageBadge status={order.delivery_stage} />
         )}
       </div>
 
@@ -115,7 +119,11 @@ const OrderStatusAttachment = ({
         </div>
       )}
 
-      {order.delivery_code && (
+      {/* Код нужен до вручения: у полученного заказа он ничего не открывает. */}
+      {order.delivery_code &&
+        !["delivered", "closed", "canceled", "returned"].includes(
+          order.delivery_stage ?? ""
+        ) && (
         <div className="flex items-baseline gap-2">
           <span className="text-body-medium text-ink-secondary">
             {m.assistant.order.code}

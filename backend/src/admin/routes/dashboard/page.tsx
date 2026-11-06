@@ -1,3 +1,4 @@
+import { orderLabel } from "../../lib/order-label"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ChartBar } from "@medusajs/icons"
 import { Button, Container, Heading, Text } from "@medusajs/ui"
@@ -5,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useTranslation } from "react-i18next"
 import { Link, useNavigate } from "react-router-dom"
 import DashboardKpiCard from "../../components/dashboard-kpi-card"
+import { usePanelActor } from "../../hooks/use-panel-actor"
 import {
   AdminDashboardMoney,
   AdminDashboardResponse,
@@ -36,6 +38,8 @@ import "../../styles/shell.css"
 const DashboardPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  // Компании модерация товаров и приходы площадки не нужны: их ведёт площадка.
+  const isTenant = usePanelActor() === "tenant_seller"
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin-dashboard"],
@@ -131,24 +135,26 @@ const DashboardPage = () => {
                 to="/disputes"
                 accent={data.disputes.overdue_count > 0 ? "error" : "warning"}
               />
-              <DashboardKpiCard
-                title={t("dashboard.moderation.title")}
-                value={data.moderation.pending_count}
-                hint={
-                  data.moderation.oldest_waiting_hours === null
-                    ? t("dashboard.moderation.hintEmpty")
-                    : moderationWaiting.unit === "days"
-                      ? t("dashboard.moderation.hintDays", {
-                          count: moderationWaiting.value,
-                        })
-                      : t("dashboard.moderation.hint", {
-                          count: moderationWaiting.value,
-                        })
-                }
-                linkLabel={t("dashboard.moderation.link")}
-                to="/product-moderation"
-                accent="warning"
-              />
+              {!isTenant && (
+                <DashboardKpiCard
+                  title={t("dashboard.moderation.title")}
+                  value={data.moderation.pending_count}
+                  hint={
+                    data.moderation.oldest_waiting_hours === null
+                      ? t("dashboard.moderation.hintEmpty")
+                      : moderationWaiting.unit === "days"
+                        ? t("dashboard.moderation.hintDays", {
+                            count: moderationWaiting.value,
+                          })
+                        : t("dashboard.moderation.hint", {
+                            count: moderationWaiting.value,
+                          })
+                  }
+                  linkLabel={t("dashboard.moderation.link")}
+                  to="/product-moderation"
+                  accent="warning"
+                />
+              )}
               {/* «Низкие остатки» ведут на «Цены и остатки» с чипом «на
                   исходе», а не в ядровый «Склад»: там таблица без названий
                   товаров, и кладовщик по плитке искал ноль и не находил
@@ -165,17 +171,19 @@ const DashboardPage = () => {
                 to="/price-stock?stock=low"
                 accent="error"
               />
-              <DashboardKpiCard
-                title={t("dashboard.receipts.title")}
-                value={data.receipts.open_count}
-                hint={t("dashboard.receipts.hint", {
-                  drafts: data.receipts.draft_count,
-                  ai: data.receipts.ai_count,
-                })}
-                linkLabel={t("dashboard.receipts.link")}
-                to="/procurement"
-                accent="success"
-              />
+              {!isTenant && (
+                <DashboardKpiCard
+                  title={t("dashboard.receipts.title")}
+                  value={data.receipts.open_count}
+                  hint={t("dashboard.receipts.hint", {
+                    drafts: data.receipts.draft_count,
+                    ai: data.receipts.ai_count,
+                  })}
+                  linkLabel={t("dashboard.receipts.link")}
+                  to="/procurement"
+                  accent="success"
+                />
+              )}
             </div>
 
             <MoneyStrip money={data.money} />
@@ -223,9 +231,7 @@ const DashboardPage = () => {
                             }}
                           >
                             <span className="sm-num">
-                              {row.display_id === null
-                                ? "—"
-                                : `№ ${row.display_id}`}
+                              {orderLabel(row.order_number, row.display_id)}
                             </span>
                             <span className="sm-line-title">
                               {row.customer ?? t("dashboard.queue.noCustomer")}
@@ -309,52 +315,54 @@ const DashboardPage = () => {
                   </div>
                 </div>
 
-                <div className="sm-panel">
-                  <div className="sm-panel-head">
-                    <span className="sm-panel-title">
-                      {t("dashboard.receipts.panel")}
-                    </span>
-                    <Link className="sm-panel-link" to="/procurement">
-                      {t("dashboard.all")} →
-                    </Link>
-                  </div>
-                  <div className="sm-panel-body">
-                    {data.receipts.items.length === 0 ? (
-                      <div className="sm-empty">
-                        {t("dashboard.receipts.empty")}
-                      </div>
-                    ) : (
-                      data.receipts.items.map((receipt) => {
-                        const meta =
-                          RECEIPT_STATUS_META[
-                            receipt.status as keyof typeof RECEIPT_STATUS_META
-                          ]
-                        return (
-                          <div key={receipt.id} className="sm-line">
-                            <div className="sm-line-main">
-                              <div className="sm-line-title">
-                                {receipt.reference ??
-                                  t("dashboard.receipts.noReference")}
-                                {receipt.supplier ? ` · ${receipt.supplier}` : ""}
+                {!isTenant && (
+                  <div className="sm-panel">
+                    <div className="sm-panel-head">
+                      <span className="sm-panel-title">
+                        {t("dashboard.receipts.panel")}
+                      </span>
+                      <Link className="sm-panel-link" to="/procurement">
+                        {t("dashboard.all")} →
+                      </Link>
+                    </div>
+                    <div className="sm-panel-body">
+                      {data.receipts.items.length === 0 ? (
+                        <div className="sm-empty">
+                          {t("dashboard.receipts.empty")}
+                        </div>
+                      ) : (
+                        data.receipts.items.map((receipt) => {
+                          const meta =
+                            RECEIPT_STATUS_META[
+                              receipt.status as keyof typeof RECEIPT_STATUS_META
+                            ]
+                          return (
+                            <div key={receipt.id} className="sm-line">
+                              <div className="sm-line-main">
+                                <div className="sm-line-title">
+                                  {receipt.reference ??
+                                    t("dashboard.receipts.noReference")}
+                                  {receipt.supplier ? ` · ${receipt.supplier}` : ""}
+                                </div>
+                                <div className="sm-line-sub">
+                                  {formatTenge(receipt.total_cost)}
+                                </div>
                               </div>
-                              <div className="sm-line-sub">
-                                {formatTenge(receipt.total_cost)}
-                              </div>
+                              {meta && (
+                                <span className="flex items-center gap-x-2">
+                                  <span
+                                    className={`size-2 rounded-full ${meta.dotClass}`}
+                                  />
+                                  <span className="sm-muted">{t(meta.label)}</span>
+                                </span>
+                              )}
                             </div>
-                            {meta && (
-                              <span className="flex items-center gap-x-2">
-                                <span
-                                  className={`size-2 rounded-full ${meta.dotClass}`}
-                                />
-                                <span className="sm-muted">{t(meta.label)}</span>
-                              </span>
-                            )}
-                          </div>
-                        )
-                      })
-                    )}
+                          )
+                        })
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

@@ -41,6 +41,7 @@ export type TaskLike = {
 export type OrderRef = {
   id: string
   display_id: number | null
+  order_number: string | null
   email: string | null
   customer_name: string | null
 }
@@ -63,6 +64,8 @@ export type AssemblyTaskRow = {
   id: string
   order_id: string
   order_display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number: string | null
   customer_name: string | null
   category_handle: string
   category_name: string
@@ -115,6 +118,7 @@ export const buildAssemblyTaskRow = (
     id: task.id,
     order_id: task.order_id,
     order_display_id: order?.display_id ?? null,
+    order_number: order?.order_number ?? null,
     customer_name: order?.customer_name ?? order?.email ?? null,
     category_handle: task.category_handle,
     category_name: task.category_name,
@@ -182,6 +186,7 @@ export const loadOrderRefs = async (
     fields: [
       "id",
       "display_id",
+      "order_lifecycle.number",
       "email",
       "shipping_address.first_name",
       "shipping_address.last_name",
@@ -192,6 +197,7 @@ export const loadOrderRefs = async (
   for (const order of orders as {
     id: string
     display_id?: number | null
+    order_lifecycle?: { number?: string | null } | null
     email?: string | null
     shipping_address?: {
       first_name?: string | null
@@ -208,6 +214,7 @@ export const loadOrderRefs = async (
     refs.set(order.id, {
       id: order.id,
       display_id: order.display_id ?? null,
+      order_number: order.order_lifecycle?.number ?? null,
       email: order.email ?? null,
       customer_name: name || null,
     })

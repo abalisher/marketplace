@@ -25,6 +25,7 @@ import CancelOrderPrompt from "../components/cancel-order-prompt"
 import DeliverOrderPrompt from "../components/deliver-order-prompt"
 import RescheduleDeliveryPrompt from "../components/reschedule-delivery-prompt"
 import { useOrderLifecycle } from "../hooks/use-order-lifecycle"
+import { usePanelActor } from "../hooks/use-panel-actor"
 import { formatDateTime } from "../lib/date"
 import { formatDeliverySlot } from "../lib/delivery-slot"
 import {
@@ -36,6 +37,7 @@ import {
   orderDeliveryMethodMeta,
   orderStatusMeta,
   orderTransitions,
+  transitionsForActor,
 } from "../lib/order"
 import { sdk } from "../lib/sdk"
 
@@ -101,7 +103,8 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
   // заказов до пивота в базе остались pickup/counter — читаем через словарь с
   // фолбэком, иначе виджет уронил бы всю страницу заказа.
   const method = detail?.delivery_method ?? "delivery"
-  const transitions = orderTransitions(method, status)
+  const actor = usePanelActor()
+  const transitions = transitionsForActor(orderTransitions(method, status), actor)
   const statusMeta = status ? orderStatusMeta(status) : null
 
   const meta = (value: OrderLifecycleStatus) => orderStatusMeta(value)
@@ -290,10 +293,10 @@ const OrderLifecycleCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
                         {event.actor_name
                           ? t("order.widget.byPerson", {
                               name: event.actor_name,
-                              actor: t(`order.actor.${event.actor_type}`),
+                              actor: t(`order.actor.${event.actor_role ?? event.actor_type}`),
                             })
                           : t("order.widget.by", {
-                              actor: t(`order.actor.${event.actor_type}`),
+                              actor: t(`order.actor.${event.actor_role ?? event.actor_type}`),
                             })}
                         {event.reason ? ` · ${event.reason}` : ""}
                       </Text>

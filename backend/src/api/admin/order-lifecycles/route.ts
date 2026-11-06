@@ -1,3 +1,4 @@
+import { findOrderIdsByNumber } from "../../../lib/orders/order-number"
 import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
@@ -9,6 +10,7 @@ import AssemblyModuleService from "../../../modules/assembly/service"
 import { ORDER_LIFECYCLE_MODULE } from "../../../modules/order-lifecycle"
 import OrderLifecycleModuleService from "../../../modules/order-lifecycle/service"
 import { OrderStatusValue } from "../../../modules/order-lifecycle/models/statuses"
+import { getTenantScope } from "../../utils/tenant-access"
 import { AdminGetOrderLifecyclesParamsType } from "../orders/validators"
 import { loadOrderAssignees } from "./assignees"
 import { countByStatus, emptyCounts, loadRowOrders } from "./rows"
@@ -49,6 +51,11 @@ async function findLifecycleIdsByOrderSearch(
   if (Number.isSafeInteger(displayId) && displayId > 0) {
     orderFilters.push({ display_id: displayId })
   }
+  // Номер нового вида — «ORG-26-0007» или его хвост «7» (lib/orders/order-number).
+  const byNumber = await findOrderIdsByNumber(query, q)
+  if (byNumber.length) {
+    orderFilters.push({ id: byNumber })
+  }
 
   const ids = new Set<string>()
   for (const filters of orderFilters) {
@@ -84,6 +91,11 @@ export async function GET(
   // База для счётчиков чипов — всё, кроме самого статуса: чипы показывают,
   // сколько заказов в каждом статусе при текущем поиске и способе получения.
   const baseFilters: Record<string, unknown> = {}
+  // Продавец компании видит только заказы её канала продаж.
+  const tenant = getTenantScope(req)
+  if (tenant) {
+    baseFilters.sales_channel_id = tenant.sales_channel_id
+  }
   if (delivery_method) {
     baseFilters.delivery_method = delivery_method
   }

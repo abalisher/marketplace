@@ -168,7 +168,7 @@
         },
         "old_stock": {
           "name": "old_stock",
-          "type": "integer",
+          "type": "numeric",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
@@ -180,11 +180,11 @@
           "default": null,
           "comment": null,
           "enumItems": [],
-          "mappedType": "integer"
+          "mappedType": "decimal"
         },
         "new_stock": {
           "name": "new_stock",
-          "type": "integer",
+          "type": "numeric",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
@@ -196,7 +196,7 @@
           "default": null,
           "comment": null,
           "enumItems": [],
-          "mappedType": "integer"
+          "mappedType": "decimal"
         },
         "changed_by": {
           "name": "changed_by",
@@ -245,7 +245,8 @@
           "comment": null,
           "enumItems": [
             "manual",
-            "import"
+            "import",
+            "onec"
           ],
           "mappedType": "enum"
         },
@@ -328,6 +329,38 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "raw_old_stock": {
+          "name": "raw_old_stock",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "json"
+        },
+        "raw_new_stock": {
+          "name": "raw_new_stock",
+          "type": "jsonb",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "json"
         }
       },
       "name": "price_change",

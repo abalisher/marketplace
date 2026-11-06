@@ -4,6 +4,7 @@ import {
   fetchFeatureFlags,
   rememberFeatureFlags,
 } from "./feature-flags"
+import { sdk } from "./sdk"
 import { redirectFor } from "./shell-redirect"
 import { coreLabel, isNoiseRowTitle } from "./shell-text"
 import {
@@ -32,6 +33,10 @@ import {
 // поэтому код ниже выполняется на любой странице панели, включая ядровые.
 
 const ROLE_ATTRIBUTE = "smShell"
+// Пользователь компании-продавца: `data-sm-tenant="seller|picker"` на <html>,
+// по нему styles/shell.css убирает продавцу компании «Отгрузку» — сборку и
+// отгрузку в компании ведут её сборщики. Сотруднику площадки атрибута нет.
+const TENANT_ATTRIBUTE = "smTenant"
 // Атрибут замороженных доменов: `data-sm-companies="on|off"` на <html>, по нему
 // styles/shell.css убирает из сайдбара «Компании» и «Правила скоринга» (T10.9).
 const COMPANIES_ATTRIBUTE = "smCompanies"
@@ -89,6 +94,60 @@ const resolveFeatureFlags = () => {
     })
 }
 
+// Компания и роль в ней (GET /admin/tenant). На экране входа запрос отдаёт 401 —
+// атрибут не трогаем.
+const resolveTenant = () => {
+  void sdk.client
+    .fetch<{ tenant: { role: "seller" | "picker" | "driver" } | null }>("/admin/tenant")
+    .then(({ tenant }) => {
+      if (tenant) {
+        document.documentElement.dataset[TENANT_ATTRIBUTE] = tenant.role
+      } else {
+        delete document.documentElement.dataset[TENANT_ATTRIBUTE]
+      }
+    })
+    .catch(() => {
+      // Не залогинен или сеть недоступна — оставляем как есть.
+    })
+}
+
+// Сверка роли и компании с сервером, не чаще раза в 5 секунд. Сессия панели
+// общая для всех вкладок: в соседней вкладке вошли под другой учёткой — эта
+// осталась бы с меню прежней роли (у сборщика — меню продавца). Сверяемся при
+// возврате во вкладку и при переходах внутри панели.
+//
+// Сменилась сама учётка — страницу перезагружаем один раз: кэши экранов
+// (роль для кнопок, списки) принадлежат прежней учётке, и подправить одно
+// меню мало — экран продолжил бы работать «за другого».
+let confirmedUserId: string | null = null
+let lastResync = 0
+
+const checkIdentity = () =>
+  sdk.client
+    .fetch<{ user?: { id?: string } | null }>("/admin/users/me")
+    .then(({ user }) => {
+      const id = user?.id ?? null
+      if (confirmedUserId && id && id !== confirmedUserId) {
+        location.reload()
+        return
+      }
+      confirmedUserId = id ?? confirmedUserId
+    })
+    .catch(() => {
+      // Не залогинен (экран входа) или сеть недоступна — ничего не делаем.
+    })
+
+const resyncShell = () => {
+  const now = Date.now()
+  if (now - lastResync < 5000) {
+    return
+  }
+  lastResync = now
+  void checkIdentity()
+  resolveRole()
+  resolveTenant()
+}
+
 // Прямой заход по адресу: закладка, ввод руками, ссылка извне.
 const followRedirectOnLoad = () => {
   const target = redirectFor(location.pathname, location.pathname, currentRole)
@@ -125,6 +184,7 @@ const followRedirectOnNavigation = () => {
       }
 
       original(data, unused, url)
+      resyncShell()
     }
   }
 
@@ -205,6 +265,14 @@ const followCoreLabels = () => {
 
 resolveRole()
 resolveFeatureFlags()
+resolveTenant()
+void checkIdentity()
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    resyncShell()
+  }
+})
 followRedirectOnLoad()
 followRedirectOnNavigation()
 followCoreLabels()

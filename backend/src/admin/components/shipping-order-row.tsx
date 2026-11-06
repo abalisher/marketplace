@@ -1,3 +1,4 @@
+import { orderLabel } from "../lib/order-label"
 import { Badge, Button } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { formatAmount } from "../lib/money"
@@ -41,9 +42,11 @@ const ShippingOrderRow = ({
               className="sm-ship-link"
               onClick={() => onOpenCard(row.order_id)}
             >
-              {order?.display_id == null
+              {order?.display_id == null && !order?.order_number
                 ? t("shipping.orderNoUnknown")
-                : t("orderQueue.orderNo", { id: order.display_id })}
+                : t("orderQueue.orderNo", {
+                    id: orderLabel(order?.order_number, order?.display_id),
+                  })}
             </button>
             <span className="text-ui-fg-subtle">·</span>
             <span>{order?.customer_name ?? "—"}</span>

@@ -1,3 +1,4 @@
+import { orderLabel } from "../lib/order-label"
 import {
   Badge,
   Button,
@@ -124,8 +125,10 @@ const DisputeRegisterDrawer = ({
                 <div className="flex min-w-0 flex-col">
                   <Text size="small">
                     {[
-                      order.display_id != null
-                        ? t("orderQueue.orderNo", { id: order.display_id })
+                      order.display_id != null || order.order_number
+                        ? t("orderQueue.orderNo", {
+                            id: orderLabel(order.order_number, order.display_id),
+                          })
                         : null,
                       order.customer_name,
                     ]
@@ -185,9 +188,9 @@ const DisputeRegisterDrawer = ({
                       >
                         <span className="flex items-center gap-x-2">
                           <Text size="small">
-                            {row.display_id != null
+                            {row.display_id != null || row.order_number
                               ? t("orderQueue.orderNo", {
-                                  id: row.display_id,
+                                  id: orderLabel(row.order_number, row.display_id),
                                 })
                               : t("common.unknownValue")}
                           </Text>

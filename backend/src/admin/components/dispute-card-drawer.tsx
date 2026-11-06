@@ -1,3 +1,4 @@
+import { orderLabel } from "../lib/order-label"
 import { ArrowUpRightOnBox, DocumentText } from "@medusajs/icons"
 import {
   Badge,
@@ -164,9 +165,10 @@ const DisputeCardDrawer = ({ disputeId, onClose }: DisputeCardDrawerProps) => {
           <div className="flex flex-col gap-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <Drawer.Title>
-                {card?.order?.display_id != null
+                {card?.order &&
+                (card.order.display_id != null || card.order.order_number)
                   ? t("reviews.card.titleForOrder", {
-                      id: card.order.display_id,
+                      id: orderLabel(card.order.order_number, card.order.display_id),
                     })
                   : t("reviews.card.title")}
               </Drawer.Title>
@@ -544,8 +546,10 @@ const History = ({ history }: { history: DisputeCustomerHistory }) => {
             >
               <Text size="small">
                 {[
-                  entry.order_display_id != null
-                    ? t("orderQueue.orderNo", { id: entry.order_display_id })
+                  entry.order_display_id != null || entry.order_number
+                    ? t("orderQueue.orderNo", {
+                        id: orderLabel(entry.order_number, entry.order_display_id),
+                      })
                     : null,
                   t(disputeCategoryMeta(entry.category).label),
                 ]

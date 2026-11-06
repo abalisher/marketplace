@@ -13,3 +13,10 @@ const enabled = (value: string | undefined): boolean =>
 export const FEATURE_COMPANIES = enabled(
   process.env.NEXT_PUBLIC_FEATURE_COMPANIES
 )
+
+// FEATURE_KASPI_MOCK — кнопка «Оплатить тестово» в чекауте и во вставке оплаты
+// чата и server action mockPayKaspi (бэкенд POST /store/carts/:id/payment/kaspi/
+// mock-pay — dev-канал мок-провайдера). Только для стендов: решение владельца
+// 2026-10-01 — включается СТРОГО значением "true" (не "1"), на проде флага нет.
+export const FEATURE_KASPI_MOCK =
+  process.env.NEXT_PUBLIC_KASPI_MOCK === "true"

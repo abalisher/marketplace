@@ -83,6 +83,18 @@ export const AdminRescheduleOrder = z.object({
 export type AdminRescheduleOrderType = z.infer<typeof AdminRescheduleOrder>
 
 // Отмена заказа админом — причина опциональна (логируется в note/лог переходов).
+// Подтверждение заказа (new → confirmed). Заказ «в долг» подтверждением
+// одобряется: срок возврата — дата `YYYY-MM-DD` (нет — по умолчанию из
+// настроек продавца).
+export const AdminConfirmOrder = z.object({
+  debt_due_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Срок долга — дата в формате ГГГГ-ММ-ДД")
+    .nullable()
+    .optional(),
+})
+export type AdminConfirmOrderType = z.infer<typeof AdminConfirmOrder>
+
 export const AdminCancelOrder = z.object({
   reason: z.string().trim().min(1).optional(),
 })

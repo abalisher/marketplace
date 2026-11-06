@@ -61,6 +61,7 @@ const ChatComposer = ({
   placeholder,
   onSend,
   onStop,
+  initialDraft = "",
 }: {
   isSending: boolean
   placeholder: string
@@ -68,9 +69,12 @@ const ChatComposer = ({
   // Прервать идущий ход. Не передан — «Стоп» не показываем (ход непрерываемый:
   // например, откат на обычный POST).
   onStop?: () => void
+  // Текст, подставленный в поле заранее (вопрос со страницы компании или
+  // лендинга). Только подставляется: отправляет покупатель сам.
+  initialDraft?: string
 }) => {
   const m = useMessages()
-  const [draft, setDraft] = useState("")
+  const [draft, setDraft] = useState(initialDraft)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 

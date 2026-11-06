@@ -8,6 +8,7 @@ import {
   PriceStockFileErrorCode,
   buildImportPreview,
   indexBySku,
+  normalizeSku,
   readImportFile,
 } from "../import"
 import {
@@ -15,8 +16,9 @@ import {
   loadLocationNames,
   loadPriceStockProducts,
 } from "../load"
-import { PRICE_STOCK_MAX_CHANGES } from "../rows"
+import { PRICE_STOCK_MAX_CHANGES, isOnecManaged } from "../rows"
 import { AdminImportPriceStockType } from "../validators"
+import { getTenantScope } from "../../../utils/tenant-access"
 
 // Отказ файлу целиком: ни одна строка не записана и предпросмотра нет.
 // Сообщение — человеческое, код — для экрана (он подставляет свой текст и
@@ -64,7 +66,15 @@ export async function POST(
   }
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const locationNames = await loadLocationNames(query)
+  // Продавец компании загружает остатки только своих складов. Цены общих
+  // товаров площадки у него закрыты — для них колонку цены файла не читаем
+  // (пустая клетка = «не трогал»), иначе партия упала бы на price_locked
+  // целиком. Цену своих товаров (из 1С компании) он задаёт и файлом.
+  const tenant = getTenantScope(req)
+  const locationNames = await loadLocationNames(
+    query,
+    tenant?.stock_location_ids
+  )
   if (location_id && !locationNames.has(location_id)) {
     fail(res, "unknown_location")
     return
@@ -102,8 +112,22 @@ export async function POST(
 
   // Файл ссылается на любые позиции каталога, а не на то, что видно на экране,
   // — поэтому читаем каталог целиком и сверяем по артикулу.
-  const products = await loadPriceStockProducts(query, {})
-  const preview = buildImportPreview(file.rows, indexBySku(products), scope)
+  const products = await loadPriceStockProducts(query, {
+    sales_channel_id: tenant?.sales_channel_id,
+  })
+  const bySku = indexBySku(products)
+  const fileRows = tenant
+    ? file.rows.map((row) => {
+        const target = bySku.get(normalizeSku(row.sku ?? ""))?.product
+        return target && isOnecManaged(target) ? row : { ...row, price: "" }
+      })
+    : file.rows
+  const preview = buildImportPreview(
+    fileRows,
+    bySku,
+    scope,
+    tenant?.stock_location_ids
+  )
 
   if (preview.changes.length > PRICE_STOCK_MAX_CHANGES) {
     fail(res, "too_many_changes", String(preview.changes.length))

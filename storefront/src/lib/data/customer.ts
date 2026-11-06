@@ -161,14 +161,34 @@ export async function transferCart() {
   revalidateTag(cartCacheTag)
 }
 
+// Точка с карты 2ГИС (скрытые поля lat/lng формы адреса) → metadata адреса:
+// её ядро переносит в корзину и заказ, а продавец и водитель открывают её в
+// 2ГИС. Нет точки — metadata не трогаем.
+const geoMetadata = (
+  formData: FormData
+): { lat: number; lng: number } | null => {
+  const lat = Number(formData.get("lat"))
+  const lng = Number(formData.get("lng"))
+  return formData.get("lat") &&
+    formData.get("lng") &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180
+    ? { lat, lng }
+    : null
+}
+
 export const addCustomerAddress = async (
   currentState: Record<string, unknown>,
   formData: FormData
 ): Promise<any> => {
   const isDefaultBilling = (currentState.isDefaultBilling as boolean) || false
-  const isDefaultShipping = (currentState.isDefaultShipping as boolean) || false
+  // Новый адрес — адрес доставки по умолчанию: его добавляют, чтобы на него и
+  // везли, а ассистент при оформлении берёт именно адрес по умолчанию.
+  const isDefaultShipping = true
 
-  const address = {
+  const filled = {
     first_name: formData.get("first_name") as string,
     last_name: formData.get("last_name") as string,
     company: formData.get("company") as string,
@@ -181,7 +201,12 @@ export const addCustomerAddress = async (
     phone: formData.get("phone") as string,
     is_default_billing: isDefaultBilling,
     is_default_shipping: isDefaultShipping,
+    ...(geoMetadata(formData) ? { metadata: geoMetadata(formData)! } : {}),
   }
+  // Полей индекса, области и компании в форме больше нет — пустое не шлём.
+  const address = Object.fromEntries(
+    Object.entries(filled).filter(([, value]) => value !== null && value !== "")
+  ) as typeof filled
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -218,6 +243,24 @@ export const deleteCustomerAddress = async (
     })
 }
 
+// Основной адрес доставки выбирает сам покупатель: ассистент при оформлении
+// везёт именно на него. Прежний основной ядро снимает само.
+export const setDefaultShippingAddress = async (
+  addressId: string
+): Promise<{ success: boolean; error: string | null }> => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+  return sdk.store.customer
+    .updateAddress(addressId, { is_default_shipping: true }, {}, headers)
+    .then(async () => {
+      const customerCacheTag = await getCacheTag("customers")
+      revalidateTag(customerCacheTag)
+      return { success: true, error: null }
+    })
+    .catch((err) => ({ success: false, error: err.toString() }))
+}
+
 export const updateCustomerAddress = async (
   currentState: Record<string, unknown>,
   formData: FormData
@@ -245,6 +288,11 @@ export const updateCustomerAddress = async (
 
   if (phone) {
     address.phone = phone
+  }
+
+  const geo = geoMetadata(formData)
+  if (geo) {
+    address.metadata = { ...geo }
   }
 
   const headers = {

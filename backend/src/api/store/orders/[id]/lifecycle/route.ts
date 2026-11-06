@@ -24,6 +24,7 @@ export async function GET(
     order as {
       order_lifecycle?: {
         id: string
+        number?: string | null
         status: string
         previous_status: string | null
         note: string | null
@@ -40,6 +41,7 @@ export async function GET(
   if (!lifecycle) {
     res.json({
       order_id: req.params.id,
+      number: null,
       status: null,
       previous_status: null,
       note: null,
@@ -63,6 +65,8 @@ export async function GET(
   // при доставке он называет код водителю при вручении. В admin-ответах кода нет.
   res.json({
     order_id: req.params.id,
+    // Номер заказа для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+    number: lifecycle.number ?? null,
     status: lifecycle.status,
     previous_status: lifecycle.previous_status,
     note: lifecycle.note,
@@ -72,6 +76,20 @@ export async function GET(
     // Дата и окно — кодами; подпись собирает клиент на своём языке.
     delivery_date: lifecycle.delivery_date,
     delivery_window: lifecycle.delivery_window,
-    history,
+    // Лог — в форме контракта: служебных полей модели и id сотрудника, который
+    // провёл переход, покупателю не отдаём (хватит роли — actor_type).
+    history: history.map((event) => ({
+      id: event.id,
+      kind: event.kind,
+      from_status: event.from_status,
+      to_status: event.to_status,
+      actor_type: event.actor_type,
+      reason: event.reason,
+      from_slot_date: event.from_slot_date,
+      from_slot_window: event.from_slot_window,
+      to_slot_date: event.to_slot_date,
+      to_slot_window: event.to_slot_window,
+      created_at: event.created_at,
+    })),
   })
 }

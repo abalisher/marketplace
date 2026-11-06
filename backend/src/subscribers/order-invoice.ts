@@ -8,6 +8,7 @@ import {
   missingRequisites,
   missingRequisitesMessage,
 } from "../modules/documents/requisites"
+import { loadSellerSettings } from "../lib/tenants/requisites"
 import { issueOrderDocumentWorkflow } from "../workflows/issue-order-document"
 
 // Автовыпуск счёта на оплату сразу после оформления заказа (ТЗ 4.10). Ядро
@@ -31,8 +32,19 @@ export default async function issueOrderInvoice({
   // Неполные реквизиты продавца — документ не выпускаем вовсе (T4.9): счёт без
   // БИН и банка бухгалтерия покупателя не примет. Пропускаем тихо (заказ не
   // виноват), продавец выпустит документ кнопкой с экрана заказа, когда
-  // заполнит «Настройки → Реквизиты документов».
-  const missing = missingRequisites(await documentsService.getOrCreateSettings())
+  // заполнит «Настройки → Реквизиты документов». Продавец заказа компании —
+  // она сама, поэтому реквизиты берутся по каналу продаж заказа.
+  const { data: orders } = await query.graph({
+    entity: "order",
+    fields: ["id", "sales_channel_id", "company.id"],
+    filters: { id: order_id },
+  })
+  const order = orders?.[0] as
+    | { sales_channel_id?: string | null; company?: { id?: string } | null }
+    | undefined
+  const missing = missingRequisites(
+    await loadSellerSettings(container, order?.sales_channel_id)
+  )
   if (missing.length > 0) {
     logger.warn(
       `[order-invoice] заказ ${order_id}: документы не выпущены. ${missingRequisitesMessage(missing)}`
@@ -61,12 +73,7 @@ export default async function issueOrderInvoice({
     return
   }
 
-  const { data: orders } = await query.graph({
-    entity: "order",
-    fields: ["id", "company.id"],
-    filters: { id: order_id },
-  })
-  const companyId = (orders?.[0] as { company?: { id?: string } })?.company?.id
+  const companyId = order?.company?.id
   if (companyId && !(await hasLatest("internal_avr"))) {
     await issueOrderDocumentWorkflow(container).run({
       input: { order_id, type: "internal_avr" },

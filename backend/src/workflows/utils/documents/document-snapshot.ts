@@ -31,7 +31,22 @@ export type DocumentSnapshotSeller = {
   knp?: string | null
   // ФИО руководителя для подписи под счётом и актом.
   director_name?: string | null
+  // Ставка НДС продавца, %; нет — не плательщик («не облагается»). Снапшоты
+  // до 2026-11-05 её не несут.
+  vat_rate?: number | null
 }
+
+// НДС, включённый в сумму с НДС: сумма × ставка / (100 + ставка), до тиына.
+export const vatIncluded = (amount: number, rate: number): number =>
+  Math.round(((amount * rate) / (100 + rate)) * 100) / 100
+
+// НДС документа — сумма НДС строк (как в графе «Сумма НДС» накладной), чтобы
+// счёт, акт и накладная по одному заказу не расходились на тиын.
+export const itemsVat = (items: { total: number }[], rate: number): number =>
+  Math.round(items.reduce((sum, item) => sum + vatIncluded(item.total, rate), 0) * 100) / 100
+
+export const sellerVatRate = (seller: DocumentSnapshotSeller): number | null =>
+  seller.vat_rate && seller.vat_rate > 0 ? seller.vat_rate : null
 
 // Реквизиты покупателя: для юрлица — название и БИН компании (без них счёт не
 // примет бухгалтерия), для физлица — имя из адреса заказа.
@@ -51,6 +66,17 @@ export type DocumentSnapshotPayment = {
   paid?: boolean
   provider?: string | null
   captured_at?: string | null
+  // Способ оплаты заказа (kaspi_qr | kaspi_transfer | debt | bonus) и куда
+  // переводить — для неоплаченного счёта по переводу. Снапшоты до 2026-10-29
+  // их не несут — печатаются как прежде.
+  method?: string | null
+  transfer_phone?: string | null
+  transfer_recipient?: string | null
+  // Долг: срок возврата (после одобрения продавцом); частичная оплата — сколько
+  // получено и сколько осталось. Снапшоты до 2026-10-30 их не несут.
+  due_date?: string | null
+  paid_amount?: number | null
+  outstanding?: number | null
 }
 
 export type DocumentSnapshot = {
@@ -61,6 +87,9 @@ export type DocumentSnapshot = {
   buyer: DocumentSnapshotBuyer
   order: {
     display_id?: number | null
+    // Номер заказа для людей (ORG-26-0007); в снимках до 2026-11-02 его нет —
+    // тогда печатается «№<display_id>» (orderLabel).
+    number?: string | null
     currency_code: string
     created_at?: string | null
   }

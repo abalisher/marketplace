@@ -276,15 +276,41 @@
     "error": "Could not load products. Check the connection and try again."
   },
   "picker": {
-    "title": "The picker workplace is in the app",
-    "description": "Assembly tasks arrive in the “StroyMarket Picker” app on your phone: it shows only your category, and items are marked as you go, at the rack.",
-    "hint": "Open the app on your phone and sign in with the same account. There are no assembly tasks in the web panel."
+    "title": "Assembly",
+    "subtitle": "Tasks for confirmed orders. Take a task, mark how much you picked for each item and close it — the assembled order moves to the Shipping section.",
+    "chip": {
+      "active": "In progress",
+      "done": "Assembled",
+      "all": "All"
+    },
+    "status": {
+      "pending": "Waiting for picker",
+      "picking": "Picking",
+      "assembled": "Assembled",
+      "shortage": "Shortage"
+    },
+    "order": "Order {{id}}",
+    "need": "need {{qty}}",
+    "item": {
+      "picked": "all picked",
+      "partial": "picked {{picked}}",
+      "missing": "out of stock"
+    },
+    "pickedLabel": "Picked quantity",
+    "mark": "Mark",
+    "remark": "Change",
+    "start": "Take task",
+    "complete": "Task assembled",
+    "markAll": "Items left to mark: {{left}}",
+    "error": "Could not load assembly tasks",
+    "emptyActive": "No tasks. New ones appear when the seller confirms an order.",
+    "empty": "No tasks."
   },
   "orderQueue": {
     "title": "Orders",
     "searchPlaceholder": "Order no. or customer…",
     "colOrder": "No.",
-    "orderNo": "#{{id}}",
+    "orderNo": "{{id}}",
     "colCustomer": "Customer",
     "colItems": "Items",
     "colTotal": "Total",
@@ -300,7 +326,13 @@
     "payment": {
       "paid": "Paid",
       "awaiting": "Awaiting payment",
-      "canceled": "Payment canceled"
+      "canceled": "Payment canceled",
+      "debtRequested": "Debt requested",
+      "debt": "On credit",
+      "debtOverdue": "Debt overdue",
+      "refundDue": "Refund due",
+      "refunded": "Refunded",
+      "receiptReview": "Receipt to check"
     },
     "action": {
       "assemble": "To assembly",
@@ -356,7 +388,8 @@
     "documents": "Documents",
     "documentNotSent": "not sent",
     "openOrder": "Open order page",
-    "error": "Failed to load the order card. Check the connection and try again."
+    "error": "Failed to load the order card. Check the connection and try again.",
+    "openMap": "Open the point in 2GIS"
   },
   "order": {
     "status": {
@@ -376,6 +409,7 @@
     },
     "actor": {
       "buyer": "buyer",
+      "picker": "picker",
       "seller": "seller",
       "driver": "driver",
       "admin": "admin",
@@ -413,7 +447,7 @@
       "byPerson": "by {{name}} ({{actor}})"
     },
     "cancel": {
-      "titleNamed": "Order #{{id}} will be canceled. This cannot be undone.",
+      "titleNamed": "Order {{id}} will be canceled. This cannot be undone.",
       "titleGeneric": "This order will be canceled. This cannot be undone.",
       "reasonLabel": "Reason (optional)",
       "reasonPlaceholder": "e.g. Buyer requested cancellation",
@@ -425,9 +459,9 @@
       "assignAction": "Set delivery window",
       "title": "Reschedule delivery",
       "assignTitle": "Set delivery window",
-      "descNamed": "Pick another arrival window for order #{{id}}. The buyer is waiting for the current one.",
+      "descNamed": "Pick another arrival window for order {{id}}. The buyer is waiting for the current one.",
       "descGeneric": "Pick another arrival window for this order. The buyer is waiting for the current one.",
-      "assignDescNamed": "Order #{{id}} has no arrival window: it was placed before slots existed. Pick when to deliver it.",
+      "assignDescNamed": "Order {{id}} has no arrival window: it was placed before slots existed. Pick when to deliver it.",
       "assignDescGeneric": "This order has no arrival window: it was placed before slots existed. Pick when to deliver it.",
       "currentLabel": "Current window",
       "slotLabel": "New window",
@@ -445,7 +479,7 @@
       "logFrom": "from {{slot}}"
     },
     "deliver": {
-      "descNamed": "Enter the delivery code the buyer provides to confirm order #{{id}} was handed over.",
+      "descNamed": "Enter the delivery code the buyer provides to confirm order {{id}} was handed over.",
       "descGeneric": "Enter the delivery code the buyer provides to confirm this order was handed over.",
       "codeLabel": "Delivery code",
       "codePlaceholder": "e.g. 123456"
@@ -651,7 +685,8 @@
       "markSent": "Mark as sent",
       "sent": "Sent",
       "sentAt": "sent {{date}}",
-      "requisitesMissing": "Seller requisites are incomplete — documents cannot be issued. Fill them in Settings → Document Requisites."
+      "requisitesMissing": "Seller requisites are incomplete — documents cannot be issued. Fill them in Settings → Document Requisites.",
+      "requisitesMissingTenant": "The seller company’s requisites are incomplete — documents for its orders are not issued. The marketplace fills in company requisites."
     },
     "chip": {
       "all": "All"
@@ -761,7 +796,7 @@
     },
     "card": {
       "title": "Claim",
-      "titleForOrder": "Claim on order #{{id}}",
+      "titleForOrder": "Claim on order {{id}}",
       "overdue": "overdue",
       "complaint": "What the buyer says",
       "order": "Order",
@@ -1110,7 +1145,11 @@
       "notManaged": "Stock is not tracked for this item, or it is made of several inventory items.",
       "notManagedShort": "not tracked",
       "locationRequired": "The item is stored in several warehouses — pick one at the top to edit its stock.",
-      "locationRequiredShort": "pick a warehouse"
+      "locationRequiredShort": "pick a warehouse",
+      "onec": "This field is managed by the company's 1C: the value comes from synchronization. Change it in 1C.",
+      "onecShort": "from 1C",
+      "file": "This field comes from the company's Excel file: change it in the file and upload the file again.",
+      "fileShort": "from Excel"
     },
     "issue": {
       "unknownVariant": "the item is no longer in the catalogue",
@@ -1119,7 +1158,9 @@
       "stockNotManaged": "stock is not tracked",
       "locationRequired": "a warehouse must be picked",
       "unknownLocation": "unknown warehouse",
-      "duplicateChange": "the item is in the batch twice"
+      "duplicateChange": "the item is in the batch twice",
+      "priceLocked": "the price is shared across the marketplace — the owner changes it",
+      "onecManaged": "managed by 1C — change it in 1C"
     },
     "bar": {
       "selected": "Selected: {{n}}",
@@ -1153,10 +1194,12 @@
       "colAuthor": "Who",
       "stockChange": "stock {{change}}",
       "sourceImport": "import",
+      "sourceOnec": "1C",
       "empty": "No edits yet.",
       "range": "{{from}}–{{to}} of {{total}}",
       "prev": "Back",
-      "next": "Next"
+      "next": "Next",
+      "sourceFile": "Excel file"
     },
     "locationSwitch": {
       "title": "Discard stock edits?",
@@ -1207,8 +1250,14 @@
       "fractionStock": "fractional stock — a whole number is required",
       "priceRules": "price is set by rules",
       "stockNotManaged": "stock is not tracked",
-      "locationRequired": "a location must be selected"
-    }
+      "locationRequired": "a location must be selected",
+      "onecManaged": "managed by 1C — change it in 1C"
+    },
+    "colCost": "Cost",
+    "costSource": "from 1C",
+    "costMarkup": "from 1C · markup {{n}}%",
+    "costSourceFile": "from Excel",
+    "costMarkupFile": "from Excel · markup {{n}}%"
   },
   "layout": {
     "customizeTopbar": "Customize top bar",
@@ -1546,5 +1595,376 @@
       "authenticationFailed": "Authentication failed",
       "cloud": "Log in with Medusa Cloud"
     }
+  },
+  "onec": {
+    "title": "1C & Excel",
+    "subtitle": "The company's catalog mirrors its 1C or an Excel file: products, prices and stock arrive by sync or by file upload.",
+    "pickTenant": "Company",
+    "noTenants": "There are no companies on the marketplace yet.",
+    "loading": "Loading…",
+    "connection": {
+      "title": "Connection",
+      "notConfigured": "The connection is not configured yet.",
+      "products": "Products from 1C: {{present}} listed out of {{total}}",
+      "enabled": "scheduled",
+      "disabled": "schedule off",
+      "productsFile": "Products from Excel: {{present}} on the storefront of {{total}}",
+      "notConfiguredFile": "No file uploaded yet."
+    },
+    "form": {
+      "url": "1C export HTTP service URL",
+      "login": "1C user login",
+      "password": "Password",
+      "passwordSaved": "saved — leave empty to keep it",
+      "interval": "Synchronize",
+      "minutes_one": "every {{count}} minute",
+      "minutes_other": "every {{count}} minutes",
+      "hours_one": "every {{count}} hour",
+      "hours_other": "every {{count}} hours",
+      "location": "Warehouse for 1C stock",
+      "enabled": "Synchronize on schedule",
+      "enabledHint": "While off, synchronization runs only from the button — so the connection can be checked first.",
+      "exclusive": "Company catalog comes only from 1C",
+      "exclusiveHint": "After a successful sync, shared marketplace products leave the company's storefront. The products themselves are not deleted.",
+      "stockUrl": "Stock and price export URL (optional)",
+      "stockUrlHint": "A second 1C service with stock and prices by item code (e.g. …/hs/items/getitems). An empty response does not reset stock: until 1C provides them, the seller sets prices and stock on Prices & stock.",
+      "locationFile": "Warehouse for stock from the file",
+      "exclusiveFile": "Company catalog comes only from the file",
+      "exclusiveHintFile": "After the first successful upload, platform catalog products leave the company storefront. The products themselves are not deleted."
+    },
+    "actions": {
+      "save": "Save",
+      "test": "Test connection",
+      "sync": "Synchronize now",
+      "syncing": "Synchronizing…"
+    },
+    "toast": {
+      "saved": "Connection saved",
+      "tested_one": "1C answered: {{count}} item",
+      "tested_other": "1C answered: {{count}} items",
+      "syncStarted": "Synchronization started — follow it in the log below",
+      "fileRead": "File read: {{count}} items",
+      "fileStarted": "Upload started — progress is in the log below"
+    },
+    "test": {
+      "title": "Connection test",
+      "summary": "Usable items: {{received}} of {{total}} response records, answered in {{seconds}} s. Below is how the marketplace understood the export fields and the first items. Nothing was written to the catalog.",
+      "notFound": "not found",
+      "stock": "Stock: {{received}} rows, {{matched}} matched the catalog.",
+      "stockApplied": "Stock and prices from 1C are applied."
+    },
+    "field": {
+      "key": "Key (GUID)",
+      "code": "Code",
+      "article": "Article",
+      "name": "Name",
+      "unit": "Unit",
+      "price": "Price",
+      "stock": "Stock",
+      "group": "Group",
+      "barcode": "Barcode",
+      "description": "Description",
+      "cost": "Cost"
+    },
+    "runs": {
+      "title": "Synchronization log",
+      "empty": "No synchronizations yet.",
+      "started": "Started",
+      "status": "Result",
+      "result": "What was done",
+      "received": "received",
+      "created": "created",
+      "updated": "updated",
+      "hidden": "unlisted",
+      "detached": "removed from catalog",
+      "failed": "errors",
+      "issues_one": "{{count}} note — click to expand",
+      "issues_other": "{{count}} notes — click to expand"
+    },
+    "trigger": {
+      "schedule": "scheduled",
+      "manual": "manual",
+      "file": "Excel file"
+    },
+    "status": {
+      "running": "running",
+      "success": "success",
+      "partial": "with notes",
+      "empty": "empty response",
+      "failed": "failed"
+    },
+    "source": {
+      "label": "Catalog source",
+      "http": "1C (HTTP service)",
+      "file": "Excel file",
+      "fileHint": "The company has no 1C and sends a spreadsheet (.xlsx, .xls or .csv). Every upload is the full catalog: new items appear, prices and stock update, and items missing from the file are unpublished (not deleted)."
+    },
+    "file": {
+      "title": "Excel file upload",
+      "columns": "Columns are recognised by their headers: «Code» or «Article», «Name», «Unit», «Stock», «Price» (selling) and/or «Purchase price», «Group». «Characteristic» and «Brand» are appended to the name. A title above the headers and a «Total» row are fine.",
+      "pick": "Choose file",
+      "template": "Download template",
+      "upload": "Upload to catalog",
+      "uploading": "Uploading…",
+      "reading": "Reading the file…",
+      "summary": "File «{{file}}», sheet «{{sheet}}», headers on row {{row}}. Valid items: {{received}} of {{total}} rows. Nothing is written yet — check the fields below and press «Upload to catalog».",
+      "tooBig": "The file is larger than 10 MB — split it or remove extra sheets",
+      "switchFirst": "Save the «Excel file» source first."
+    }
+  },
+  "payments": {
+    "title": "Payments & debts",
+    "subtitle": "Customer debts, payment journal and payment methods",
+    "allSellers": "All sellers",
+    "tabs": {
+      "debts": "Debts",
+      "journal": "Payment journal",
+      "settings": "Payment methods",
+      "receipts": "Receipts"
+    },
+    "export": "Export CSV",
+    "exportFailed": "Could not export the file",
+    "loadError": "Could not load data",
+    "error": "Could not save. Please try again",
+    "searchPlaceholder": "Customer, phone, order no.",
+    "method": {
+      "kaspi_qr": "Kaspi QR",
+      "kaspi_transfer": "Kaspi transfer",
+      "debt": "On credit",
+      "bonus": "Bonuses"
+    },
+    "channel": {
+      "kaspi_qr": "Kaspi QR",
+      "kaspi_transfer": "Kaspi transfer",
+      "cash": "Cash",
+      "card": "Card",
+      "other": "Other"
+    },
+    "status": {
+      "awaiting": "Awaiting transfer",
+      "debt_requested": "Debt requested",
+      "debt": "On credit",
+      "paid": "Paid",
+      "canceled": "Canceled",
+      "refund_due": "Refund due",
+      "refunded": "Refunded",
+      "overdue": "Overdue"
+    },
+    "kind": {
+      "payment": "Payment",
+      "refund": "Refund"
+    },
+    "actor": {
+      "system": "System"
+    },
+    "record": {
+      "receiveTitle": "Record money received",
+      "refundTitle": "Record refund to customer",
+      "orderNo": "Order {{id}}",
+      "maxReceive": "customer owes {{amount}}",
+      "maxRefund": "refund {{amount}}",
+      "amount": "Amount, ₸",
+      "amountInvalid": "Amount must be positive and not exceed the balance",
+      "channel": "How the money came",
+      "refundChannel": "How the money was returned",
+      "date": "Date",
+      "note": "Comment",
+      "notePlaceholder": "E.g. transfer from Aigul S., part of the debt",
+      "receiveConfirm": "Record payment",
+      "refundConfirm": "Record refund",
+      "receiveSaved": "Payment recorded",
+      "refundSaved": "Refund recorded"
+    },
+    "approve": {
+      "title": "Approve debt and confirm order",
+      "description": "Order {{id}} for {{amount}}: the customer asks to pay later",
+      "dueDate": "Repay by",
+      "hint": "Not granting credit? Close this dialog and cancel the order with a reason.",
+      "confirm": "Approve and confirm"
+    },
+    "section": {
+      "title": "Payment",
+      "amount": "To pay",
+      "paid": "Received",
+      "outstanding": "Outstanding",
+      "refundDue": "Refund due",
+      "refunded": "Refunded",
+      "dueDate": "Repay by",
+      "transferHint": "The customer transfers to Kaspi {{phone}} with the comment “Order {{id}}”. Once you see it, record the payment, then confirm the order.",
+      "transferHintNoPhone": "The customer transfers to your Kaspi number. Once you see it, record the payment, then confirm the order.",
+      "debtRequestedHint": "The customer asks for credit. Confirming the order approves the debt with a due date; otherwise cancel the order with a reason.",
+      "approved": "Debt approved {{date}} · {{name}}",
+      "recordTransfer": "Transfer received",
+      "recordRepayment": "Record repayment",
+      "recordRefund": "Record refund",
+      "methodChanged": "The customer changed the payment method: {{from}} → {{to}} · {{date}}"
+    },
+    "debts": {
+      "outstanding": "Total owed",
+      "openHint": "{{orders}} order(s) · {{buyers}} customer(s)",
+      "overdue": "Overdue",
+      "requested": "Awaiting decision",
+      "openOrders": "Open debts",
+      "overdueDays": "{{count}} d overdue",
+      "state": {
+        "open": "Open",
+        "requested": "Requests",
+        "closed": "Repaid",
+        "all": "All"
+      },
+      "empty": {
+        "open": "No open debts",
+        "requested": "No credit requests",
+        "closed": "No repaid debts yet",
+        "all": "No orders on credit yet"
+      }
+    },
+    "col": {
+      "order": "Order",
+      "customer": "Customer",
+      "seller": "Seller",
+      "amount": "Amount",
+      "paid": "Repaid",
+      "outstanding": "Balance",
+      "dueDate": "Due",
+      "status": "Status",
+      "date": "Date",
+      "method": "Payment method",
+      "channel": "How",
+      "sum": "Amount",
+      "actor": "Recorded by"
+    },
+    "journal": {
+      "received": "Received",
+      "refunded": "Refunded",
+      "net": "Net",
+      "byChannel": "By channel",
+      "period": {
+        "today": "Today",
+        "week": "7 days",
+        "month": "This month",
+        "all": "All time"
+      },
+      "allKinds": "All movements",
+      "allChannels": "All channels",
+      "empty": "No money movements in this period",
+      "pageInfo": "{{from}}–{{to}} of {{count}}",
+      "prev": "Previous",
+      "next": "Next"
+    },
+    "settings": {
+      "saved": "Payment methods saved",
+      "chooseSeller": "Choose a seller at the top right to configure their payment methods.",
+      "updatedAt": "Updated {{date}}",
+      "defaults": "Not configured: only Kaspi QR is accepted",
+      "secretSet": "set — enter a new one to replace",
+      "secretEmpty": "not set",
+      "secretOptional": "optional",
+      "kaspiQr": {
+        "title": "Kaspi QR",
+        "hint": "A Kaspi invoice for the order total: the customer pays by QR or button, the order is placed after payment. Money goes to your Kaspi account.",
+        "live": "Live",
+        "mock": "Test",
+        "standNote": "On the staging stand Kaspi payments are always test payments — no real money is charged.",
+        "mode": "Mode",
+        "merchantId": "Kaspi merchant ID",
+        "merchantIdPlaceholder": "issued by Kaspi on connection",
+        "apiKey": "Kaspi API key",
+        "webhookSecret": "Kaspi webhook secret",
+        "static": "Shop QR",
+        "staticUrl": "Link from the shop's Kaspi QR",
+        "staticHint": "The link encoded in your Kaspi Pay QR (point a phone camera at the QR and copy the link). Without API keys the customer pays by this QR: scans it on a computer, on a phone the link opens Kaspi payment; they enter the amount, you confirm the payment by the receipt.",
+        "apiTitle": "Kaspi API connection",
+        "apiHint": "Kaspi issues the keys under a contract. With them the buyer gets an invoice for the exact order amount and the payment is recorded automatically.",
+        "apiHintStatic": "Optional: the shop QR already accepts real payments in either mode. Kaspi issues the keys under a contract — with them an invoice for the exact order amount replaces the shop QR and the payment is recorded automatically."
+      },
+      "transfer": {
+        "title": "Transfer to Kaspi number",
+        "hint": "The customer transfers to your number after placing the order; you record the payment on the order card.",
+        "phone": "Kaspi number for transfers",
+        "recipient": "Recipient as Kaspi shows it",
+        "recipientPlaceholder": "E.g. Nurlan B.",
+        "note": "Note for the customer",
+        "notePlaceholder": "E.g. transfer to Kaspi Gold, put the order number in the comment"
+      },
+      "debt": {
+        "title": "On credit",
+        "hint": "The customer asks to pay later. You decide when confirming the order and set a due date; record repayments on the order card.",
+        "maxAmount": "Maximum order amount on credit, ₸",
+        "maxAmountPlaceholder": "no limit",
+        "termDays": "Default term, days"
+      }
+    },
+    "receipts": {
+      "title": "Customer receipts",
+      "status": {
+        "pending": "Awaiting decision",
+        "flagged": "Violations found",
+        "accepted": "Accepted",
+        "rejected": "Rejected"
+      },
+      "state": {
+        "waiting": "Awaiting decision",
+        "all": "All"
+      },
+      "empty": {
+        "waiting": "No receipts to check",
+        "all": "Customers have not sent receipts yet"
+      },
+      "tabHint": "Receipts are checked automatically; the decision is yours after checking your Kaspi app.",
+      "openFile": "Open receipt",
+      "amount": "Receipt amount",
+      "paidAt": "Operation date",
+      "number": "Receipt no.",
+      "recipient": "Recipient",
+      "sender": "Sender",
+      "comment": "Comment",
+      "checks": "Check",
+      "checksOk": "Amount, recipient, date and number match",
+      "warningsCount": "Remarks: {{count}}",
+      "verifyHint": "Find this transfer in your Kaspi app before deciding.",
+      "accept": "Accept",
+      "reject": "Reject",
+      "acceptTitle": "Accept receipt",
+      "acceptDescription": "The payment will be recorded in the journal. The customer owes {{amount}}.",
+      "rejectTitle": "Reject receipt",
+      "rejectDescription": "The customer will see the reason and can send another receipt.",
+      "rejectReason": "Reason",
+      "rejectPlaceholder": "E.g. no transfer with this amount in Kaspi",
+      "reviewNote": "Decision: {{note}}",
+      "accepted": "Receipt accepted",
+      "rejected": "Receipt rejected",
+      "flaggedWarning": "The check found violations in this receipt. Accept only if you found this transfer in your Kaspi app.",
+      "bin": "IIN/BIN"
+    }
+  },
+  "delivery": {
+    "title": "Delivery",
+    "subtitle": "Orders on the way. Hand them over with the pickup code the customer tells you.",
+    "refresh": "Refresh",
+    "loading": "Loading orders…",
+    "error": "Could not load orders in delivery.",
+    "empty": "No orders in delivery. They appear once the warehouse ships an order.",
+    "noSlot": "No delivery window",
+    "noAddress": "No address",
+    "noName": "Customer",
+    "deliver": "Hand over by code",
+    "delivered": "Order {{id}} handed over",
+    "deliverError": "Could not mark the handover. Check the code."
+  },
+  "tenantCustomers": {
+    "widgetTitle": "Company customers",
+    "widgetHint": "Customers with orders in your company and customers you added.",
+    "button": "New customer",
+    "title": "New customer",
+    "hint": "The customer signs in with an SMS code to this number; name and address will already be filled in.",
+    "phone": "Phone",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "address": "Delivery address",
+    "addressPlaceholder": "Street, building, apartment (optional)",
+    "city": "City",
+    "cityPlaceholder": "Astana",
+    "toast": "Customer added"
   }
 }

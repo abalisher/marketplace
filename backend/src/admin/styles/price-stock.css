@@ -15,7 +15,7 @@
    клетки несут overflow:hidden и min-width 20px, поэтому автораскладка иначе
    давит колонку с полем до нуля — поймано на кадре 1024 px). */
 .sm-ps table {
-  min-width: 1080px;
+  min-width: 1180px;
 }
 
 .sm-ps table tbody tr td {
@@ -65,7 +65,7 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  max-width: 340px;
+  max-width: 480px;
 }
 
 .sm-ps-title-text {
@@ -77,9 +77,22 @@
   color: rgb(var(--sm-ink));
 }
 
+/* В таблице название переносится на вторую строку: у каталогов из Excel/1С
+   имена длинные («2 PLUS 18кг Kesto Линолиум, SPC, LVT; клей…»), и в одну
+   строку продавец не различал позиции. Дальше двух строк — многоточие, полное
+   имя — в подсказке при наведении (title). */
+.sm-ps-title .sm-ps-title-text {
+  max-width: 480px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  line-height: 18px;
+}
+
 /* Приписка под названием тоже не должна раздувать колонку. */
 .sm-ps-title .sm-ps-sub {
-  max-width: 340px;
+  max-width: 480px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

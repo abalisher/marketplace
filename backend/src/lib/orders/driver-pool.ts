@@ -1,5 +1,6 @@
 import { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { geoFromMetadata } from "../geo"
 import { LOGISTICS_MODULE } from "../../modules/logistics"
 import LogisticsModuleService from "../../modules/logistics/service"
 import { OrderStatusValue } from "../../modules/order-lifecycle/models/statuses"
@@ -32,6 +33,10 @@ export type OrderAddressSnapshot = {
   postal_code: string | null
   province: string | null
   country_code: string | null
+  // Точка на карте, если покупатель выбирал адрес на карте 2ГИС: по ней
+  // водитель открывает навигацию прямо к дому, а не «к улице вообще».
+  lat?: number | null
+  lng?: number | null
 }
 
 // Заказ пула. Личных данных получателя (имя, телефон) здесь НЕТ: пул видят все
@@ -40,6 +45,8 @@ export type OrderAddressSnapshot = {
 export type DriverPoolOrder = {
   order_id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number: string | null
   created_at: string | null
   // Улица с уточнением одной строкой; город отдельно — по нему водитель
   // прикидывает плечо.
@@ -74,6 +81,7 @@ type RawOrder = {
       }[]
     | null
   order_lifecycle?: {
+    number?: string | null
     status?: string | null
     delivery_method?: string | null
   } | null
@@ -82,6 +90,7 @@ type RawOrder = {
 const ORDER_FIELDS = [
   "id",
   "display_id",
+  "order_lifecycle.number",
   "created_at",
   "items.id",
   "items.quantity",
@@ -94,6 +103,7 @@ const ORDER_FIELDS = [
   "shipping_address.postal_code",
   "shipping_address.province",
   "shipping_address.country_code",
+  "shipping_address.metadata",
   "fulfillments.id",
   "fulfillments.location_id",
   "fulfillments.canceled_at",
@@ -129,7 +139,12 @@ const pickupLocation = (order: RawOrder): string | null => {
 
 const addressSnapshot = (order: RawOrder): OrderAddressSnapshot => {
   const address = order.shipping_address ?? {}
+  const geo = geoFromMetadata(
+    (address as { metadata?: Record<string, unknown> | null }).metadata
+  )
   return {
+    lat: geo?.lat ?? null,
+    lng: geo?.lng ?? null,
     first_name: text(address.first_name),
     last_name: text(address.last_name),
     phone: text(address.phone),
@@ -155,6 +170,7 @@ const toPoolOrder = (order: RawOrder): DriverPoolOrder | null => {
   return {
     order_id: order.id,
     display_id: order.display_id ?? null,
+    order_number: order.order_lifecycle?.number ?? null,
     created_at: iso(order.created_at),
     address:
       [snapshot.address_1, snapshot.address_2]

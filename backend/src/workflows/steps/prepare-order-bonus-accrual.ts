@@ -83,6 +83,22 @@ export const prepareOrderBonusAccrualStep = createStep(
       )
     }
 
+    // Заказ «в долг» или по переводу, за который ещё не заплатили целиком, —
+    // не начисляем: бонус платится с денег, а не с обещания. Джоба вернётся к
+    // заказу на следующем проходе, когда долг погасят.
+    const { data: orderPayments } = await query.graph({
+      entity: "order_payment",
+      fields: ["status"],
+      filters: { order_id: input.order_id },
+    })
+    const paymentStatus = (orderPayments as { status?: string }[])[0]?.status
+    if (paymentStatus && paymentStatus !== "paid") {
+      throw new MedusaError(
+        MedusaError.Types.NOT_ALLOWED,
+        `Order ${input.order_id} is not paid in full (${paymentStatus}) — bonus accrues only on paid orders`
+      )
+    }
+
     // Дата доставки — последний переход в delivered из лога (у counter-заказов
     // он тоже есть: new → delivered → closed).
     const deliveredAt = (order.order_lifecycle.events ?? [])

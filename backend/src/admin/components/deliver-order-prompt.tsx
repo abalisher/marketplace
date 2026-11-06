@@ -1,10 +1,11 @@
+import { orderLabel } from "../lib/order-label"
 import { Input, Label, Prompt } from "@medusajs/ui"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 type DeliverOrderPromptProps = {
   // null — диалог закрыт
-  order: { id: string; display_id?: number } | null
+  order: { id: string; display_id?: number; order_number?: string | null } | null
   onClose: () => void
   onSubmit: (id: string, code: string) => void
   isPending: boolean
@@ -40,8 +41,8 @@ const DeliverOrderPrompt = ({
           <Prompt.Title>{t("order.transition.markDelivered")}</Prompt.Title>
           <Prompt.Description>
             {order
-              ? order.display_id
-                ? t("order.deliver.descNamed", { id: order.display_id })
+              ? order.display_id || order.order_number
+                ? t("order.deliver.descNamed", { id: orderLabel(order.order_number, order.display_id) })
                 : t("order.deliver.descGeneric")
               : ""}
           </Prompt.Description>

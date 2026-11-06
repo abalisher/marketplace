@@ -1,5 +1,6 @@
 "use client"
 
+import { orderLabel } from "@lib/util/order-label"
 import { AssistantOrderDocuments } from "@lib/data/assistant"
 import { useMessages } from "@lib/i18n/i18n-context"
 
@@ -22,10 +23,10 @@ const DocumentsAttachment = ({
       data-testid="assistant-documents"
     >
       <span className="text-title-medium text-ink">
-        {attachment.display_id !== null
+        {attachment.display_id !== null || attachment.order_number
           ? m.assistant.documents.title.replace(
               "{id}",
-              String(attachment.display_id)
+              orderLabel(attachment.order_number, attachment.display_id)
             )
           : m.assistant.documents.fallbackTitle}
       </span>

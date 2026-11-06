@@ -58,11 +58,13 @@ describe("buildAssemblyTaskRow", () => {
     const row = buildAssemblyTaskRow(task(), {
       id: "order_1",
       display_id: 24,
+      order_number: "ORG-26-0024",
       email: "buyer@example.com",
       customer_name: "Ерлан Абдуллаев",
     })
 
     expect(row.order_display_id).toEqual(24)
+    expect(row.order_number).toEqual("ORG-26-0024")
     expect(row.customer_name).toEqual("Ерлан Абдуллаев")
   })
 
@@ -70,6 +72,7 @@ describe("buildAssemblyTaskRow", () => {
     const withEmail = buildAssemblyTaskRow(task(), {
       id: "order_1",
       display_id: 24,
+      order_number: "ORG-26-0024",
       email: "buyer@example.com",
       customer_name: null,
     })

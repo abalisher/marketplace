@@ -51,6 +51,7 @@ const ChatRail = ({
   onRemove,
   onNew,
   isAuthenticated,
+  brand = "СтройМаркет",
 }: {
   conversations: ChatConversation[]
   activeId?: string
@@ -63,6 +64,8 @@ const ChatRail = ({
   onNew: () => void
   // Вошёл ли покупатель: от этого зависит кнопка выхода внизу рельса.
   isAuthenticated?: boolean
+  // Подпись витрины: название компании-продавца или площадки.
+  brand?: string
 }) => {
   const m = useMessages()
   const [query, setQuery] = useState("")
@@ -108,7 +111,7 @@ const ChatRail = ({
             className="flex h-10 items-center px-3 text-title-medium font-normal text-ink transition-colors hover:text-accent small:mb-1"
             data-testid="chat-rail-brand"
           >
-            СтройМаркет
+            {brand}
           </LocalizedClientLink>
         )}
         <button

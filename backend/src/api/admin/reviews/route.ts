@@ -1,3 +1,4 @@
+import { findOrderIdsByNumber } from "../../../lib/orders/order-number"
 import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
@@ -6,6 +7,8 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { RemoteQueryFunction } from "@medusajs/framework/types"
 import { REVIEWS_MODULE } from "../../../modules/reviews"
 import ReviewsModuleService from "../../../modules/reviews/service"
+import { loadChannelOrderIds } from "../../../lib/tenants/scope"
+import { getTenantScope } from "../../utils/tenant-access"
 import {
   REVIEW_STATUSES,
   REVIEW_TARGETS,
@@ -39,6 +42,11 @@ async function findReviewIdsBySearch(
   const displayId = Number(q.replace(/^#/, ""))
   if (Number.isSafeInteger(displayId) && displayId > 0) {
     orderFilters.push({ display_id: displayId })
+  }
+  // Номер нового вида — «ORG-26-0007» или его хвост «7» (lib/orders/order-number).
+  const byNumber = await findOrderIdsByNumber(query, q)
+  if (byNumber.length) {
+    orderFilters.push({ id: byNumber })
   }
 
   const orderIds = new Set<string>()
@@ -84,6 +92,14 @@ export async function GET(
   const baseFilters: Record<string, unknown> = {}
   if (target) {
     baseFilters.target = target
+  }
+  // Продавец компании видит отзывы и рейтинг только по заказам своего канала.
+  const tenant = getTenantScope(req)
+  const tenantOrderIds = tenant
+    ? await loadChannelOrderIds(req.scope, tenant.sales_channel_id)
+    : undefined
+  if (tenantOrderIds) {
+    baseFilters.order_id = tenantOrderIds
   }
 
   if (q) {
@@ -135,7 +151,9 @@ export async function GET(
   )
 
   const summaries = await Promise.all(
-    REVIEW_TARGETS.map((value) => reviewsService.getRatingSummary(value))
+    REVIEW_TARGETS.map((value) =>
+      reviewsService.getRatingSummary(value, tenantOrderIds)
+    )
   )
 
   res.json({

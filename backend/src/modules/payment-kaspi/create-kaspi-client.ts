@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto"
 import { MedusaError } from "@medusajs/framework/utils"
 import type { KaspiClient } from "./types"
 import { KaspiMockClient } from "./kaspi-mock-client"
@@ -35,6 +36,44 @@ export function createKaspiClient(options: KaspiProviderOptions = {}): KaspiClie
     return createLiveClient(options)
   }
   return new KaspiMockClient()
+}
+
+// Клиент площадки по умолчанию: в рабочем режиме он есть, только если в
+// окружении заданы ключи площадки. Деньги идут на счёт продавца (решение
+// владельца 2026-10-27), поэтому рабочий Kaspi без ключей площадки — норма:
+// счёт выставляется ключами продавца (createSellerKaspiClient), а не падением
+// процесса при старте.
+export function createDefaultKaspiClient(
+  options: KaspiProviderOptions = {}
+): KaspiClient | null {
+  if (resolveMode(options) === "mock") {
+    return new KaspiMockClient()
+  }
+  const hasPlatformKeys = Boolean(
+    (options.merchant_id ?? process.env.KASPI_MERCHANT_ID) &&
+      (options.api_key ?? process.env.KASPI_API_KEY)
+  )
+  return hasPlatformKeys ? createLiveClient(options) : null
+}
+
+// Ключи Kaspi продавца (настройки оплаты его канала, расшифрованные). Адрес
+// API — общий для всех продавцов, из окружения.
+export type SellerKaspiCredentials = {
+  merchant_id: string
+  api_key: string
+  webhook_secret: string | null
+}
+
+export function createSellerKaspiClient(
+  credentials: SellerKaspiCredentials
+): KaspiClient {
+  return createLiveClient({
+    merchant_id: credentials.merchant_id,
+    api_key: credentials.api_key,
+    // Секрета нет — webhook продавца не принимается вовсе: случайный ключ не
+    // сойдётся ни с одной подписью, и статус оплаты узнаётся только опросом.
+    webhook_secret: credentials.webhook_secret || randomBytes(32).toString("hex"),
+  })
 }
 
 // Живой транспорт: конфигурация обязана быть полной — молча уходить в мок при

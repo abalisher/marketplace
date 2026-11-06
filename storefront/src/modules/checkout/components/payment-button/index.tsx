@@ -1,13 +1,16 @@
 "use client"
 
-import { isKaspi, isManual, isStripeLike } from "@lib/constants"
+import { isDebt, isKaspi, isStripeLike, isTransfer } from "@lib/constants"
+import { FEATURE_KASPI_MOCK } from "@lib/feature-flags"
 import { placeOrder } from "@lib/data/cart"
 import {
   getKaspiPaymentStatus,
   initKaspiPayment,
+  mockPayKaspi,
   KaspiPayment,
 } from "@lib/data/payment"
 import { getBonusCreditAmount } from "@lib/util/bonus"
+import { convertToLocale } from "@lib/util/money"
 import { useMessages } from "@lib/i18n/i18n-context"
 import { HttpTypes } from "@medusajs/types"
 import { Button, Text } from "@medusajs/ui"
@@ -51,9 +54,17 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
       )
     case isKaspi(paymentSession?.provider_id):
       return <KaspiPaymentButton notReady={notReady} cart={cart} />
-    case isManual(paymentSession?.provider_id):
+    case isTransfer(paymentSession?.provider_id):
       return (
-        <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
+        <OfflinePaymentButton
+          method="kaspi_transfer"
+          notReady={notReady}
+          cart={cart}
+        />
+      )
+    case isDebt(paymentSession?.provider_id):
+      return (
+        <OfflinePaymentButton method="debt" notReady={notReady} cart={cart} />
       )
     default:
       return <Button disabled>{m.checkout.payment.selectMethod}</Button>
@@ -269,17 +280,50 @@ const KaspiPaymentButton = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPaid])
 
+  // Тестовая оплата (стенд, NEXT_PUBLIC_KASPI_MOCK=true): кнопка появляется,
+  // только когда корзина готова и сессия оплаты уже получена.
+  const [mockPaying, setMockPaying] = useState(false)
+  const showMockPay = FEATURE_KASPI_MOCK && !notReady && payment !== null
+
+  const handleMockPay = async () => {
+    setMockPaying(true)
+    setErrorMessage(null)
+    try {
+      setPayment(await mockPayKaspi(cart.id))
+    } catch (err: any) {
+      setErrorMessage(err?.message || m.kaspiPay.mockPayError)
+    } finally {
+      setMockPaying(false)
+    }
+  }
+
+  const hasPayPanel = Boolean(payment?.qr_payload || payment?.payment_url)
+
   return (
     <div className="flex flex-col items-start gap-y-4">
-      {!isPaid && !isFailed && (payment?.qr_payload || payment?.payment_url) && (
+      {!isPaid && !isFailed && (hasPayPanel || showMockPay) && (
         <div
           className="flex flex-col gap-y-3"
           data-testid="kaspi-payment-panel"
         >
-          <KaspiPayPanel
-            qrPayload={payment.qr_payload}
-            paymentUrl={payment.payment_url}
-          />
+          {hasPayPanel && (
+            <KaspiPayPanel
+              qrPayload={payment?.qr_payload ?? null}
+              paymentUrl={payment?.payment_url ?? null}
+            />
+          )}
+          {showMockPay && (
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={handleMockPay}
+              isLoading={mockPaying}
+              data-testid="kaspi-mock-pay-button"
+            >
+              {m.kaspiPay.mockPay}
+            </Button>
+          )}
         </div>
       )}
 
@@ -318,6 +362,7 @@ const KaspiPaymentButton = ({
 // Заказ целиком оплачен бонусами: платёжная сессия не нужна — сразу placeOrder
 // (проверку «total=0 при кредитных линиях» делает бэкенд).
 const BonusPaymentButton = ({ notReady }: { notReady: boolean }) => {
+  const m = useMessages()
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -341,7 +386,7 @@ const BonusPaymentButton = ({ notReady }: { notReady: boolean }) => {
         size="large"
         data-testid="submit-order-button"
       >
-        Place order
+        {m.payment.review.placeOrder}
       </Button>
       <ErrorMessage
         error={errorMessage}
@@ -351,12 +396,27 @@ const BonusPaymentButton = ({ notReady }: { notReady: boolean }) => {
   )
 }
 
-const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
+// Перевод на номер Kaspi и «в долг»: денег до оформления нет — заказ
+// оформляется сразу (бэкенд принимает выбранную сессию этих провайдеров).
+// Куда переводить и с каким комментарием, покажем уже на странице заказа;
+// просьбу «в долг» продавец одобрит или отклонит при подтверждении заказа.
+const OfflinePaymentButton = ({
+  method,
+  cart,
+  notReady,
+}: {
+  method: "kaspi_transfer" | "debt"
+  cart: HttpTypes.StoreCart
+  notReady: boolean
+}) => {
+  const m = useMessages()
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  const onPaymentCompleted = async () => {
-    await placeOrder()
+  const handlePayment = () => {
+    setSubmitting(true)
+    setErrorMessage(null)
+    placeOrder()
       .catch((err) => {
         setErrorMessage(err.message)
       })
@@ -365,14 +425,33 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
       })
   }
 
-  const handlePayment = () => {
-    setSubmitting(true)
-
-    onPaymentCompleted()
-  }
-
   return (
-    <>
+    <div className="flex flex-col items-start gap-y-4">
+      <div
+        className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4"
+        data-testid="offline-payment-summary"
+      >
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <span className="text-body-large font-semibold text-ink">
+            {m.payment.methods[method].title}
+          </span>
+          <span className="text-body-medium text-ink-secondary">
+            {m.payment.review.toPay}:
+          </span>
+          <span className="text-body-large tabular-nums text-ink">
+            {convertToLocale({
+              amount: cart.total ?? 0,
+              currency_code: cart.currency_code,
+            })}
+          </span>
+        </div>
+        <Text className="text-body-medium text-ink-secondary">
+          {method === "debt"
+            ? m.payment.review.debtHint
+            : m.payment.review.transferHint}
+        </Text>
+      </div>
+
       <Button
         disabled={notReady}
         isLoading={submitting}
@@ -380,13 +459,15 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
         size="large"
         data-testid="submit-order-button"
       >
-        Place order
+        {method === "debt"
+          ? m.payment.review.requestDebt
+          : m.payment.review.placeOrder}
       </Button>
       <ErrorMessage
         error={errorMessage}
-        data-testid="manual-payment-error-message"
+        data-testid="offline-payment-error-message"
       />
-    </>
+    </div>
   )
 }
 

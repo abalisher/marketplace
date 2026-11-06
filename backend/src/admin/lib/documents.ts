@@ -44,6 +44,8 @@ export type AdminOrderDocument = {
 
 export type AdminOrderDocumentsResponse = {
   documents: AdminOrderDocument[]
+  // Реквизиты продавца ЭТОГО заказа: у заказа компании — её, иначе площадки.
+  requisites?: { ready: boolean; missing: string[]; tenant: boolean }
 }
 
 // Заказ, к которому относится документ, в реестре: номер и плательщик
@@ -51,6 +53,8 @@ export type AdminOrderDocumentsResponse = {
 export type AdminDocumentOrder = {
   id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   buyer: string | null
   is_company: boolean
 }

@@ -748,7 +748,7 @@ medusaIntegrationTestRunner({
           )
         )
         expect(res.status).toEqual(400)
-        expect(res.data.message).toContain("not allowed")
+        expect(res.data.message).toContain("Нельзя перевести")
       })
     })
 
@@ -997,6 +997,8 @@ medusaIntegrationTestRunner({
           // Имя автора перехода (T4.12) — часть контракта: экран подписывает
           // переход человеком, а не одной ролью.
           "actor_name",
+          // Роль сотрудника по учётке — подпись «в каком качестве».
+          "actor_role",
           "actor_type",
           "created_at",
           "from_slot_date",

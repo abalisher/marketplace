@@ -8,6 +8,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 type OrderWithLifecycle = {
   id: string
   order_lifecycle?: {
+    number?: string | null
     status: string
     previous_status: string | null
     delivery_method: string
@@ -33,6 +34,7 @@ export async function GET(
     entity: "order",
     fields: [
       "id",
+      "order_lifecycle.number",
       "order_lifecycle.status",
       "order_lifecycle.previous_status",
       "order_lifecycle.delivery_method",
@@ -47,6 +49,7 @@ export async function GET(
     .filter((order) => !!order.order_lifecycle)
     .map((order) => ({
       order_id: order.id,
+      number: order.order_lifecycle!.number ?? null,
       status: order.order_lifecycle!.status,
       previous_status: order.order_lifecycle!.previous_status ?? null,
       delivery_method: order.order_lifecycle!.delivery_method,

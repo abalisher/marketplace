@@ -1,10 +1,16 @@
+import { orderLabel } from "../../../lib/orders/order-number"
 import {
   amountInWords,
   integerInWords,
   pluralForm,
 } from "../../../lib/format/amount-in-words"
 import { DocumentCanvas } from "./document-canvas"
-import { DocumentRenderInput } from "./document-snapshot"
+import {
+  DocumentRenderInput,
+  itemsVat,
+  sellerVatRate,
+  vatIncluded,
+} from "./document-snapshot"
 import {
   currencyLabel,
   formatAmount,
@@ -83,7 +89,10 @@ export const renderWaybill = (
   canvas.moveDown(0.5)
 
   // Графы бланка З-2 в утверждённом порядке. НДС у продавца-неплательщика —
-  // нули; станет ставкой, когда в реквизитах появится статус плательщика НДС.
+  // нули; у плательщика — выделенный из суммы позиции (цены с НДС).
+  const vatRate = sellerVatRate(snapshot.seller)
+  const itemVat = (total: number) => (vatRate ? vatIncluded(total, vatRate) : 0)
+  const vatTotal = vatRate ? itemsVat(snapshot.items, vatRate) : 0
   const rows = snapshot.items.map((item, i) => [
     String(i + 1),
     item.title,
@@ -93,7 +102,7 @@ export const renderWaybill = (
     formatQuantity(item.quantity),
     formatAmount(item.unit_price),
     formatAmount(item.total),
-    "0,00",
+    formatAmount(itemVat(item.total)),
   ])
   const itemsTotal = snapshot.items.reduce((sum, item) => sum + item.total, 0)
 
@@ -123,7 +132,7 @@ export const renderWaybill = (
       "х",
       "х",
       formatAmount(itemsTotal),
-      "0,00",
+      formatAmount(vatTotal),
     ],
   })
 
@@ -146,7 +155,12 @@ export const renderWaybill = (
       { size: 8 }
     )
   }
-  canvas.paragraph("Без НДС.", { size: 8 })
+  canvas.paragraph(
+    vatRate
+      ? `В том числе НДС ${vatRate}%: ${formatAmount(vatTotal)} ${currencyLabel(currency)}.`
+      : "Без НДС.",
+    { size: 8 }
+  )
   canvas.moveDown(1.2)
 
   canvas.signatures([
@@ -195,8 +209,8 @@ const receiverLine = (snapshot: DocumentRenderInput["snapshot"]): string =>
     .join(", ") || "—"
 
 const orderBasis = (snapshot: DocumentRenderInput["snapshot"]): string =>
-  snapshot.order.display_id != null
-    ? `Заказ № ${snapshot.order.display_id} от ${formatDocumentDate(
+  orderLabel(snapshot.order.number, snapshot.order.display_id)
+    ? `Заказ ${orderLabel(snapshot.order.number, snapshot.order.display_id)} от ${formatDocumentDate(
         snapshot.order.created_at
       )}`
     : "Заказ маркетплейса"

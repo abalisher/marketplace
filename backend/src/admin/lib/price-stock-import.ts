@@ -29,6 +29,7 @@ export type PriceStockImportIssueCode =
   | "price_rules"
   | "stock_not_managed"
   | "location_required"
+  | "onec_managed"
 
 // Строка предпросмотра. line — номер строки В ФАЙЛЕ: проблемную строку продавец
 // правит в Excel и должен найти её там же, а не «где-то среди пятидесяти».
@@ -95,6 +96,7 @@ export const PRICE_STOCK_IMPORT_ISSUE_LABELS: Record<
   price_rules: "priceStock.importIssue.priceRules",
   stock_not_managed: "priceStock.importIssue.stockNotManaged",
   location_required: "priceStock.importIssue.locationRequired",
+  onec_managed: "priceStock.importIssue.onecManaged",
 }
 
 // Что показываем в клетке предпросмотра: «было → станет» либо прочерк, если

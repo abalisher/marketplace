@@ -7,9 +7,8 @@ import { ExecArgs } from "@medusajs/framework/types"
 import {
   addShippingMethodToCartWorkflow,
   createCartWorkflow,
-  createPaymentCollectionForCartWorkflow,
-  createPaymentSessionsWorkflow,
 } from "@medusajs/medusa/core-flows"
+import { initCartKaspiPaymentWorkflow } from "../workflows/init-cart-kaspi-payment"
 import { placeOrderWorkflow } from "../workflows/place-order"
 import { confirmOrderWorkflow } from "../workflows/confirm-order"
 import { startOrderAssemblyWorkflow } from "../workflows/start-order-assembly"
@@ -293,22 +292,10 @@ export default async function seedDemoOrder({ container }: ExecArgs) {
     await addShippingMethodToCartWorkflow(container).run({
       input: { cart_id: cart.id, options: [{ id: shippingOption.id }] },
     })
-    await createPaymentCollectionForCartWorkflow(container).run({
-      input: { cart_id: cart.id },
-    })
-    const { data: carts } = await query.graph({
-      entity: "cart",
-      fields: ["id", "payment_collection.id"],
-      filters: { id: cart.id },
-    })
-    const paymentCollectionId = (
-      carts[0] as { payment_collection?: { id: string } }
-    ).payment_collection!.id
-    await createPaymentSessionsWorkflow(container).run({
-      input: {
-        payment_collection_id: paymentCollectionId,
-        provider_id: "pp_system_default",
-      },
+    // Оплата — тестовый счёт Kaspi со сценарием «оплачен» (KASPI_MODE=mock):
+    // системный провайдер оформление больше не принимает (заказ без денег).
+    await initCartKaspiPaymentWorkflow(container).run({
+      input: { cart_id: cart.id, scenario: "paid" },
     })
     const { result } = await placeOrderWorkflow(container).run({
       input: { cart_id: cart.id },

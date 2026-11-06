@@ -39,6 +39,7 @@
     "pdfkit": "^0.15.2",
     "react-i18next": "13.5.0",
     "react-router-dom": "6.30.4",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "4.2.0"
   },
   "devDependencies": {

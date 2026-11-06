@@ -1,5 +1,6 @@
 "use client"
 
+import { orderLabel } from "@lib/util/order-label"
 import { MyDocument } from "@lib/data/documents"
 import { formatDate } from "@lib/i18n/format-date"
 import { useLocale, useMessages } from "@lib/i18n/i18n-context"
@@ -27,7 +28,7 @@ const DocumentRow = ({ document }: { document: MyDocument }) => {
           >
             {m.cabinet.documents.order.replace(
               "{id}",
-              String(document.order.display_id ?? "")
+              orderLabel(document.order.number, document.order.display_id)
             )}
           </LocalizedClientLink>
           {document.created_at && (

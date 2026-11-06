@@ -42,18 +42,25 @@ export default async function CabinetProfilePage(props: {
         </p>
       </div>
 
-      <div className="flex flex-col gap-6">
-        <ProfileName customer={customer} />
-        <div className="h-px w-full bg-line" />
-        <ProfilePhone customer={customer} />
+      <div
+        className="flex flex-col rounded-card border border-line bg-surface px-4 pt-3"
+        data-testid="cabinet-profile-personal"
+      >
+        <h2 className="text-title-medium text-ink">
+          {m.cabinet.profile.personal}
+        </h2>
+        <div className="flex flex-col divide-y divide-line">
+          <ProfileName customer={customer} />
+          <ProfilePhone customer={customer} />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <h2 className="text-title-medium text-ink">
-          {m.cabinet.profile.addresses}
-        </h2>
-        <AddressBook customer={customer} region={region} />
-      </div>
+      <AddressBook
+        customer={customer}
+        region={region}
+        title={m.cabinet.profile.addresses}
+        emptyText={m.cabinet.profile.emptyAddresses}
+      />
     </section>
   )
 }

@@ -15,6 +15,9 @@ import {
 // ядровым enum модуля order, совпадение ломает GraphQL-схему линков.
 const OrderLifecycle = model.define("order_lifecycle", {
   id: model.id({ prefix: "ordlc" }).primaryKey(),
+  // Номер заказа для людей: «ORG-26-0007» (lib/orders/order-number.ts).
+  // Выдаётся при оформлении; у заказов до 2026-11-02 — проставлен переносом.
+  number: model.text().nullable(),
   // Спред — копия readonly-кортежа: model.enum не принимает readonly-массив.
   status: model.enum([...ORDER_STATUSES]).default("new"),
   // Предыдущий статус — для удобства уведомлений (не читать лог ради «откуда»).
@@ -34,9 +37,15 @@ const OrderLifecycle = model.define("order_lifecycle", {
   // у заказов, оформленных до появления слотов, его нет.
   delivery_date: model.text().nullable(),
   delivery_window: model.enum([...DELIVERY_WINDOWS]).nullable(),
+  // Канал продаж заказа — копия order.sales_channel_id на момент оформления
+  // (канал заказа после оформления не меняется). Нужна прямым фильтром: очередь,
+  // дашборд и отгрузка показывают продавцу компании только её заказы, а
+  // кросс-модульный фильтр по полям заказа query.graph не умеет. Nullable:
+  // заказы до мультипродавца заполняет скрипт migrate-tenant-isolation.
+  sales_channel_id: model.text().nullable(),
   events: model.hasMany(() => OrderLifecycleEvent, {
     mappedBy: "order_lifecycle",
   }),
-})
+}).indexes([{ on: ["sales_channel_id"], where: "deleted_at IS NULL" }])
 
 export default OrderLifecycle

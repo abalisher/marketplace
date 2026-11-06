@@ -1,3 +1,4 @@
+import { orderLabel } from "../lib/order-label"
 import { Label, Prompt, Select, Text, Textarea } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
@@ -8,7 +9,7 @@ import { sdk } from "../lib/sdk"
 
 type RescheduleDeliveryPromptProps = {
   // null — диалог закрыт
-  order: { id: string; display_id?: number } | null
+  order: { id: string; display_id?: number; order_number?: string | null } | null
   onClose: () => void
   onSubmit: (
     id: string,
@@ -89,12 +90,12 @@ const RescheduleDeliveryPrompt = ({
           </Prompt.Title>
           <Prompt.Description>
             {order
-              ? order.display_id
+              ? order.display_id || order.order_number
                 ? t(
                     assigning
                       ? "order.reschedule.assignDescNamed"
                       : "order.reschedule.descNamed",
-                    { id: order.display_id }
+                    { id: orderLabel(order.order_number, order.display_id) }
                   )
                 : t(
                     assigning

@@ -1,3 +1,6 @@
+"use client"
+
+import { useMessages } from "@lib/i18n/i18n-context"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@medusajs/ui"
@@ -13,12 +16,15 @@ const LineItemUnitPrice = ({
   style = "default",
   currencyCode,
 }: LineItemUnitPriceProps) => {
-  const { total, original_total } = item
+  const m = useMessages()
+  const total = item.total ?? 0
+  const original_total = item.original_total ?? 0
   const hasReducedPrice = total < original_total
 
-  const percentage_diff = Math.round(
-    ((original_total - total) / original_total) * 100
-  )
+  const percentage_diff =
+    original_total > 0
+      ? Math.round(((original_total - total) / original_total) * 100)
+      : 0
 
   return (
     <div className="flex flex-col text-ui-fg-muted justify-center h-full">
@@ -26,7 +32,7 @@ const LineItemUnitPrice = ({
         <>
           <p>
             {style === "default" && (
-              <span className="text-ui-fg-muted">Original: </span>
+              <span className="text-ui-fg-muted">{m.common.originalPrice} </span>
             )}
             <span
               className="line-through"

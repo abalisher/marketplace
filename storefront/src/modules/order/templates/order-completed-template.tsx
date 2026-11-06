@@ -9,15 +9,20 @@ import OrderDetails from "@modules/order/components/order-details"
 import OrderDocuments from "@modules/order/components/order-documents"
 import ShippingDetails from "@modules/order/components/shipping-details"
 import PaymentDetails from "@modules/order/components/payment-details"
+import OrderPayment from "@modules/order/components/order-payment"
+import { BuyerOrderPayment } from "@lib/data/payment"
 import { HttpTypes } from "@medusajs/types"
 import { getServerMessages } from "@lib/i18n/server"
 
 type OrderCompletedTemplateProps = {
   order: HttpTypes.StoreOrder
+  // Оплата заказа по способам продавца; null — заказ до появления способов.
+  payment?: BuyerOrderPayment | null
 }
 
 export default async function OrderCompletedTemplate({
   order,
+  payment,
 }: OrderCompletedTemplateProps) {
   const cookies = await nextCookies()
   const m = await getServerMessages()
@@ -39,14 +44,18 @@ export default async function OrderCompletedTemplate({
             <span>{m.order.thankYou}</span>
             <span>{m.order.orderPlacedSuccess}</span>
           </Heading>
-          <OrderDetails order={order} />
-          <Heading level="h2" className="flex flex-row text-3xl-regular">
-            {m.order.summary}
-          </Heading>
+          <OrderDetails order={order} orderNumber={payment?.order_number} />
           <Items order={order} />
           <CartTotals totals={order} />
           <ShippingDetails order={order} />
-          <PaymentDetails order={order} />
+          {/* Перевод и долг — блок с инструкциями (куда переводить, срок
+              долга). Ядровая «оплата» у них — лишь сессия без денег, и строка
+              «оплачено …» из PaymentDetails была бы неправдой. */}
+          {payment ? (
+            <OrderPayment payment={payment} orderId={order.id} />
+          ) : (
+            <PaymentDetails order={order} />
+          )}
           <OrderDocuments orderId={order.id} />
           <Help />
         </div>

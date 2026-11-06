@@ -1,4 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework/types"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import {
   addShippingMethodToCartWorkflow,
   listShippingOptionsForCartWorkflow,
@@ -16,7 +17,11 @@ import {
 import { AssistantContext, AssistantTool } from "../types"
 import {
   BuyerAddress,
+  sameAddressText,
+  DEFAULT_CITY,
   checkoutEmail,
+  deliveryFormAttachment,
+  dropDeliveryForm,
   readBuyerIdentity,
   requireLogin,
   saveBuyerProfile,
@@ -48,11 +53,10 @@ import { summarizeCart } from "./cart-summary"
 
 const DEFAULT_COUNTRY = "kz"
 
-// Магазин один и работает по Астане: город не спрашиваем у покупателя (вопрос
-// «в какой город доставка?» в астанинском магазине звучит абсурдно — находка
-// владельца 2026-08-03), а подставляем сами. Модель может передать город, если
-// покупатель назвал его сам.
-const DEFAULT_CITY = "Астана"
+// Магазин работает по Астане: город не спрашиваем у покупателя (вопрос «в какой
+// город доставка?» в астанинском магазине звучит абсурдно — находка владельца
+// 2026-08-03), а подставляем сами (DEFAULT_CITY). Модель может передать город,
+// если покупатель назвал его сам.
 
 // Обязательные поля адреса для оформления (ядро требует их на completeCart).
 // `city` в этот список НЕ входит: он всегда есть — либо от покупателя, либо
@@ -178,16 +182,27 @@ export const setDeliveryTool: AssistantTool = {
 
     const missing = REQUIRED_FIELDS.filter((f) => !address[f])
     if (missing.length) {
+      // Под ответом — мини-форма: недостающее можно написать или заполнить.
+      context.attachments?.push(deliveryFormAttachment(address, [...missing]))
       return {
         error: `Не хватает данных адреса: ${missing.join(", ")}. Спроси у покупателя только их.`,
         missing_fields: missing,
       }
     }
 
+    // Точка с карты — у сохранённого адреса; назван другой адрес текстом — без
+    // точки (чужая булавка хуже никакой).
+    const sameAsSaved =
+      !str(args.address_1) || sameAddressText(args.address_1 as string, saved?.address_1)
+    const geo = sameAsSaved ? identity.address_geo : null
+
     await updateCartWorkflow(container).run({
       input: {
         id: context.cartId,
-        shipping_address: address,
+        shipping_address: {
+          ...address,
+          ...(geo ? { metadata: { lat: geo.lat, lng: geo.lng } } : {}),
+        },
         // Email покупателя на MVP не спрашиваем: у входа по номеру его нет, а
         // ядру он нужен на completeCart — собираем служебный из номера
         // (buyer-identity.checkoutEmail). Настоящая почта учётки email-эпохи
@@ -213,7 +228,8 @@ export const setDeliveryTool: AssistantTool = {
     await addShippingMethodToCartWorkflow(container).run({
       input: { cart_id: context.cartId, options: [{ id: option.id }] },
     })
-
+    // Адрес на корзине — форма доставки из этого же хода больше не нужна.
+    dropDeliveryForm(context)
 
     // Данные оформления уходят в профиль: следующий заказ спросит только
     // подтверждение адреса (DoD T10.8). Сбой сохранения профиля не должен
@@ -221,9 +237,16 @@ export const setDeliveryTool: AssistantTool = {
     const { country_code: _country, ...profileAddress } = address
     try {
       await saveBuyerProfile(container, identity, profileAddress)
-    } catch {
+    } catch (e) {
       // Профиль не обновился — покупатель просто назовёт адрес ещё раз в
       // следующий заказ; текущее оформление продолжается.
+      container
+        .resolve(ContainerRegistrationKeys.LOGGER)
+        .warn(
+          `assistant: адрес не сохранён в профиль покупателя ${identity.customer_id}: ${
+            (e as Error).message
+          }`
+        )
     }
 
     // Слот доставки (T5.6). Проверяется ПОСЛЕ записи профиля — гейт слота
@@ -240,17 +263,24 @@ export const setDeliveryTool: AssistantTool = {
     if (!slot) {
       // Оформление останавливается ЗДЕСЬ, до счёта: покупатель должен узнать
       // срок раньше, чем отдаст деньги (блокер Ф-прогона 2026-09-02).
+      // Варианты ещё и кнопками под ответом: ближайшие окна и «другая дата».
+      const slots = listDeliverySlots(now)
+      context.attachments?.push({
+        type: "delivery_slots",
+        slots: slots.map(({ date, window }) => ({ date, window })),
+      })
       return {
         error:
-          "Слот доставки не выбран. Назови покупателю 2–3 ближайших варианта " +
-          "из available_slots (поле label — готовая формулировка) и спроси, " +
-          "какой ему подходит. Потом вызови set_delivery ещё раз с slot_date " +
-          "и slot_window выбранного варианта.",
+          "Слот доставки не выбран. Варианты показаны покупателю КНОПКАМИ под " +
+          "ответом (ближайшие окна и «другая дата»): списком их не перечисляй, " +
+          "коротко спроси, какое окно удобно. Ответ придёт репликой «Доставка: " +
+          "<дата>, <окно>» — найди этот вариант в available_slots и вызови " +
+          "set_delivery ещё раз с его slot_date и slot_window.",
         missing_fields: ["delivery_slot"],
         // Адрес уже сохранён и на корзине, и в профиле — повторный вызов
         // спросит только окно.
         delivery: { address: profileAddress },
-        available_slots: listDeliverySlots(now),
+        available_slots: slots,
       }
     }
 

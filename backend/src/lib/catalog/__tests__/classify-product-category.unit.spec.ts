@@ -43,6 +43,43 @@ describe("classifyProductCategory", () => {
     )
   })
 
+  it("matches a keyword only at the start of a word", () => {
+    // «щит» внутри «защитная» — не электрощит.
+    expect(classifyProductCategory("Каска защитная оранжевая")).toBeNull()
+    expect(classifyProductCategory("Очки защитные открытого типа")).toBeNull()
+    // Основа ловит словоформы.
+    expect(classifyProductCategory("Гвозди строительные 100")).toEqual("fasteners")
+    expect(classifyProductCategory("Дюбеля распорные 6х40")).toEqual("fasteners")
+  })
+
+  it("lets a multi-word phrase win over the head word", () => {
+    expect(classifyProductCategory("Труба профильная квадратная 40*40*2,5")).toEqual(
+      "finishing"
+    )
+    expect(classifyProductCategory("Авт. Выкл. ВА47-29 1Р16А 4,5кА х-ка С ИЭК")).toEqual(
+      "electrical"
+    )
+    expect(classifyProductCategory("Мат нагревательный \"Warmstad\" WSM 100 Вт")).toEqual(
+      "electrical"
+    )
+  })
+
+  it("respects category exclusions", () => {
+    // Щиток защитный — средство защиты, а не электрощит.
+    expect(classifyProductCategory("Щиток защитный (прозрачный)")).toBeNull()
+    expect(classifyProductCategory("Щит распределительный ЩРН-12")).toEqual("electrical")
+  })
+
+  it("knows names from company 1C catalogs", () => {
+    expect(classifyProductCategory("Изолента ПВХ 0,13*15мм Синяя")).toEqual("electrical")
+    expect(classifyProductCategory("Терморегулятор механический LC 001")).toEqual("electrical")
+    expect(classifyProductCategory("Вертикальное колено 55*110")).toEqual("plumbing")
+    expect(classifyProductCategory("Крепеж ЕвроМаяка штукатурного")).toEqual("fasteners")
+    expect(classifyProductCategory("Электроды МР-3 д. 3мм")).toEqual("fasteners")
+    // «Жидкие гвозди» — клей, а не метиз: первое слово решает.
+    expect(classifyProductCategory("Клей в/гвоздей 96 крист-проз 280мл")).toEqual("finishing")
+  })
+
   it("ignores case and «ё»", () => {
     expect(classifyProductCategory("ШПАКЛЁВКА финишная")).toEqual("finishing")
     expect(classifyProductCategory("шпаклевка стартовая")).toEqual("finishing")

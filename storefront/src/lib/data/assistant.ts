@@ -44,18 +44,37 @@ export type AssistantChatRequest = {
 // такая придёт, `attachment-list` пропустит её как неизвестный тип.
 export type AssistantPayment = {
   type: "payment"
-  provider: "kaspi"
+  // Способ оплаты: kaspi — счёт Kaspi QR (код, ссылка, поллинг статуса),
+  // kaspi_transfer — перевод на номер Kaspi продавца, debt — «в долг»
+  // (решает продавец). Для перевода и долга карточка статичная.
+  provider: "kaspi" | "kaspi_transfer" | "debt"
+  // kaspi — статус сессии ядра; перевод/долг после оформления — статус оплаты
+  // заказа (awaiting | debt_requested | debt | paid | …), до — статус сессии.
   status: string
   paid: boolean
   amount: number | null
   currency: string
   qr_payload: string | null
   payment_url: string | null
+  // Номер заказа (перевод, долг после оформления): его покупатель пишет в
+  // комментарии к переводу. null/нет — оплата корзины, заказ не оформлен.
+  order_display_id?: number | null
+  order_number?: string | null
+  // Куда переводить (перевод по номеру и погашение одобренного долга).
+  transfer?: {
+    phone: string
+    recipient: string | null
+    note: string | null
+  } | null
+  // Срок возврата долга (ISO), когда продавец его одобрил.
+  due_date?: string | null
 }
 
 export type AssistantOrderStatus = {
   type: "order_status"
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   status_text: string | null
   // Стадия заказа кодом `ORDER_STATUSES` — по ней рисуется степпер и подпись
   // стадии (T3.11; раньше сюда приходила готовая фраза о курьере).
@@ -82,22 +101,72 @@ export type AssistantOrderDocument = {
 export type AssistantOrderDocuments = {
   type: "documents"
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   documents: AssistantOrderDocument[]
 }
 
 // Просьба войти по номеру телефона (T10.8): оформление доступно только
-// авторизованному покупателю. Единственная вставка с действием — вход живёт на
-// отдельной странице, репликой в чат его не сделать.
+// авторизованному покупателю. Вставка с действием — вход живёт на отдельной
+// странице, репликой в чат его не сделать.
 export type AssistantAuthPrompt = {
   type: "auth_prompt"
   reason: "checkout"
 }
 
+// Форма доставки: что ассистент уже знает о получателе и каких полей не хватает
+// для оформления (`missing_fields`: first_name, last_name, address_1, phone).
+export type AssistantDeliveryForm = {
+  type: "delivery_form"
+  first_name?: string
+  last_name?: string
+  phone?: string
+  address_1?: string
+  city?: string
+  missing_fields: string[]
+}
+
+// Кнопки способов оплаты продавца под ответом «как удобнее оплатить?».
+// Нажатие — реплика покупателя в чат, способ выбирает ассистент.
+export type AssistantPaymentMethods = {
+  type: "payment_methods"
+  amount: number
+  currency: string
+  methods: {
+    method: "kaspi_qr" | "kaspi_transfer" | "debt"
+    available: boolean
+    reason: string | null
+  }[]
+  debt_term_days: number | null
+  debt_max_amount: number | null
+}
+
+// Кнопки слотов доставки: ближайшие окна и «другая дата». Кодами — подпись
+// собирает витрина (formatDeliverySlot). Нажатие — реплика покупателя в чат.
+export type AssistantDeliverySlots = {
+  type: "delivery_slots"
+  slots: { date: string; window: "morning" | "day" | "evening" }[]
+}
+
+// Оплата оформленного заказа (перевод, долг): постоянная карточка, состояние
+// читается живым (GET /store/orders/:id/payment).
+export type AssistantOrderPayment = {
+  type: "order_payment"
+  order_id: string
+  display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
+}
+
 export type AssistantAttachment =
   | AssistantPayment
+  | AssistantOrderPayment
+  | AssistantDeliverySlots
+  | AssistantPaymentMethods
   | AssistantOrderStatus
   | AssistantOrderDocuments
   | AssistantAuthPrompt
+  | AssistantDeliveryForm
 
 export type AssistantChatResponse = {
   reply: string
@@ -170,4 +239,44 @@ export async function getAssistantCart(
     headers,
     cache: "no-store",
   })
+}
+
+// Мини-форма доставки в ленте чата сохраняет профиль покупателя напрямую,
+// без хода модели (POST /store/assistant/customer-profile). Корзину форма не
+// трогает: адрес на заказ ставит ассистент на следующем ходе.
+export type AssistantCustomerProfileInput = {
+  first_name?: string
+  last_name?: string
+  phone?: string
+  address_1?: string
+  // Точка, выбранная на карте 2ГИС (булавка).
+  lat?: number
+  lng?: number
+}
+
+export type AssistantCustomerProfileResult = {
+  profile: {
+    first_name: string | null
+    last_name: string | null
+    address: { address_1: string; city: string } | null
+  }
+  missing_fields: string[]
+}
+
+export async function saveAssistantCustomerProfile(
+  data: AssistantCustomerProfileInput
+): Promise<AssistantCustomerProfileResult> {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  return sdk.client.fetch<AssistantCustomerProfileResult>(
+    "/store/assistant/customer-profile",
+    {
+      method: "POST",
+      headers,
+      body: data,
+      cache: "no-store",
+    }
+  )
 }

@@ -2,6 +2,19 @@
 // структуре (типизируются как Messages). Расширяется по мере локализации экранов.
 export const en = {
   common: {
+    phoneIncomplete: "Enter the full number: +7 and 10 more digits",
+    addressMap: {
+      pointOnly: "Point marked — tap the building to fill in the address, or use the search",
+      search: "Find on the map: street, house or complex",
+      hint: "Tap your building on the map or find the address with the search",
+      myLocation: "My location",
+      detecting: "Finding the address…",
+      notFound: "No address at this point — move the map or type the address below",
+      outside: "This point is outside the Astana delivery area",
+      failed: "The map is not responding — type the address instead",
+      geoDenied: "No access to your location — find the address by search or on the map",
+      title: "Address on the map",
+    },
     language: "Language",
     theme: "Colour theme",
     edit: "Edit",
@@ -11,6 +24,8 @@ export const en = {
     cartNotFoundDesc:
       "The cart you tried to access does not exist. Clear your cookies and try again.",
     goToFrontpage: "Go to frontpage",
+    // Подпись зачёркнутой цены позиции (line-item-price / line-item-unit-price).
+    originalPrice: "Original:",
     address: {
       firstName: "First name",
       lastName: "Last name",
@@ -208,6 +223,162 @@ export const en = {
     showQr: "Pay from another device",
     hideQr: "Hide the QR code",
     scanQr: "Scan the QR code in the Kaspi.kz app",
+    qrStep1: "Open the Kaspi.kz app",
+    qrStep2: "Tap «Kaspi QR» and point the camera at the code",
+    qrStep3: "Confirm the payment",
+    // Тестовая оплата — только при сборке с NEXT_PUBLIC_KASPI_MOCK=true
+    // (lib/feature-flags.ts), на проде кнопки нет.
+    mockPay: "Pay in test mode (Kaspi mock)",
+    mockPaying: "Paying…",
+    mockPayError: "Test payment failed",
+  },
+  // Способы оплаты продавца (Kaspi QR, перевод на номер Kaspi, «в долг»):
+  // шаг оформления, страницы заказа и карточка оплаты в чате. Комментарий к
+  // переводу «Заказ №N» в словарь не входит — его ищет продавец, он одинаков
+  // во всех языках (`lib/util/payment-transfer.ts`).
+  payment: {
+    methods: {
+      kaspi_qr: {
+        title: "Kaspi QR",
+        description: "Pay in the Kaspi app via QR code or button",
+      },
+      kaspi_transfer: {
+        title: "Transfer to Kaspi",
+        description:
+          "Transfer to the seller's number after placing the order; the order goes into work once the seller sees the transfer",
+      },
+      debt: {
+        title: "Pay later",
+        description:
+          "A request to the seller: they decide when confirming the order, term — {days} days",
+        limit: "Up to {amount}",
+      },
+    },
+    // Почему способ недоступен (код `reason` бэкенда).
+    unavailable: {
+      disabled: "The seller doesn't accept this method",
+      kaspi_not_connected: "The seller hasn't connected Kaspi yet",
+      transfer_no_phone: "The seller hasn't set a number for transfers",
+      debt_over_limit: "The amount exceeds the seller's limit for paying later",
+    },
+    loadError: "Couldn't load payment methods. Refresh the page.",
+    noMethods: "The seller hasn't set up payment methods yet.",
+    // Свёрнутый шаг оплаты: что будет дальше.
+    summary: {
+      kaspi_qr: "QR code and Kaspi link on the next step",
+      kaspi_transfer:
+        "The number to transfer to appears after placing the order",
+      debt: "The seller decides when confirming the order",
+    },
+    // Шаг подтверждения для перевода и долга.
+    review: {
+      toPay: "Amount due",
+      transferHint:
+        "After you place the order we'll show the seller's Kaspi number and the comment for the transfer. The order goes into work once the seller sees the transfer.",
+      debtHint:
+        "The seller will get a request to pay later: they'll approve it with a due date or cancel the order when confirming it.",
+      placeOrder: "Place order",
+      requestDebt: "Send the pay-later request",
+    },
+    status: {
+      awaiting: "Awaiting payment",
+      awaitingTransfer: "Waiting for the transfer",
+      debt_requested: "Awaiting the seller's decision",
+      debt: "Pay later",
+      overdue: "Overdue",
+      paid: "Paid",
+      canceled: "Canceled",
+      refund_due: "Refund pending",
+      refunded: "Refunded",
+      chosen: "Method selected",
+    },
+    transfer: {
+      howTo: "How to transfer in Kaspi",
+      steps: [
+        "Kaspi → Transfers → By phone number",
+        "Paste the number and amount, add the comment «{comment}»",
+        "Send it and attach the receipt below",
+      ],
+      amount: "Amount to transfer",
+      phone: "Seller's Kaspi number",
+      recipient: "Recipient",
+      comment: "Transfer comment",
+      note: "Seller's note",
+      copy: "Copy",
+      copied: "Copied",
+      inWork: "The order goes into work once the seller sees the transfer.",
+      afterOrder:
+        "The number to transfer to will appear after the order is placed.",
+      repay: "Repay by transfer to the seller's Kaspi number:",
+    },
+    debt: {
+      requestSent:
+        "The pay-later request has been sent to the seller — they'll decide when confirming the order.",
+      requestWillGo:
+        "The request will go to the seller — they'll decide when confirming the order.",
+      approved: "The seller has agreed to let you pay later.",
+      dueBy: "Repay by {date}",
+      overdue: "Repayment was due {date}",
+    },
+    order: {
+      toPay: "To pay",
+      paidBand: "Payment received",
+      title: "Payment",
+      method: "Method",
+      bonus: "Bonuses",
+      amount: "Order amount",
+      paid: "Paid",
+      outstanding: "Left to pay",
+      paidFull: "The order is paid.",
+      canceled: "Payment canceled.",
+      refundDue: "The seller will refund {amount}.",
+      refunded: "{amount} has been refunded.",
+      openOrder: "Open order {id}",
+      change: "Change payment method",
+      changeTitle: "Pay with",
+      changeCancel: "Keep as is",
+      changeFailed:
+        "Could not change the payment method. Refresh the page and try again.",
+      receipt: {
+        title: "Payment receipt",
+        hint: "Sent the transfer? Attach the Kaspi receipt (screenshot or PDF) so the seller finds your payment faster.",
+        send: "Attach Kaspi receipt",
+        sending: "Checking the receipt…",
+        tooBig: "The file is over 8 MB — send a screenshot of the receipt.",
+        wrongType: "Send a screenshot (JPG, PNG) or a PDF of the receipt.",
+        failed: "Could not send the receipt. Please try again.",
+        status: {
+          pending: "Receipt is being checked by the seller",
+          flagged: "The receipt did not pass the check",
+          accepted: "Receipt accepted",
+          rejected: "Receipt rejected by the seller",
+        },
+        reason: "Reason: {note}",
+        chatHint:
+          "Transferred? Send a screenshot of the Kaspi receipt here and I will check it right away.",
+      },
+      changeHint: {
+        kaspi_qr: "A Kaspi invoice with QR right on this page",
+        kaspi_transfer: "Transfer to the seller's Kaspi number",
+        debt: "A request to the seller, decided when confirming the order",
+      },
+      kaspiStaticHint:
+        "This is the shop's QR: on a phone the button opens payment in Kaspi, on a computer scan the QR. Enter the amount yourself, then attach the receipt below — the seller will confirm the payment.",
+      kaspiStaticAmount: "Enter in Kaspi: {amount}",
+      kaspiHint:
+        "Pay the invoice in the Kaspi app — the order will be marked paid automatically.",
+    },
+    chatPick: {
+      title: "How to pay",
+      reply: "Payment method: {method}",
+      chosen: "Chosen: {method}",
+      change: "Choose another payment method",
+      changeReply: "I want to choose another payment method",
+    },
+    chatTitle: {
+      kaspi_transfer: "Transfer to Kaspi",
+      debt: "Pay later",
+    },
   },
   account: {
     phone: {
@@ -328,7 +499,7 @@ export const en = {
     datePlaced: "Date placed",
     orderNumber: "Order number",
     totalAmount: "Total amount",
-    goToOrder: "Go to order #{id}",
+    goToOrder: "Go to order {id}",
     noRecentOrders: "No recent orders",
     cancel: "Cancel",
     saveChanges: "Save changes",
@@ -394,6 +565,41 @@ export const en = {
       toChat: "Ask the assistant",
     },
     order: {
+      progress: {
+        title: "Where your order is",
+        now: "Your order is",
+        holder: {
+          seller: "with the seller",
+          warehouse: "at the seller's warehouse",
+          driver: "with the driver",
+          buyer: "with you",
+        },
+        steps: {
+          new: {
+            title: "Placed",
+            hint: "The seller is checking the order and will confirm it",
+          },
+          confirmed: {
+            title: "Confirmed by the seller",
+            hint: "Handed to the warehouse for picking",
+          },
+          assembling: {
+            title: "Being picked",
+            hint: "A picker is gathering the items",
+          },
+          assembled: {
+            title: "Picked",
+            hint: "Packed and waiting for the truck",
+          },
+          in_delivery: {
+            title: "On the way",
+            hint: "The driver is bringing your order — tell them the pickup code",
+          },
+          delivered: { title: "Delivered", hint: "The order is with you" },
+        },
+        canceled: "Order canceled",
+        returned: "Order returned",
+      },
       back: "All orders",
       notFound: "Order not found",
       placed: "Placed",
@@ -404,6 +610,35 @@ export const en = {
       code: "Pickup code",
       codeHint: "Give this code to the driver when you receive the order.",
       documentsEmpty: "Documents will appear once the order is processed.",
+      problem: "Something wrong with the order?",
+      cancel: {
+        button: "Cancel order",
+        title: "Cancel order {id}?",
+        hint: "The seller has not confirmed the order yet — you can cancel it right away.",
+        paidWarning:
+          "If you have already transferred the money, the seller will return it — message them or the chat.",
+        reasonLabel: "Reason (optional)",
+        reasonPlaceholder: "E.g. I chose another payment method",
+        confirm: "Yes, cancel",
+        keep: "Keep order",
+        failed: "Could not cancel the order. Please try again.",
+        later:
+          "The seller has already confirmed the order — write to the chat to cancel it.",
+      },
+      problemLink: "Write to the chat",
+      problemPrompt: "Problem with order {id}",
+    },
+    review: {
+      title: "Rate your order",
+      subtitle: "Your rating helps the seller and other buyers.",
+      supplier: "Products and seller",
+      delivery: "Delivery",
+      commentPlaceholder: "Comment — optional",
+      submit: "Send review",
+      sending: "Sending…",
+      thanks: "Thank you for your review",
+      pickRating: "Give at least one star rating.",
+      failed: "Could not send the review. Please try again.",
     },
     cart: {
       title: "Cart",
@@ -420,7 +655,7 @@ export const en = {
       subtitle: "Invoices, waybills and acts for all of your orders.",
       empty: "No documents yet",
       emptyHint: "A document appears once an order is placed.",
-      order: "Order #{id}",
+      order: "Order {id}",
     },
     profile: {
       title: "Profile",
@@ -428,9 +663,22 @@ export const en = {
       name: "Name",
       phone: "Phone",
       addresses: "Delivery addresses",
+      personal: "Personal details",
+      fullName: "Full name",
+      apartment: "apt. {value}",
+      defaultAddress: "Default",
+      makeDefault: "Make default",
+      onMap: "Pinned on the map",
+      emptyAddresses: "No addresses yet. Add one so you don't have to type it at checkout.",
+      recipient: "Recipient",
     },
   },
   order: {
+    itemsTitle: "Order items",
+    positions: "{count} items",
+    shippingFree: "Free",
+    address: "Address",
+    phone: "Phone",
     orderSummary: "Order Summary",
     summary: "Summary",
     itemsTotal: "Items",
@@ -592,6 +840,32 @@ export const en = {
       company: "Company",
     },
     // Read-only вставки в ленте (1b/1c).
+    slots: {
+      title: "When to deliver",
+      other: "Another date",
+      pickDay: "Choose a day",
+      pickWindow: "Choose a time",
+      back: "Back to the nearest",
+      today: "Today",
+      tomorrow: "Tomorrow",
+      reply: "Delivery: {slot}",
+      hint: "We deliver in three time windows within a week.",
+    },
+    deliveryForm: {
+      title: "Delivery details",
+      description: "Fill in what is missing — or just type it in the chat.",
+      firstName: "First name",
+      lastName: "Last name",
+      phone: "Contact phone for the courier",
+      address: "Street, building, apartment",
+      addressHint: "Delivery within Astana",
+      save: "Save",
+      saving: "Saving…",
+      saved: "Saved to your profile",
+      required: "Fill in: {fields}",
+      failed: "Could not save. Please try again.",
+      reply: "My delivery details: {name}, {address}",
+    },
     auth: {
       title: "Sign in to place the order",
       description:
@@ -621,6 +895,8 @@ export const en = {
       error: "Could not update the cart. Please try again.",
       added: "Added to cart: {title} × {quantity}",
       removed: "Removed from cart: {title}",
+      checkout: "Check out",
+      checkoutReply: "Place the order",
     },
     payment: {
       title: "Kaspi payment",
@@ -634,14 +910,14 @@ export const en = {
       amount: "Amount",
     },
     documents: {
-      title: "Documents for order #{id}",
+      title: "Documents for order {id}",
       fallbackTitle: "Order documents",
       open: "Open PDF",
       pending: "file is being prepared",
       hint: "Files open in a new tab — save them for your records.",
     },
     order: {
-      number: "Order #{id}",
+      number: "Order {id}",
       code: "Pickup code",
       open: "Open order",
       stage: {
@@ -656,6 +932,133 @@ export const en = {
         canceled: "Canceled",
         returned: "Returned",
       },
+    },
+  },
+  tenant: {
+    seller: "Seller",
+    bin: "BIN",
+    address: "Address",
+    phone: "Phone",
+    email: "Email",
+    heroTitle: "Building materials from {name}",
+    heroText:
+      "Tell the AI assistant what you are building — it will pick the materials, calculate the quantity and place the order with delivery.",
+    openChat: "Open the assistant",
+    cabinet: "My orders",
+    delivery: "Delivery within Astana — {price}",
+    deliveryUnknown:
+      "Delivery within Astana — the price is shown in the invoice",
+    paymentNote:
+      "Payment via Kaspi QR. Invoice and waybill are issued automatically.",
+    requisites: "Company details",
+    badge: "Seller on the StroyMarket platform · Astana",
+    deliveryText:
+      "Delivery from the company warehouse across Astana is run by the platform dispatch: a vehicle sized for the order, parking access, crane unloading.",
+    city: "Astana",
+    warehouse: "Warehouse: {name}",
+    call: "Call",
+    whatsapp: "WhatsApp",
+    whatsappGreeting:
+      "Hello! I am writing from the {name} page on StroyMarket.",
+    menu: "Menu",
+    navMore: {
+      assortment: "Products",
+      calculator: "Calculator",
+      delivery: "Delivery",
+    },
+    stats: {
+      inStock: "items in stock",
+      delivery: "delivery within Astana",
+      updated: "stock updated",
+      kaspi: "or a bank transfer invoice with e-invoice",
+    },
+    chat: {
+      title: "{name} consultant",
+      subtitle: "AI consultant · Astana",
+      example: "Sample estimate",
+      question:
+        "I need to line a wall with drywall, 18 m². What should I take and how much is it with delivery?",
+      answerNote: "Frame and boards with a 10% margin — all in stock",
+      units: { sheet: "{n} boards", piece: "{n} pcs", pack: "{n} pack" },
+      materials: "Materials",
+      delivery: "Delivery within Astana",
+      total: "Total",
+      order: "Place this order in chat",
+      orderPrompt:
+        "I want to line a wall with drywall, 18 m². Put together an order: {lines}. With delivery within Astana.",
+      fallback:
+        "I'll pick materials from the warehouse stock and work out the quantities and the total with delivery.",
+      livePrices: "Today's prices and stock",
+    },
+    showcase: {
+      tag: "Products",
+      title: "What is in the warehouse now",
+      text: "Platform prices and the company warehouse stock right now. Can't find what you need — ask the assistant, it will check availability on order.",
+      inStock: "In stock: {qty}",
+      onOrder: "On order",
+      from: "from {price}",
+      order: "Order",
+      orderPrompt:
+        "I want to order “{title}”. Help me calculate the quantity and arrange delivery.",
+      all: "Full range — ask the assistant",
+      allPrompt:
+        "Show me what {name} has in stock and help me put an order together.",
+      empty:
+        "The company catalog is empty for now — the assistant will tell what can be delivered on order.",
+    },
+    cta: {
+      title: "We will calculate materials for your site",
+      text: "Describe the job to the assistant or message the company manager on WhatsApp — and get an invoice with delivery.",
+      chat: "Calculate with the assistant",
+    },
+    footer: {
+      contacts: "Contacts",
+      sections: "Sections",
+      platform:
+        "Orders, payment and documents go through the StroyMarket platform.",
+    },
+    nav: {
+      process: "How to order",
+      transparency: "Accounting",
+      requisites: "Details",
+    },
+    facts: {
+      kaspi: "Kaspi QR or a bank invoice with an e-invoice",
+      documents: "Invoice and waybill are issued automatically",
+      code: "Acceptance on site by the pickup code",
+    },
+    transparency: {
+      tag: "Live warehouse",
+      title: "{name} warehouse and orders in numbers",
+      text: "Updated automatically: incoming stock, what is on hand, shipments and vehicles en route. All figures are real — no rounding, no samples.",
+      panelTitle: "Company warehouse accounting",
+      live: "Live data",
+      noLocations: "The company warehouse is not connected yet",
+      inflow: "Received in {days} days",
+      inflowReceipts: "{count} deliveries",
+      stock: "Items in stock",
+      stockOf: "{inStock} of {skus}",
+      shipped: "Shipped in {days} days",
+      shippedValue: "{count} orders",
+      delivered: "delivered: {count}",
+      drivers: "Vehicles on the road",
+      driversValue: "{count} now",
+      log: "Movement log (latest events)",
+      updated: "updated {time}",
+      empty:
+        "No events yet — the log fills up with the first receipt or order.",
+      receipt: "Received: {title} — {quantity} {unit}",
+      receiptMore: " and {count} more",
+      receiptUntitled: "untitled item",
+      posted: "Posted",
+      privacy: "Buyers, addresses and amounts are not shown in the summary.",
+      unavailable:
+        "The summary is temporarily unavailable — check back a bit later.",
+    },
+    prompts: {
+      screed: "Calculate materials for a 40 m² floor screed",
+      plaster: "What do I need to plaster 60 m² of walls?",
+      delivery: "When can you deliver an order?",
     },
   },
 }

@@ -1,3 +1,4 @@
+import { getStorefrontPublishableKey } from "@lib/data/tenant"
 import { getLocaleHeader } from "@lib/util/get-locale-header"
 import Medusa, { FetchArgs, FetchInput } from "@medusajs/js-sdk"
 
@@ -27,8 +28,16 @@ sdk.client.fetch = async <T>(
     headers["x-medusa-locale"] ??= localeHeader["x-medusa-locale"]
   } catch {}
 
+  // Ключ витрины текущего продавца (компании или площадки) — им бэкенд
+  // определяет, чей это запрос (см. lib/data/tenant.ts).
+  let storefrontKey: string | undefined
+  try {
+    storefrontKey = await getStorefrontPublishableKey()
+  } catch {}
+
   const newHeaders = {
     ...localeHeader,
+    ...(storefrontKey ? { "x-publishable-api-key": storefrontKey } : {}),
     ...headers,
   }
   init = {

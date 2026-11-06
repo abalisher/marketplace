@@ -14,6 +14,8 @@ export type PriceStockIssueCode =
   | "location_required"
   | "unknown_location"
   | "duplicate_change"
+  | "price_locked"
+  | "onec_managed"
 
 // Строка экрана — покупаемый ВАРИАНТ: цена и остаток живут на нём, а не на
 // товаре. Числа остатка — в разрезе выбранного склада (`stocked_total` —
@@ -29,6 +31,8 @@ export type AdminPriceStockRow = {
   category_handle: string | null
   category_name: string | null
   price: number | null
+  // Себестоимость единицы (учётная цена из 1С); null — неизвестна.
+  cost?: number | null
   currency_code: string
   stocked: number
   reserved: number
@@ -39,6 +43,10 @@ export type AdminPriceStockRow = {
   locations_count: number
   stock_editable: boolean
   price_editable: boolean
+  // Товар из 1С компании и что из цены/остатка ведёт 1С (эти клетки только
+  // для чтения).
+  managed_by?: "onec" | "file" | null
+  onec_fields?: ("price" | "stock")[]
 }
 
 export type AdminPriceStockLocation = {
@@ -145,6 +153,8 @@ export const PRICE_STOCK_ISSUE_LABELS: Record<PriceStockIssueCode, string> = {
   location_required: "priceStock.issue.locationRequired",
   unknown_location: "priceStock.issue.unknownLocation",
   duplicate_change: "priceStock.issue.duplicateChange",
+  price_locked: "priceStock.issue.priceLocked",
+  onec_managed: "priceStock.issue.onecManaged",
 }
 
 // --- Черновик правок ---
@@ -278,7 +288,12 @@ export const isFieldChanged = (
 
 // Клетка без ввода бывает по трём причинам, и продавцу нужна каждая: иначе
 // «почему здесь не печатается» остаётся загадкой (находка Ф-прогона панели).
-export type PriceStockLock = "priceRules" | "notManaged" | "locationRequired"
+export type PriceStockLock =
+  | "priceRules"
+  | "notManaged"
+  | "locationRequired"
+  | "onec"
+  | "file"
 
 // short — приписка под прочерком в клетке, hint — подсказка при наведении.
 export const PRICE_STOCK_LOCK_LABELS: Record<
@@ -297,17 +312,37 @@ export const PRICE_STOCK_LOCK_LABELS: Record<
     short: "priceStock.lock.locationRequiredShort",
     hint: "priceStock.lock.locationRequired",
   },
+  onec: {
+    short: "priceStock.lock.onecShort",
+    hint: "priceStock.lock.onec",
+  },
+  file: {
+    short: "priceStock.lock.fileShort",
+    hint: "priceStock.lock.file",
+  },
 }
+
+// Кто ведёт закрытую клетку собственного каталога компании: 1С или Excel-файл.
+const ownCatalogLock = (row: AdminPriceStockRow): PriceStockLock =>
+  row.managed_by === "file" ? "file" : "onec"
 
 // Цена, заданная правилами (регион, канал, количество), живёт в карточке
 // товара: правка с этого экрана снесла бы правила.
-export const priceLock = (row: AdminPriceStockRow): PriceStockLock | null =>
-  row.price_editable ? null : "priceRules"
+export const priceLock = (row: AdminPriceStockRow): PriceStockLock | null => {
+  if (row.onec_fields?.includes("price")) {
+    return ownCatalogLock(row)
+  }
+  return row.price_editable ? null : "priceRules"
+}
 
 // Остаток: либо позиция его не ведёт (услуга, комплект из нескольких складских
 // позиций), либо она лежит на нескольких складах и склад не выбран — молча
 // писать в один из двух нельзя.
 export const stockLock = (row: AdminPriceStockRow): PriceStockLock | null => {
+  // Остаток ведёт 1С компании: он приходит синхронизацией.
+  if (row.onec_fields?.includes("stock")) {
+    return ownCatalogLock(row)
+  }
   if (!row.stock_editable) {
     return "notManaged"
   }
@@ -473,3 +508,10 @@ export const priceStockRowTitle = (row: {
   row.variant_title && row.variant_title !== row.title
     ? `${row.title} — ${row.variant_title}`
     : row.title
+
+// Наценка цены продажи над себестоимостью, % (целое). Нет одной из цен —
+// считать не от чего.
+export const markupPercent = (row: AdminPriceStockRow): number | null =>
+  row.price != null && row.cost != null && row.cost > 0
+    ? Math.round((row.price / row.cost - 1) * 100)
+    : null

@@ -85,6 +85,12 @@ export const paymentProviderLabel = (
   provider: string | null | undefined
 ): string => {
   const value = (provider ?? "").toLowerCase()
+  if (value.includes("transfer")) {
+    return "перевод Kaspi"
+  }
+  if (value.includes("debt")) {
+    return "в долг"
+  }
   if (value.includes("kaspi")) {
     return "Kaspi"
   }

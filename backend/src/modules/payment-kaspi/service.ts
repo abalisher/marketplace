@@ -17,7 +17,13 @@ import type {
   RetrievePaymentInput, RetrievePaymentOutput,
   UpdatePaymentInput, UpdatePaymentOutput,
 } from "@medusajs/framework/types"
-import { createKaspiClient, KaspiProviderOptions } from "./create-kaspi-client"
+import {
+  createDefaultKaspiClient,
+  createSellerKaspiClient,
+  KaspiProviderOptions,
+  resolveMode,
+} from "./create-kaspi-client"
+import { decryptSecret } from "../../lib/onec/secret"
 import type { KaspiClient, KaspiInvoiceState, KaspiRefundResult, KaspiScenario } from "./types"
 
 // Провайдер оплаты Kaspi за ядровым шлюзом @medusajs/payment. Реализует Payment
@@ -33,6 +39,10 @@ interface KaspiSessionData {
   kaspi_state?: KaspiInvoiceState
   kaspi_scenario?: KaspiScenario
   reference?: string
+  // Канал продаж корзины — чьими ключами Kaspi выставлен счёт. Ставит
+  // init-cart-kaspi-payment (ядровый роут создания сессии закрыт, клиент
+  // подставить чужой канал не может).
+  sales_channel_id?: string
   captured?: boolean
   refunds?: KaspiRefundResult[]
   [key: string]: unknown
@@ -80,11 +90,33 @@ function requireInvoiceId(data: KaspiSessionData | undefined): string {
   return id
 }
 
+// Настройки оплаты продавца в той форме, в какой их отдаёт модуль order_payment
+// (зависимость платёжного модуля, см. medusa-config.ts).
+type SellerKaspiSettings = {
+  kaspi_mode: "mock" | "live"
+  kaspi_merchant_id: string | null
+  kaspi_api_key_cipher: string | null
+  kaspi_webhook_secret_cipher: string | null
+  updated_at?: Date | string | null
+}
+
+type SellerSettingsSource = {
+  getSettingsByChannel(salesChannelId: string): Promise<SellerKaspiSettings | null>
+}
+
 export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiProviderOptions> {
   static identifier = "kaspi"
 
-  protected readonly client_: KaspiClient
+  // Клиент площадки: тестовый (KASPI_MODE=mock) или рабочий по ключам площадки
+  // из окружения. В рабочем режиме без ключей площадки его нет — счёт
+  // выставляется ключами продавца.
+  protected readonly client_: KaspiClient | null
   protected readonly logger_: Logger
+  protected readonly mode_: "mock" | "live"
+  protected readonly cradle_: Record<string, unknown>
+  // Рабочие клиенты продавцов: ключ — канал + время правки настроек (сменил
+  // ключи — новый клиент).
+  protected readonly sellerClients_ = new Map<string, KaspiClient>()
 
   constructor(
     cradle: { logger: Logger },
@@ -92,13 +124,67 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
   ) {
     super(cradle, options)
     this.logger_ = cradle.logger
-    this.client_ = createKaspiClient(options)
+    this.cradle_ = cradle as unknown as Record<string, unknown>
+    this.mode_ = resolveMode(options)
+    this.client_ = createDefaultKaspiClient(options)
+  }
+
+  // Деньги идут на счёт продавца: счёт выставляется ключами Kaspi канала
+  // корзины. На стенде (KASPI_MODE=mock) — всегда тестовый клиент.
+  protected async clientFor(data: KaspiSessionData | undefined): Promise<KaspiClient> {
+    if (this.mode_ === "mock") {
+      return this.client_!
+    }
+    const channel = data?.sales_channel_id
+    const settings = channel ? await this.sellerSettings_(channel) : null
+    if (
+      channel &&
+      settings?.kaspi_mode === "live" &&
+      settings.kaspi_merchant_id &&
+      settings.kaspi_api_key_cipher
+    ) {
+      const key = `${channel}:${new Date(settings.updated_at ?? 0).getTime()}`
+      let client = this.sellerClients_.get(key)
+      if (!client) {
+        client = createSellerKaspiClient({
+          merchant_id: settings.kaspi_merchant_id,
+          api_key: decryptSecret(settings.kaspi_api_key_cipher),
+          webhook_secret: settings.kaspi_webhook_secret_cipher
+            ? decryptSecret(settings.kaspi_webhook_secret_cipher)
+            : null,
+        })
+        this.sellerClients_.set(key, client)
+      }
+      return client
+    }
+    if (this.client_) {
+      return this.client_
+    }
+    throw new MedusaError(
+      MedusaError.Types.NOT_ALLOWED,
+      "Kaspi у продавца не подключён: нет ключей Kaspi в настройках оплаты"
+    )
+  }
+
+  protected async sellerSettings_(channel: string): Promise<SellerKaspiSettings | null> {
+    let source: SellerSettingsSource | undefined
+    try {
+      source = this.cradle_["order_payment"] as SellerSettingsSource | undefined
+    } catch {
+      source = undefined
+    }
+    if (!source) {
+      this.logger_.warn("[kaspi] order_payment module is not available to the provider")
+      return null
+    }
+    return source.getSettingsByChannel(channel)
   }
 
   // Создать инвойс Kaspi + получить QR/ссылку; положить в data сессии.
   async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentOutput> {
     const data = (input.data ?? {}) as KaspiSessionData
-    const invoice = await this.client_.createInvoice({
+    const client = await this.clientFor(data)
+    const invoice = await client.createInvoice({
       amount: input.amount,
       currency_code: input.currency_code,
       reference: data.reference,
@@ -123,7 +209,8 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
   // Проверить оплату: пока не оплачено → pending, после подтверждения → authorized.
   async authorizePayment(input: AuthorizePaymentInput): Promise<AuthorizePaymentOutput> {
     const data = (input.data ?? {}) as KaspiSessionData
-    const state = await this.client_.getInvoiceStatus(requireInvoiceId(data))
+    const client = await this.clientFor(data)
+    const state = await client.getInvoiceStatus(requireInvoiceId(data))
     return {
       status: stateToSessionStatus(state),
       data: { ...data, kaspi_state: state },
@@ -133,7 +220,8 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
   // Опрос статуса инвойса (polling клиентом/джобой).
   async getPaymentStatus(input: GetPaymentStatusInput): Promise<GetPaymentStatusOutput> {
     const data = (input.data ?? {}) as KaspiSessionData
-    const state = await this.client_.getInvoiceStatus(requireInvoiceId(data))
+    const client = await this.clientFor(data)
+    const state = await client.getInvoiceStatus(requireInvoiceId(data))
     return {
       status: stateToSessionStatus(state),
       data: { ...data, kaspi_state: state },
@@ -149,7 +237,8 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
   // Возврат средств (частичный/полный) по регламенту эквайера.
   async refundPayment(input: RefundPaymentInput): Promise<RefundPaymentOutput> {
     const data = (input.data ?? {}) as KaspiSessionData
-    const result = await this.client_.refund(requireInvoiceId(data), input.amount)
+    const client = await this.clientFor(data)
+    const result = await client.refund(requireInvoiceId(data), input.amount)
     const refunds = Array.isArray(data.refunds) ? data.refunds : []
     return { data: { ...data, refunds: [...refunds, result] } }
   }
@@ -158,7 +247,8 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
   async cancelPayment(input: CancelPaymentInput): Promise<CancelPaymentOutput> {
     const data = (input.data ?? {}) as KaspiSessionData
     if (data.kaspi_invoice_id) {
-      await this.client_.cancel(data.kaspi_invoice_id)
+      const client = await this.clientFor(data)
+      await client.cancel(data.kaspi_invoice_id)
     }
     return { data: { ...data, kaspi_state: "canceled" } }
   }
@@ -168,7 +258,8 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
     const data = (input.data ?? {}) as KaspiSessionData
     if (data.kaspi_invoice_id) {
       try {
-        await this.client_.cancel(data.kaspi_invoice_id)
+        const client = await this.clientFor(data)
+        await client.cancel(data.kaspi_invoice_id)
       } catch (e) {
         this.logger_.warn(`[kaspi] cancel on delete failed: ${(e as Error).message}`)
       }
@@ -182,7 +273,8 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
     if (!data.kaspi_invoice_id) {
       return { data }
     }
-    const state = await this.client_.getInvoiceStatus(data.kaspi_invoice_id)
+    const client = await this.clientFor(data)
+    const state = await client.getInvoiceStatus(data.kaspi_invoice_id)
     return { data: { ...data, kaspi_state: state } }
   }
 
@@ -201,6 +293,13 @@ export default class KaspiPaymentProvider extends AbstractPaymentProvider<KaspiP
   async getWebhookActionAndData(
     payload: ProviderWebhookPayload["payload"]
   ): Promise<WebhookActionResult> {
+    // Webhook приходит на общий адрес провайдера, канала в нём нет — его
+    // принимает только клиент площадки (тестовый или по ключам площадки).
+    // Webhook'и продавцов подключаются вместе с официальным API Kaspi; до тех
+    // пор оплата продавца узнаётся опросом статуса.
+    if (!this.client_) {
+      return { action: PaymentActions.NOT_SUPPORTED }
+    }
     const event = this.client_.parseWebhook(payload)
     return {
       action: stateToWebhookAction(event.state),

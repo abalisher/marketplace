@@ -34,6 +34,12 @@ const CORE_LABELS: Record<string, string> = {
   Canceled: "Отменён",
   // Идентификаторы провайдеров: ядро печатает их как есть.
   pp_kaspi_kaspi: "Kaspi QR",
+  // Оплата «вне банка» (payment-offline): перевод на номер Kaspi продавца и
+  // «в долг».
+  pp_transfer_offline: "Перевод Kaspi",
+  pp_debt_offline: "В долг",
+  // Kaspi QR из чата: заказ оформлен сразу, счёт Kaspi выставлен на заказ.
+  pp_kaspiqr_offline: "Kaspi QR",
   // Системный провайдер ядра — оплата, которую отмечают руками (демо-заказы,
   // оплата на месте), а не какой-то «default».
   pp_system_default: "Оплата вручную",

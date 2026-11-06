@@ -3,6 +3,8 @@
 import {
   ChatConversation,
   conversationTitle,
+  isLastingAttachment,
+  lastingCards,
 } from "@lib/chat-history/conversation"
 import {
   loadRailCollapsed,
@@ -64,19 +66,34 @@ const railClass = (isCollapsed: boolean, isDrawerOpen: boolean) =>
 const ChatTemplate = ({
   theme,
   isAuthenticated,
+  customerId,
+  store,
 }: {
   theme: Theme
   // Залогинен ли покупатель — решает только вид ссылки «Открыть заказ» во
   // вставке статуса (страница заказа живёт в «Аккаунте»). Права проверяет
   // бэкенд, здесь это подсказка UI (T3.9).
   isAuthenticated: boolean
+  // Вошедший покупатель (из сессии на сервере): чья история на устройстве.
+  customerId: string | null
+  // Компания-продавец витрины; null — витрина площадки.
+  store: { slug: string; name: string } | null
 }) => {
   const m = useMessages()
-  const chatHistory = useChatHistory()
+  const chatHistory = useChatHistory({ store: store?.slug ?? null, customerId })
   const searchParams = useSearchParams()
+  // Вопрос со страницы компании или лендинга (`?prompt=`): подставляется в
+  // поле ввода нового диалога, но НЕ отправляется сам — ссылку мог собрать
+  // кто угодно, а ход ассистента меняет корзину и оформляет заказ.
+  const [linkedPrompt] = useState(
+    () => searchParams.get("prompt") ?? searchParams.get("q") ?? ""
+  )
   const [conversationId, setConversationId] = useState(newConversationId)
   const [messages, setMessages] = useState<AssistantMessage[]>([])
-  const [attachments, setAttachments] = useState<AssistantAttachment[]>([])
+  // Карточки ответов по месту ответа в ленте. Под последним ответом — все
+  // карточки хода, под прежними — только «вечные» (статус заказа, документы):
+  // они же сохраняются в историю диалога (см. lastingCards).
+  const [cards, setCards] = useState<Record<number, AssistantAttachment[]>>({})
   const [cartId, setCartId] = useState<string | undefined>(undefined)
   const [orderId, setOrderId] = useState<string | undefined>(undefined)
   const [isSending, setIsSending] = useState(false)
@@ -140,14 +157,23 @@ const ChatTemplate = ({
   // локальная история прочитана, поднимаем последнюю запись вместе с токенами
   // (прогон 2026-08-13: покупатель уходил в «Заказы» и терял ленту, хотя она
   // лежала в localStorage). Делаем это ОДИН раз и только если в текущем диалоге
-  // ещё ничего нет — начатый разговор не перетираем. Вставки не восстанавливаем,
-  // они эфемерны и придут со следующим ходом.
+  // ещё ничего нет — начатый разговор не перетираем. Карточки заказа и
+  // документов поднимаются вместе с лентой.
   const restoredRef = useRef(false)
   useEffect(() => {
     if (restoredRef.current || !chatHistory.isLoaded) {
       return
     }
     restoredRef.current = true
+    // Пришли с вопросом по ссылке — это новый разговор, а не продолжение
+    // прошлого. Метку из адреса убираем: перезагрузка не должна её повторять.
+    if (linkedPrompt) {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("prompt")
+      url.searchParams.delete("q")
+      window.history.replaceState(null, "", url.toString())
+      return
+    }
     // Из кабинета диалог открывают по ссылке `?conversation=<id>` (рельс там
     // тот же, но страница другая, и поднять ленту в памяти некому). Нет метки
     // — поднимаем последний диалог, как и раньше.
@@ -196,7 +222,7 @@ const ChatTemplate = ({
     if (feed && isAtBottomRef.current) {
       feed.scrollTop = feed.scrollHeight
     }
-  }, [messages, attachments, cartEvents, isSending, streamedText])
+  }, [messages, cards, cartEvents, isSending, streamedText])
 
   const handleFeedScroll = () => {
     const feed = feedRef.current
@@ -214,7 +240,8 @@ const ChatTemplate = ({
   // покупателем, автозаголовком не перетираем (T10.1b).
   const persist = (
     history: AssistantMessage[],
-    tokens: { cart?: string; order?: string }
+    tokens: { cart?: string; order?: string },
+    turnCards: Record<number, AssistantAttachment[]> = cards
   ) => {
     const saved = chatHistory.conversations.find(
       (conversation) => conversation.id === conversationId
@@ -224,6 +251,7 @@ const ChatTemplate = ({
       title: saved?.titleCustom ? saved.title : conversationTitle(history),
       titleCustom: saved?.titleCustom,
       messages: history,
+      cards: lastingCards(turnCards, history.length),
       cartId: tokens.cart,
       orderId: tokens.order,
       updatedAt: Date.now(),
@@ -307,12 +335,22 @@ const ChatTemplate = ({
       if (turn.messages) {
         applyTokens(turn.cart_id, turn.order_id)
       }
-      // Вставки эфемерны: живут ровно один ход, как в mobile.
-      setAttachments(turn.attachments ?? [])
+      // Карточки хода — под его ответом; прежние ответы сохраняют свои. Только
+      // те, что стоят внутри отправленной истории: «Повторить ответ» обрезает
+      // хвост, а `cards` здесь — снимок рендера ДО обрезки, и карточка
+      // переигранного ответа (оплата прошлого заказа) встала бы под новый.
+      const turnCards = Object.fromEntries(
+        Object.entries(cards).filter(([index]) => Number(index) < history.length)
+      ) as Record<number, AssistantAttachment[]>
+      const answerIndex = next.length - 1
+      if (turn.attachments?.length && next[answerIndex]?.role === "assistant") {
+        turnCards[answerIndex] = turn.attachments
+      }
+      setCards(turnCards)
       // Корзину на этом ходе мог поменять и сам ассистент — перечитываем состав,
       // иначе полоса корзины и счётчики покажут вчерашние цифры (T10.15).
       cart.refresh(tokens.cart)
-      persist(next, tokens)
+      persist(next, tokens, turnCards)
     } catch {
       // «Стоп» на ходе БЕЗ потока (откат на обычный POST) обрывает запрос — это
       // решение покупателя, а не сбой: плашку ошибки в этом случае не поднимаем.
@@ -374,7 +412,11 @@ const ChatTemplate = ({
     }
     const history = messages.slice(0, messages.length - fromEnd)
     setMessages(history)
-    setAttachments([])
+    setCards((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([index]) => Number(index) < history.length)
+      )
+    )
     setCartEvents([])
     void runTurn(history, filesOfLastTurn(history))
   }
@@ -405,7 +447,7 @@ const ChatTemplate = ({
   const startNew = () => {
     setConversationId(newConversationId())
     setMessages([])
-    setAttachments([])
+    setCards({})
     setCartEvents([])
     setSentFiles({})
     cart.reset()
@@ -417,12 +459,12 @@ const ChatTemplate = ({
     setIsDrawerOpen(false)
   }
 
-  // Возобновление диалога: лента и токены сессии — из сохранённой записи.
-  // Вставки не восстанавливаем (эфемерны), они придут со следующим ходом.
+  // Возобновление диалога: лента, карточки заказа и документов и токены сессии
+  // — из сохранённой записи. Карточки-действия придут со следующим ходом.
   const resume = (conversation: ChatConversation) => {
     setConversationId(conversation.id)
     setMessages(conversation.messages)
-    setAttachments([])
+    setCards(conversation.cards ?? {})
     setCartEvents([])
     // Превью вложений поднятого диалога нет: файлы не сохраняются нигде — ни у
     // нас, ни на бэкенде. В ленте остаётся текст — то, что ассистент выписал
@@ -454,6 +496,10 @@ const ChatTemplate = ({
 
   const isEmpty = messages.length === 0
   const lastIndex = messages.length - 1
+  const answerCards = (index: number) =>
+    index === lastIndex
+      ? (cards[index] ?? [])
+      : (cards[index] ?? []).filter(isLastingAttachment)
 
   const composer = (
     <ChatComposer
@@ -465,6 +511,7 @@ const ChatTemplate = ({
       }
       onSend={send}
       onStop={stop}
+      initialDraft={linkedPrompt}
     />
   )
 
@@ -486,6 +533,7 @@ const ChatTemplate = ({
           onRemove={removeConversation}
           onNew={startNew}
           isAuthenticated={isAuthenticated}
+          brand={store?.name}
         />
       </div>
 
@@ -517,7 +565,7 @@ const ChatTemplate = ({
             <BarsThree />
           </button>
           <span className="flex-1 truncate text-title-medium text-ink">
-            {m.assistant.title}
+            {store ? store.name : m.assistant.title}
           </span>
           <button
             type="button"
@@ -577,15 +625,17 @@ const ChatTemplate = ({
                       index === lastIndex && !isSending ? regenerate : undefined
                     }
                   >
-                    {/* Вставки принадлежат последнему ответу ассистента:
-                        показываем их внутри блока ответа, сразу за текстом. */}
-                    {index === lastIndex && attachments.length > 0 && (
+                    {/* Карточки ответа — внутри его блока, сразу за текстом.
+                        Под прежними ответами — только статус заказа и
+                        документы; действия (оплата, форма) — у последнего. */}
+                    {answerCards(index).length > 0 && (
                       <AttachmentList
-                        attachments={attachments}
+                        attachments={answerCards(index)}
                         cartId={cartId}
-                        orderId={orderId}
+                        orderId={index === lastIndex ? orderId : undefined}
                         isAuthenticated={isAuthenticated}
                         onPaid={handlePaid}
+                        onDeliverySaved={send}
                       />
                     )}
                   </AssistantAnswer>
@@ -646,6 +696,8 @@ const ChatTemplate = ({
                 isBusy={cart.isBusy}
                 hasError={cart.hasError}
                 onQuantityChange={changeQuantity}
+                onCheckout={() => send(m.assistant.cart.checkoutReply)}
+                checkoutDisabled={isSending}
               />
               {composer}
             </div>

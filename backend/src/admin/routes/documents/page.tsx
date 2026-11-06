@@ -1,3 +1,4 @@
+import { orderLabel } from "../../lib/order-label"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { DocumentText } from "@medusajs/icons"
 import {
@@ -121,7 +122,11 @@ const DocumentsPage = () => {
       size: 70,
       header: t("documents.registry.colOrder"),
       cell: ({ row }) => {
-        const id = row.original.order?.display_id
+        const order = row.original.order
+        const id =
+          order && (order.display_id != null || order.order_number)
+            ? orderLabel(order.order_number, order.display_id)
+            : null
         return id == null ? "—" : t("orderQueue.orderNo", { id })
       },
     }),

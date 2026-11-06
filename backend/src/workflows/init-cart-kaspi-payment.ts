@@ -12,6 +12,7 @@ import {
 import { KASPI_PROVIDER_ID } from "../modules/payment-kaspi"
 import type { KaspiScenario } from "../modules/payment-kaspi/types"
 import { getCartPaymentStateStep } from "./steps/get-cart-payment-state"
+import { validateCartPaymentMethodStep } from "./payments/steps/validate-cart-payment-method"
 
 export type InitCartKaspiPaymentWorkflowInput = {
   cart_id: string
@@ -27,10 +28,20 @@ export type InitCartKaspiPaymentWorkflowInput = {
 // переиспользуется (актуальность суммы при правках корзины поддерживает ядро —
 // cart-workflows сами освежают payment collection). Суммой/сессией/авторизацией
 // управляет ядро @medusajs/payment — здесь только оркестрация.
+// Счёт выставляется на продавца корзины: сначала проверяем, что он принимает
+// Kaspi QR, и кладём его канал в data сессии — по нему провайдер берёт ключи
+// Kaspi продавца (деньги идут на его счёт).
 export const initCartKaspiPaymentWorkflow = createWorkflow(
   "init-cart-kaspi-payment",
   (input: WorkflowData<InitCartKaspiPaymentWorkflowInput>) => {
-    const before = getCartPaymentStateStep({ cart_id: input.cart_id })
+    const choice = validateCartPaymentMethodStep({
+      cart_id: input.cart_id,
+      method: "kaspi_qr",
+    })
+
+    const before = getCartPaymentStateStep(
+      transform({ choice }, (d) => ({ cart_id: d.choice.cart_id }))
+    )
 
     const createdCollection = when(
       "no-payment-collection",
@@ -56,11 +67,13 @@ export const initCartKaspiPaymentWorkflow = createWorkflow(
       ({ withCollection }) => !withCollection.kaspi_session
     ).then(() =>
       createPaymentSessionsWorkflow.runAsStep({
-        input: transform({ input, withCollection }, (d) => ({
+        input: transform({ input, withCollection, choice }, (d) => ({
           payment_collection_id: d.withCollection.payment_collection_id!,
           provider_id: KASPI_PROVIDER_ID,
           data: {
             reference: d.input.cart_id,
+            payment_method: "kaspi_qr",
+            sales_channel_id: d.choice.sales_channel_id,
             ...(d.input.scenario ? { kaspi_scenario: d.input.scenario } : {}),
           },
         })),

@@ -43,7 +43,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
         ).not.toThrow()
         expect(() =>
           assertOrderStatusTransition("new", "delivered")
-        ).toThrow("not allowed")
+        ).toThrow("Нельзя перевести")
         // Терминальные статусы никуда не ведут.
         expect(() => assertOrderStatusTransition("canceled", "new")).toThrow()
       })
@@ -53,7 +53,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
         // Сразу delivered из assembled нельзя — только через in_delivery.
         expect(() =>
           assertOrderStatusTransition("assembled", "delivered", "delivery")
-        ).toThrow("not allowed")
+        ).toThrow("Нельзя перевести")
         expect(() =>
           assertOrderStatusTransition("assembled", "in_delivery", "delivery")
         ).not.toThrow()
@@ -84,13 +84,13 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             stored_code: "123456",
             provided_code: "000000",
           })
-        ).toThrow("missing or invalid")
+        ).toThrow("не указан или неверный")
         expect(() =>
           assertDeliveryConfirmation({
             method: "delivery",
             stored_code: "123456",
           })
-        ).toThrow("missing or invalid")
+        ).toThrow("не указан или неверный")
         // Код не выдан (отгрузки не было) — подтверждать нечего.
         expect(() =>
           assertDeliveryConfirmation({
@@ -98,7 +98,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             stored_code: null,
             provided_code: "123456",
           })
-        ).toThrow("no delivery code")
+        ).toThrow("ещё не выдан")
       })
 
       it("records a transition: updates status, sets previous, appends log", async () => {
@@ -137,7 +137,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             to: "delivered",
             actor_type: "system",
           })
-        ).rejects.toThrow("not allowed")
+        ).rejects.toThrow("Нельзя перевести")
 
         // Статус не сдвинулся и лог пуст — переход отклонён до записи.
         const after = await service.retrieveOrderLifecycle(lc.id)
@@ -162,13 +162,13 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             status: "in_delivery",
             method: "delivery",
           })
-        ).toThrow("cannot be rescheduled")
+        ).toThrow("Перенести доставку нельзя")
         expect(() =>
           assertSlotRescheduleAllowed({ status: "delivered", method: "delivery" })
-        ).toThrow("cannot be rescheduled")
+        ).toThrow("Перенести доставку нельзя")
         expect(() =>
           assertSlotRescheduleAllowed({ status: "canceled", method: "delivery" })
-        ).toThrow("cannot be rescheduled")
+        ).toThrow("Перенести доставку нельзя")
       })
 
       it("переносит слот: пишет запись kind=slot и обновляет заказ", async () => {
@@ -226,7 +226,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             actor_type: "admin",
             reason: "по звонку",
           })
-        ).rejects.toThrow("already scheduled")
+        ).rejects.toThrow("уже назначен")
 
         const count = await service.listAndCountOrderLifecycleEvents({
           order_lifecycle_id: lc.id,
@@ -249,7 +249,7 @@ moduleIntegrationTestRunner<OrderLifecycleModuleService>({
             actor_type: "admin",
             reason: "по звонку",
           })
-        ).rejects.toThrow("cannot be rescheduled")
+        ).rejects.toThrow("Перенести доставку нельзя")
 
         const after = await service.retrieveOrderLifecycle(lc.id)
         expect(after.delivery_date).toEqual("2026-09-06")

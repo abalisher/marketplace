@@ -12,6 +12,8 @@ import {
 } from "../../logistics/delivery-slots"
 import { AssistantContext, AssistantTool, OrderStatusAttachment } from "../types"
 import { DISPUTE_OUTCOME_TEXT, DISPUTE_STATUS_TEXT } from "./dispute-status"
+import { loadBuyerOrderPayment } from "../../payments/order-payment-buyer-view"
+import { settleOrderKaspiPaymentWorkflow } from "../../../workflows/payments/settle-order-kaspi-payment"
 
 // Инструмент ассистента «отследить заказ» (срез после оформления). Читает статус
 // последнего оформленного заказа (order-lifecycle) и — если доставка уже
@@ -23,6 +25,8 @@ import { DISPUTE_OUTCOME_TEXT, DISPUTE_STATUS_TEXT } from "./dispute-status"
 // cart_id). Инструмент НЕ принимает произвольный номер заказа: display_id
 // последователен и угадываем — гость мог бы перечислять чужие заказы и увидеть код
 // получения/адрес. Внутренний id случаен → владение им = право смотреть статус.
+// У вошедшего покупателя без токена оркестратор подставляет его последний заказ
+// на витрине (lib/assistant/last-order.ts).
 
 // Бизнес-статус заказа → короткая русская формулировка для чата (принцип #8: модель
 // не гадает по коду; сырой код тоже отдаём — вдруг понадобится).
@@ -50,6 +54,7 @@ type OrderRow = {
   id: string
   display_id?: number | null
   order_lifecycle?: {
+    number?: string | null
     status?: string | null
     delivery_code?: string | null
     delivery_method?: string | null
@@ -142,8 +147,9 @@ export const trackOrderTool: AssistantTool = {
   ): Promise<Record<string, unknown>> => {
     if (!context.lastOrderId) {
       return {
-        error:
-          "Нет недавнего заказа для отслеживания. Оформи заказ через place_order.",
+        error: context.customerId
+          ? "У покупателя нет заказов на этой витрине."
+          : "Покупатель не вошёл: его заказы видны после входа по номеру телефона.",
       }
     }
 
@@ -153,6 +159,7 @@ export const trackOrderTool: AssistantTool = {
       fields: [
         "id",
         "display_id",
+        "order_lifecycle.number",
         "order_lifecycle.status",
         "order_lifecycle.delivery_code",
         "order_lifecycle.delivery_method",
@@ -182,6 +189,7 @@ export const trackOrderTool: AssistantTool = {
     const attachment: OrderStatusAttachment = {
       type: "order_status",
       display_id: order.display_id ?? null,
+      order_number: order.order_lifecycle?.number ?? null,
       status_text: statusText,
       delivery_stage: status,
       courier_note: (courier?.stage as string | undefined) ?? null,
@@ -193,8 +201,25 @@ export const trackOrderTool: AssistantTool = {
     }
     context.attachments?.push(attachment)
 
+    // Оплата заказа: счёт Kaspi заказа сверяем с банком (как страница заказа),
+    // поэтому на «оплатил» ответ честный. Ждём денег — под ответом снова
+    // карточка оплаты (QR Kaspi, номер для перевода) со ссылкой на заказ.
+    // Сбой чтения оплаты статус заказа не ломает: о стадии и сроке покупатель
+    // узнает всё равно.
+    const payment = await readOrderPayment(container, order.id)
+    if (payment && ["awaiting", "debt"].includes(payment.status)) {
+      context.attachments?.push({
+        type: "order_payment",
+        order_id: order.id,
+        display_id: order.display_id ?? null,
+        order_number: order.order_lifecycle?.number ?? null,
+      })
+    }
+
     return {
       order: {
+        // Номер для покупателя — number («ORG-26-0007»); display_id технический.
+        number: order.order_lifecycle?.number ?? null,
         display_id: order.display_id ?? null,
         status,
         status_text: statusText,
@@ -219,6 +244,27 @@ export const trackOrderTool: AssistantTool = {
         : null,
       // null — претензий по заказу нет; тогда о них и не заговаривай сам.
       dispute,
+      // Оплата: paid — деньги получены; awaiting — ждём (Kaspi QR — по QR в
+      // карточке под ответом, перевод — на номер продавца).
+      payment: payment
+        ? {
+            method: payment.method,
+            status: payment.status,
+            to_pay: Math.round(payment.outstanding),
+          }
+        : null,
     }
   },
+}
+
+const readOrderPayment = async (container: MedusaContainer, orderId: string) => {
+  try {
+    await settleOrderKaspiPaymentWorkflow(container).run({
+      input: { order_id: orderId },
+      throwOnError: true,
+    })
+    return await loadBuyerOrderPayment(container, orderId)
+  } catch {
+    return null
+  }
 }

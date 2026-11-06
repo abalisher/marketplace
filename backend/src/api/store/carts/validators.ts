@@ -15,3 +15,10 @@ export const StoreApplyCartBonus = z.object({
   amount: z.number().int().positive(),
 })
 export type StoreApplyCartBonusType = z.infer<typeof StoreApplyCartBonus>
+
+// Выбор способа оплаты корзины. `scenario` — как у Kaspi: только мок.
+export const StoreSelectPaymentMethod = z.object({
+  method: z.enum(["kaspi_qr", "kaspi_transfer", "debt"]),
+  scenario: z.enum(["pending", "paid", "canceled", "error"]).optional(),
+})
+export type StoreSelectPaymentMethodType = z.infer<typeof StoreSelectPaymentMethod>

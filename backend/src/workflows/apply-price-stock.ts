@@ -64,7 +64,12 @@ export const applyPriceStockWorkflow = createWorkflow(
         .map((line) => ({
           inventory_item_id: line.inventory_item_id as string,
           location_id: line.location_id as string,
-          adjustment: Number(line.new_stock) - Number(line.old_stock ?? 0),
+          // Остатки дробные (м³, т из 1С): разность — до тысячных, без
+          // хвостов плавающей точки (34,95 − 34 = 0,9500000000000028).
+          adjustment:
+            Math.round(
+              (Number(line.new_stock) - Number(line.old_stock ?? 0)) * 1000
+            ) / 1000,
         }))
     )
 

@@ -54,3 +54,24 @@ export const attachCartToCustomer = async (
       )
   }
 }
+
+// Корзина собрана на витрине ДРУГОГО продавца. Клиент держит `cart_id` между
+// ходами, и с витрины одной компании он может прийти на витрину другой (или
+// площадки). Такую корзину ход не продолжает и не «перевозит» в свой канал:
+// позиции в ней заведены с ценами и резервом чужого канала. Вызывающий код
+// просто начинает новую корзину — старая остаётся там, где её собрали.
+// Несуществующая корзина — не «чужая»: её разбирают обычные проверки (404).
+export const cartInOtherChannel = async (
+  container: MedusaContainer,
+  cartId: string,
+  salesChannelId: string
+): Promise<boolean> => {
+  const query = container.resolve(ContainerRegistrationKeys.QUERY)
+  const { data } = await query.graph({
+    entity: "cart",
+    fields: ["id", "sales_channel_id"],
+    filters: { id: cartId },
+  })
+  const cart = data[0] as { sales_channel_id?: string | null } | undefined
+  return !!cart && cart.sales_channel_id !== salesChannelId
+}

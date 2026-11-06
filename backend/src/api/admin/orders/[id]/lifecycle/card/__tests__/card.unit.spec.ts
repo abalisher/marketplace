@@ -259,7 +259,18 @@ describe("cardDelivery", () => {
       shipping_method: "Доставка по Астане",
       slot_date: "2026-09-06",
       slot_window: "day",
+      map_url: null,
     })
+  })
+
+  it("адрес, выбранный на карте, — ссылка на точку в 2ГИС", () => {
+    expect(
+      cardDelivery(
+        { address_1: "Асфендиярова 11", metadata: { lat: 51.128207, lng: 71.430411 } },
+        [],
+        null
+      ).map_url
+    ).toBe("https://2gis.kz/astana/geo/71.430411%2C51.128207")
   })
 
   it("без телефона в адресе берёт телефон покупателя", () => {

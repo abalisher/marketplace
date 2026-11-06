@@ -26,7 +26,7 @@ export async function GET(
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
   const { data: orders } = await query.graph({
     entity: "order",
-    fields: ["id", "display_id"],
+    fields: ["id", "display_id", "order_lifecycle.number"],
     filters: { customer_id: req.auth_context.actor_id },
   })
 
@@ -57,12 +57,21 @@ export async function GET(
     ])
   )
 
+  const numbers = new Map<string, string | null>(
+    orders.map((order) => [
+      order.id,
+      (order as { order_lifecycle?: { number?: string | null } | null })
+        .order_lifecycle?.number ?? null,
+    ])
+  )
+
   res.json({
     documents: documents.map((doc) => ({
       ...serializeDocumentForBuyer(doc),
       order: {
         id: doc.order_id,
         display_id: displayIds.get(doc.order_id) ?? null,
+        number: numbers.get(doc.order_id) ?? null,
       },
     })),
   })

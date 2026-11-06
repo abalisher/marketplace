@@ -1,18 +1,80 @@
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Text } from "@medusajs/ui"
-
-import Divider from "@modules/common/components/divider"
 import { getServerMessages } from "@lib/i18n/server"
+import { ReactNode } from "react"
 
 type ShippingDetailsProps = {
   order: HttpTypes.StoreOrder
+  // Когда ждать машину («31 окт., 09:00–13:00») — в шапке карточки.
+  slotLabel?: string | null
+  // Ход заказа (кабинет) — под реквизитами доставки.
+  children?: ReactNode
 }
 
-// Блок «Доставка» страницы заказа: адрес, контакты, способ.
-// На 400 px три колонки `w-1/3` наезжали друг на друга (адрес рвался на шесть
-// строк, email вылезал на «Способ») — колонки раскрываются только с `small:`.
-const ShippingDetails = async ({ order }: ShippingDetailsProps) => {
+const ICONS = {
+  address: (
+    <path
+      d="M10 17.5s5.5-4.8 5.5-9.3a5.5 5.5 0 00-11 0c0 4.5 5.5 9.3 5.5 9.3zM10 10.3a2 2 0 100-4 2 2 0 000 4z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  ),
+  phone: (
+    <path
+      d="M5.5 3h2.2l1.2 3.4-1.6 1.1a8.6 8.6 0 004.2 4.2l1.1-1.6 3.4 1.2v2.2a1.8 1.8 0 01-1.9 1.8A12.4 12.4 0 013.7 4.9 1.8 1.8 0 015.5 3z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  ),
+  method: (
+    <path
+      d="M2.5 5.5h9v8h-9zM11.5 8.5h3l2.5 2.5v2.5h-5.5M5.5 15.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM14 15.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+  ),
+}
+
+const Row = ({
+  icon,
+  label,
+  children,
+  testId,
+}: {
+  icon: keyof typeof ICONS
+  label: string
+  children: ReactNode
+  testId: string
+}) => (
+  <div className="flex items-start gap-3 py-3" data-testid={testId}>
+    <span
+      aria-hidden="true"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent-container text-accent"
+    >
+      <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]">
+        {ICONS[icon]}
+      </svg>
+    </span>
+    <div className="flex min-w-0 flex-col">
+      <span className="text-body-medium text-ink-secondary">{label}</span>
+      <div className="text-body-large text-ink">{children}</div>
+    </div>
+  </div>
+)
+
+// Блок «Доставка» страницы заказа карточкой: когда привезут, куда, контакт и
+// способ с ценой; в кабинете под ними — ход заказа (у кого он сейчас).
+const ShippingDetails = async ({
+  order,
+  slotLabel,
+  children,
+}: ShippingDetailsProps) => {
   const m = await getServerMessages()
   const address = order.shipping_address
   const method = order.shipping_methods?.[0]
@@ -20,73 +82,95 @@ const ShippingDetails = async ({ order }: ShippingDetailsProps) => {
   // Индекс у заказов из чата не заполняется (`set_delivery` его не спрашивает),
   // и строка выходила висячей запятой «, Астана». Собираем только заполненное;
   // код страны не печатаем вовсе — магазин работает по Астане.
-  const cityLine = [address?.postal_code, address?.city]
-    .filter((part) => !!part)
-    .join(", ")
   const streetLine = [address?.address_1, address?.address_2]
     .filter((part) => !!part)
     .join(", ")
+  const cityLine = [address?.postal_code, address?.city]
+    .filter((part) => !!part)
+    .join(", ")
+  const name = [address?.first_name, address?.last_name]
+    .filter(Boolean)
+    .join(" ")
+  const price = method?.total ?? 0
 
   return (
-    <div>
-      <Heading level="h2" className="flex flex-row text-3xl-regular my-6">
-        {m.checkout.shipping.title}
-      </Heading>
-      <div className="flex flex-col gap-y-6 small:flex-row small:items-start small:gap-x-8 small:gap-y-0">
-        <div
-          className="flex w-full min-w-0 flex-col small:w-1/3"
-          data-testid="shipping-address-summary"
-        >
-          <Text className="text-body-large font-semibold text-ink mb-1">
-            {m.checkout.addresses.shippingTitle}
-          </Text>
-          <Text className="text-body-large text-ink-secondary">
-            {address?.first_name} {address?.last_name}
-          </Text>
-          <Text className="text-body-large text-ink-secondary">
-            {streetLine}
-          </Text>
-          {!!cityLine && (
-            <Text className="text-body-large text-ink-secondary">
-              {cityLine}
-            </Text>
-          )}
-        </div>
-
-        <div
-          className="flex w-full min-w-0 flex-col small:w-1/3"
-          data-testid="shipping-contact-summary"
-        >
-          <Text className="text-body-large font-semibold text-ink mb-1">
-            {m.order.contact}
-          </Text>
-          <Text className="text-body-large text-ink-secondary">
-            {address?.phone}
-          </Text>
-          {/* Email не печатаем: со входом по номеру (T10.7) на заказе лежит
-              служебный адрес `<цифры номера>@phone.invalid`, и покупатель
-              видел в своей карточке заказа техническую строку, которой он не
-              давал (находка гейта U T10.6b). Контакт покупателя — телефон. */}
-        </div>
-
-        <div
-          className="flex w-full min-w-0 flex-col small:w-1/3"
-          data-testid="shipping-method-summary"
-        >
-          <Text className="text-body-large font-semibold text-ink mb-1">
-            {m.order.method}
-          </Text>
-          <Text className="text-body-large text-ink-secondary">
-            {method
-              ? `${method.name} (${convertToLocale({
-                  amount: method.total ?? 0,
-                  currency_code: order.currency_code,
-                })})`
-              : "—"}
-          </Text>
-        </div>
+    <div
+      className="flex flex-col rounded-card border border-line bg-surface p-4"
+      data-testid="shipping-details"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-title-medium text-ink">
+          {m.checkout.shipping.title}
+        </h2>
+        {slotLabel && (
+          <span className="rounded-full bg-surface-dim px-3 py-1 text-body-medium font-semibold text-ink">
+            {slotLabel}
+          </span>
+        )}
       </div>
-      <Divider className="mt-8" />
+
+      <div className="mt-1 flex flex-col divide-y divide-line">
+        <Row
+          icon="address"
+          label={m.order.address}
+          testId="shipping-address-summary"
+        >
+          {streetLine && <span className="block">{streetLine}</span>}
+          {cityLine && (
+            <span className="block text-ink-secondary">{cityLine}</span>
+          )}
+          {name && (
+            <span className="block text-body-medium text-ink-secondary">
+              {name}
+            </span>
+          )}
+        </Row>
+
+        {/* Email не печатаем: со входом по номеру (T10.7) на заказе лежит
+            служебный адрес `<цифры номера>@phone.invalid` — контакт покупателя
+            только телефон (находка гейта U T10.6b). */}
+        {address?.phone && (
+          <Row
+            icon="phone"
+            label={m.order.phone}
+            testId="shipping-contact-summary"
+          >
+            <span className="tabular-nums">{address.phone}</span>
+          </Row>
+        )}
+
+        <Row
+          icon="method"
+          label={m.order.method}
+          testId="shipping-method-summary"
+        >
+          {method ? (
+            <span className="flex flex-wrap items-baseline gap-x-2">
+              {method.name}
+              <span
+                className={
+                  price > 0
+                    ? "tabular-nums text-ink-secondary"
+                    : "font-semibold text-success"
+                }
+              >
+                {price > 0
+                  ? convertToLocale({
+                      amount: price,
+                      currency_code: order.currency_code,
+                    })
+                  : m.order.shippingFree}
+              </span>
+            </span>
+          ) : (
+            "—"
+          )}
+        </Row>
+      </div>
+
+      {children && (
+        <div className="mt-1 border-t border-line pt-4">{children}</div>
+      )}
     </div>
   )
 }

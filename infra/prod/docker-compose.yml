@@ -90,6 +90,10 @@ services:
         NEXT_PUBLIC_DEFAULT_REGION: kz
         NEXT_PUBLIC_FEATURE_COMPANIES: ${FEATURE_COMPANIES}
         NEXT_PUBLIC_MEDIA_BASE_URL: ${PUBLIC_ORIGIN}
+        # Кнопка тестовой оплаты Kaspi — только стенд; по умолчанию выключена.
+        NEXT_PUBLIC_KASPI_MOCK: ${NEXT_PUBLIC_KASPI_MOCK:-false}
+        # Карта 2ГИС для выбора адреса доставки; пусто — без карты.
+        NEXT_PUBLIC_2GIS_KEY: ${NEXT_PUBLIC_2GIS_KEY:-}
     restart: unless-stopped
     environment:
       NODE_ENV: production
@@ -100,6 +104,8 @@ services:
       NEXT_PUBLIC_DEFAULT_REGION: kz
       NEXT_PUBLIC_FEATURE_COMPANIES: ${FEATURE_COMPANIES}
       NEXT_PUBLIC_MEDIA_BASE_URL: ${PUBLIC_ORIGIN}
+      NEXT_PUBLIC_KASPI_MOCK: ${NEXT_PUBLIC_KASPI_MOCK:-false}
+      NEXT_PUBLIC_2GIS_KEY: ${NEXT_PUBLIC_2GIS_KEY:-}
       KASPI_MOCK_SCENARIO: ${KASPI_MOCK_SCENARIO}
       REVALIDATE_SECRET: ${REVALIDATE_SECRET}
     depends_on:

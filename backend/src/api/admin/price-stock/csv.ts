@@ -177,7 +177,7 @@ const normalizeHeader = (value: string): string =>
 
 const HEADER_ALIASES: Record<keyof ImportColumns, string[]> = {
   sku: ["артикул", "артикултовара", "код", "кодтовара", "sku", "code"],
-  price: ["цена", "ценатенге", "стоимость", "price"],
+  price: ["цена", "ценатенге", "ценапродажи", "ценапродажитенге", "стоимость", "price"],
   stock: ["остаток", "количество", "колво", "stock", "quantity", "qty"],
   location: ["склад", "location", "warehouse"],
 }

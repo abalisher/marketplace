@@ -68,6 +68,7 @@ export const PRICE_STOCK_IMPORT_ISSUES = [
   "price_rules",
   "stock_not_managed",
   "location_required",
+  "onec_managed",
 ] as const
 export type PriceStockImportIssueCode =
   (typeof PRICE_STOCK_IMPORT_ISSUES)[number]
@@ -162,7 +163,7 @@ export const readImportFile = (text: string): ReadImportFileResult => {
   return { rows, locations }
 }
 
-const normalizeSku = (sku: string): string => sku.trim().toLowerCase()
+export const normalizeSku = (sku: string): string => sku.trim().toLowerCase()
 
 // Артикул → позиция каталога. Сверяем без учёта регистра: продавец правит файл
 // руками, а артикул с коробки набирают как придётся.
@@ -196,7 +197,8 @@ const rowTitle = (row: PriceStockRow): string =>
 export const buildImportPreview = (
   fileRows: ImportFileRow[],
   catalog: Map<string, { product: RawProduct; variant: RawVariant }>,
-  scopeLocationId: string | null
+  scopeLocationId: string | null,
+  visibleLocationIds?: string[]
 ): PriceStockImportPreview => {
   const rows: PriceStockImportRow[] = []
   const changes: PriceStockChange[] = []
@@ -256,7 +258,12 @@ export const buildImportPreview = (
       continue
     }
 
-    const row = buildPriceStockRow(found.product, found.variant, scopeLocationId)
+    const row = buildPriceStockRow(
+      found.product,
+      found.variant,
+      scopeLocationId,
+      visibleLocationIds
+    )
     const known: PriceStockImportRow = {
       ...base,
       title: rowTitle(row),
@@ -288,6 +295,18 @@ export const buildImportPreview = (
     const newPrice = price.amount != null && price.amount !== row.price ? price.amount : null
     const newStock = stock.amount != null && stock.amount !== row.stocked ? stock.amount : null
 
+    if (
+      (newPrice != null && row.onec_fields.includes("price")) ||
+      (newStock != null && row.onec_fields.includes("stock"))
+    ) {
+      push({
+        ...known,
+        new_price: newPrice,
+        new_stock: newStock,
+        issue: "onec_managed",
+      })
+      continue
+    }
     if (newPrice != null && !row.price_editable) {
       push({ ...known, new_price: newPrice, issue: "price_rules" })
       continue

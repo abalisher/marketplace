@@ -224,3 +224,27 @@ div.sm-order-card {
 .sm-pay-none {
   color: rgb(var(--sm-ink-muted));
 }
+
+/* Долг и возврат: ждут действия продавца — тем же цветом, что «ждём»;
+   просрочка и «нужно вернуть» — цветом ошибки. */
+.sm-pay-debt,
+.sm-pay-debt-requested {
+  color: rgb(var(--sm-ink));
+  font-weight: 500;
+}
+
+.sm-pay-debt-overdue,
+.sm-pay-refund-due {
+  color: rgb(var(--sm-error));
+  font-weight: 500;
+}
+
+/* Покупатель прислал чек — продавцу пора посмотреть. */
+.sm-pay-receipt-review {
+  color: rgb(var(--sm-warning));
+  font-weight: 600;
+}
+
+.sm-pay-refunded {
+  color: rgb(var(--sm-ink-muted));
+}

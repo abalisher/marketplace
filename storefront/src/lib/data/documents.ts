@@ -47,7 +47,7 @@ export async function listOrderDocuments(
 // Документ покупателя в общем списке кабинета: та же строка плюс заказ, из
 // которого он вырос (по нему строка ведёт в карточку заказа).
 export type MyDocument = OrderDocument & {
-  order: { id: string; display_id?: number | null }
+  order: { id: string; display_id?: number | null; number?: string | null }
 }
 
 // Все документы покупателя одним списком (кабинет, T10.6a): раздел «Документы»

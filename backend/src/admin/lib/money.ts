@@ -10,6 +10,19 @@ const FORMAT = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 })
 
 export const formatTenge = (amount: number) => `${FORMAT.format(amount)} ₸`
 
+// Количество на складе: целое — как есть, дробное (м³, т из 1С) — до тысячных
+// с запятой: «34,95».
+// Себестоимость из 1С — с копейками («5 172,41 ₸»): это учётная цена, а не
+// круглый прайс.
+const EXACT = new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+})
+export const formatTengeExact = (amount: number) => `${EXACT.format(amount)} ₸`
+
+const QUANTITY = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 })
+export const formatQuantity = (value: number) => QUANTITY.format(value)
+
 // Сумма заказа: магазин работает в тенге, но в базе стенда остались старые
 // заказы в другой валюте — показываем их в их валюте, а не «переименовываем»
 // в ₸. Валюту берём из самого заказа, по умолчанию — тенге.

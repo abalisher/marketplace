@@ -11,6 +11,7 @@
 
 import { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
+import { dgisPointUrl, geoFromMetadata } from "../../../../../../lib/geo"
 import { DOCUMENTS_MODULE } from "../../../../../../modules/documents"
 import DocumentsModuleService from "../../../../../../modules/documents/service"
 import { REVIEWS_MODULE } from "../../../../../../modules/reviews"
@@ -24,6 +25,8 @@ import {
   type OrderPaymentState,
 } from "../../../../order-lifecycles/rows"
 import { loadLifecycleDetail, type LifecycleEvent } from "../lifecycle-detail"
+import { loadOrderPaymentView } from "../../payment/view"
+import { panelPaymentState } from "../../../../../../lib/payments/panel-state"
 import { isSystemPhoneEmail } from "../../../../../../lib/assistant/tools/buyer-identity"
 
 // Позиция заказа в карточке: подпись варианта отдельно (в таблице она идёт
@@ -77,6 +80,9 @@ export type OrderCardDelivery = {
   // собирает панель на своём языке — сюда уходят коды.
   slot_date: string | null
   slot_window: string | null
+  // Точка адреса в 2ГИС (покупатель выбирал адрес на карте); null — адрес
+  // введён текстом.
+  map_url: string | null
 }
 
 // Цели переходов, которым нужны технические id (сборка/отгрузка/вручение):
@@ -104,6 +110,8 @@ export type OrderCardTransitionTargets = {
 export type AdminOrderCard = {
   order_id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number: string | null
   created_at: string | null
   status: string | null
   previous_status: string | null
@@ -115,6 +123,9 @@ export type AdminOrderCard = {
   items: OrderCardItem[]
   totals: OrderCardTotals
   payment_state: OrderPaymentState | null
+  // Оплата заказа: способ, суммы, долг, журнал движений; null — заказ оформлен
+  // до появления способов оплаты (тогда только payment_state по ядру).
+  payment: Awaited<ReturnType<typeof loadOrderPaymentView>>
   delivery: OrderCardDelivery
   documents: ReturnType<typeof serializeDocumentForAdmin>[]
   active_dispute: OrderCardDispute | null
@@ -331,6 +342,7 @@ type ServiceAddress = {
   city?: string | null
   postal_code?: string | null
   phone?: string | null
+  metadata?: Record<string, unknown> | null
 } | null
 
 export function cardDelivery(
@@ -359,6 +371,10 @@ export function cardDelivery(
     shipping_method: shippingMethods[0]?.name?.trim() || null,
     slot_date: slot.date,
     slot_window: slot.window,
+    map_url: (() => {
+      const geo = geoFromMetadata(address?.metadata)
+      return geo ? dgisPointUrl(geo) : null
+    })(),
   }
 }
 
@@ -373,7 +389,7 @@ export async function buildOrderCard(
   const orderService = scope.resolve(Modules.ORDER)
 
   // Заказа нет → 404 бросает загрузчик статуса (он же читает order).
-  const [lifecycle, { data: rawOrders }, detail, totalsRows] = await Promise.all(
+  const [lifecycle, { data: rawOrders }, detail, totalsRows, payment] = await Promise.all(
     [
       loadLifecycleDetail(scope, orderId),
       query.graph({
@@ -397,6 +413,7 @@ export async function buildOrderCard(
           ],
         }
       ),
+      loadOrderPaymentView(scope, orderId),
     ]
   )
 
@@ -448,6 +465,7 @@ export async function buildOrderCard(
   return {
     order_id: orderId,
     display_id: detail.display_id ?? raw.display_id ?? null,
+    order_number: lifecycle.number ?? null,
     created_at: isoDate(detail.created_at ?? raw.created_at),
     status: lifecycle.status,
     previous_status: lifecycle.previous_status,
@@ -463,7 +481,21 @@ export async function buildOrderCard(
       shippingMethods,
       detail.currency_code ?? null
     ),
-    payment_state: paymentState(raw),
+    payment_state: paymentState(
+      raw,
+      payment
+        ? {
+            method: payment.method,
+            state: panelPaymentState(
+              payment.status,
+              payment.due_date,
+              new Date(),
+              payment.receipts.some((r) => r.status === "pending" || r.status === "flagged")
+            ),
+          }
+        : null
+    ),
+    payment,
     delivery: cardDelivery(
       (detail.shipping_address ?? null) as ServiceAddress,
       shippingMethods,

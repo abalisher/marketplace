@@ -8,6 +8,12 @@
 // остаток, а не «price set» и «inventory level».
 
 import { CATALOG_CATEGORY_HANDLES } from "../../../lib/catalog/categories"
+import {
+  ONEC_PRODUCT_SOURCE,
+  OnecManagedField,
+  onecFieldsOf,
+  roundQuantity,
+} from "../../../lib/onec/plan"
 import { actorLabel } from "../actor-label"
 
 // Единственный рынок — тенге; цены в каталоге целые (см. seed-kz).
@@ -61,6 +67,8 @@ export type RawVariant = {
   title?: string | null
   sku?: string | null
   manage_inventory?: boolean
+  // Себестоимость единицы из 1С (подставляет load.ts из onec_item).
+  cost?: number | null
   prices?: RawPrice[]
   inventory_items?: {
     inventory?: { id?: string; location_levels?: RawLevel[] } | null
@@ -74,6 +82,7 @@ export type RawProduct = {
   thumbnail?: string | null
   product_card?: { unit?: string | null } | null
   categories?: { handle?: string | null; name?: string | null }[]
+  metadata?: Record<string, unknown> | null
   variants?: RawVariant[]
 }
 
@@ -92,6 +101,9 @@ export type PriceStockRow = {
   category_handle: string | null
   category_name: string | null
   price: number | null
+  // Себестоимость единицы (учётная цена из 1С компании); null — неизвестна.
+  // Только для чтения и только в панели.
+  cost: number | null
   currency_code: string
   // Остаток: сколько лежит, сколько зарезервировано под заказы, сколько
   // свободно. Свободный остаток (T11.2) обязан показывать ту же цифру.
@@ -111,7 +123,18 @@ export type PriceStockRow = {
   // такую строку экран показывает, но править её здесь нельзя.
   stock_editable: boolean
   price_editable: boolean
+  // Товар из 1С компании (lib/onec) — её собственный каталог; "file" — тот же
+  // каталог, но пришедший Excel-файлом.
+  managed_by: "onec" | "file" | null
+  // Что из цены и остатка ведёт 1С: эти клетки только для чтения (правка
+  // перезаписалась бы следующей синхронизацией). Чего 1С не присылает, то
+  // задаёт продавец.
+  onec_fields: OnecManagedField[]
 }
+
+// Товар заведён синхронизацией с 1С компании.
+export const isOnecManaged = (product: RawProduct): boolean =>
+  product.metadata?.source === ONEC_PRODUCT_SOURCE
 
 export type PriceStockHistoryRow = {
   id: string
@@ -200,13 +223,21 @@ export const variantInventoryItemIds = (variant: RawVariant): string[] => [
 // двусмыслен: экран выбирает склад сверху, а строка показывает и правит его.
 // Без выбора строка показывает сумму по складам, и правка остатка требует
 // назвать склад — молча писать в один из двух нельзя.
+//
+// visibleLocationIds — склады, которые строке вообще разрешено видеть
+// (продавец компании — только склады своего канала); без списка — все склады.
 export const buildPriceStockRow = (
   product: RawProduct,
   variant: RawVariant,
-  scopeLocationId?: string | null
+  scopeLocationId?: string | null,
+  visibleLocationIds?: string[]
 ): PriceStockRow => {
   const price = variantPrice(variant)
-  const allLevels = variantLevels(variant)
+  const allLevels = variantLevels(variant).filter(
+    (level) =>
+      !visibleLocationIds ||
+      (!!level.location_id && visibleLocationIds.includes(level.location_id))
+  )
   const locations = [
     ...new Set(
       allLevels
@@ -230,6 +261,8 @@ export const buildPriceStockRow = (
     0
   )
   const category = product.categories?.[0]
+  const onec = isOnecManaged(product)
+  const onecFields = onecFieldsOf(product.metadata)
 
   return {
     variant_id: variant.id,
@@ -242,19 +275,29 @@ export const buildPriceStockRow = (
     category_handle: category?.handle ?? null,
     category_name: category?.name ?? null,
     price: price.amount,
+    cost: variant.cost ?? null,
     currency_code: PRICE_STOCK_CURRENCY,
-    stocked,
-    reserved,
-    available: stocked - reserved,
-    stocked_total: stockedTotal,
+    // Остатки бывают дробными (м³, т из 1С) — до тысячных, без хвостов
+    // плавающей точки.
+    stocked: roundQuantity(stocked),
+    reserved: roundQuantity(reserved),
+    available: roundQuantity(stocked - reserved),
+    stocked_total: roundQuantity(stockedTotal),
     location_id:
       scopeLocationId ?? (locations.length === 1 ? locations[0] : null),
     location_name: null,
     locations_count: locations.length,
     stock_editable:
+      !onecFields.includes("stock") &&
       variant.manage_inventory !== false &&
       variantInventoryItemIds(variant).length === 1,
-    price_editable: price.editable,
+    price_editable: !onecFields.includes("price") && price.editable,
+    managed_by: onec
+      ? product.metadata?.onec_feed === "file"
+        ? "file"
+        : "onec"
+      : null,
+    onec_fields: onecFields,
   }
 }
 
@@ -273,11 +316,12 @@ export const priceStockRowTitle = (row: {
 // строк (цена и остаток живут на варианте, а не на товаре).
 export const buildPriceStockRows = (
   products: RawProduct[],
-  scopeLocationId?: string | null
+  scopeLocationId?: string | null,
+  visibleLocationIds?: string[]
 ): PriceStockRow[] =>
   products.flatMap((product) =>
     (product.variants ?? []).map((variant) =>
-      buildPriceStockRow(product, variant, scopeLocationId)
+      buildPriceStockRow(product, variant, scopeLocationId, visibleLocationIds)
     )
   )
 
@@ -403,6 +447,12 @@ export const PRICE_STOCK_ISSUES = [
   // Позиция названа в партии дважды: обе правки считались бы от одного снимка,
   // и остаток сложился бы дважды (40 → 50 и 40 → 60 дали бы 70).
   "duplicate_change",
+  // Цена общая для всей площадки — продавец компании её не меняет (правит
+  // владелец площадки); продавцу доступны только остатки своих складов.
+  "price_locked",
+  // Позицию ведёт 1С компании: цену и остаток меняют в 1С, площадка их
+  // подтягивает синхронизацией.
+  "onec_managed",
 ] as const
 export type PriceStockIssueCode = (typeof PRICE_STOCK_ISSUES)[number]
 
@@ -415,9 +465,14 @@ export type PriceStockIssue = {
 // Разбор одной правки против текущего состояния позиции. Возвращает либо
 // готовую строку записи, либо причину отказа — по строке, а не «что-то не так»:
 // в массовой правке продавец обязан видеть, какая позиция помешала.
+//
+// visibleLocationIds — склады, в которые правке разрешено писать (продавец
+// компании — только склады своего канала): «единственный склад позиции» без
+// этого ограничения мог оказаться складом площадки.
 export const resolveChange = (
   change: PriceStockChange,
-  found: { product: RawProduct; variant: RawVariant } | undefined
+  found: { product: RawProduct; variant: RawVariant } | undefined,
+  visibleLocationIds?: string[]
 ): { resolved?: ResolvedChange; issue?: PriceStockIssue } => {
   if (!found) {
     return {
@@ -425,7 +480,7 @@ export const resolveChange = (
     }
   }
   const { product, variant } = found
-  const row = buildPriceStockRow(product, variant)
+  const row = buildPriceStockRow(product, variant, null, visibleLocationIds)
   const title = priceStockRowTitle(row)
   const fail = (code: PriceStockIssueCode) => ({
     issue: { variant_id: change.variant_id, code, title },
@@ -435,6 +490,12 @@ export const resolveChange = (
   const wantsStock = change.stock != null
   if (!wantsPrice && !wantsStock) {
     return fail("empty_change")
+  }
+  if (
+    (wantsPrice && row.onec_fields.includes("price")) ||
+    (wantsStock && row.onec_fields.includes("stock"))
+  ) {
+    return fail("onec_managed")
   }
   if (wantsPrice && !row.price_editable) {
     return fail("price_rules")

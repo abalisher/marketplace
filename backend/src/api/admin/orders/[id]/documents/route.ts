@@ -2,6 +2,10 @@ import {
   AuthenticatedMedusaRequest,
   MedusaResponse,
 } from "@medusajs/framework/http"
+import { loadSellerSettings } from "../../../../../lib/tenants/requisites"
+import { missingRequisites } from "../../../../../modules/documents/requisites"
+import { TENANT_MODULE } from "../../../../../modules/tenant"
+import TenantModuleService from "../../../../../modules/tenant/service"
 import {
   ContainerRegistrationKeys,
   MedusaError,
@@ -17,18 +21,45 @@ import { AdminIssueOrderDocumentType } from "../../../documents/validators"
 // сверху. Namespace /documents под ядровым :id не конфликтует с ядровыми
 // :id/{cancel,complete} (как и /lifecycle). Экспорт исходных данных для 1С —
 // отдельный роут /documents/export.
+// `requisites` — готовы ли реквизиты продавца ИМЕННО этого заказа (у заказа
+// компании — её реквизиты, у заказа площадки — площадки; правило одно —
+// lib/tenants/requisites.ts): экран выключает выпуск и называет недостающее.
 export async function GET(
   req: AuthenticatedMedusaRequest,
   res: MedusaResponse
 ) {
   const documentsService =
     req.scope.resolve<DocumentsModuleService>(DOCUMENTS_MODULE)
-  const documents = await documentsService.listDocuments(
-    { order_id: req.params.id },
-    { order: { created_at: "DESC" } }
-  )
+  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  const [documents, { data: orders }] = await Promise.all([
+    documentsService.listDocuments(
+      { order_id: req.params.id },
+      { order: { created_at: "DESC" } }
+    ),
+    query.graph({
+      entity: "order",
+      fields: ["id", "sales_channel_id"],
+      filters: { id: req.params.id },
+    }),
+  ])
+  const salesChannelId = (orders[0] as { sales_channel_id?: string | null } | undefined)
+    ?.sales_channel_id
+  const [settings, tenant] = await Promise.all([
+    loadSellerSettings(req.scope, salesChannelId),
+    salesChannelId
+      ? req.scope
+          .resolve<TenantModuleService>(TENANT_MODULE)
+          .getBySalesChannel(salesChannelId)
+      : null,
+  ])
+  const missing = missingRequisites(settings)
 
-  res.json({ documents: documents.map(serializeDocumentForAdmin) })
+  res.json({
+    documents: documents.map(serializeDocumentForAdmin),
+    // tenant — реквизиты компании (их правит площадка в карточке компании),
+    // иначе — реквизиты площадки («Настройки → Реквизиты документов»).
+    requisites: { ready: missing.length === 0, missing, tenant: !!tenant },
+  })
 }
 
 // POST /admin/orders/:id/documents — выпустить документ руками (T4.9). До этого

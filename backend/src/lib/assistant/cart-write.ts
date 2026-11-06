@@ -9,7 +9,7 @@ import {
   deleteLineItemsWorkflow,
   updateLineItemInCartWorkflow,
 } from "@medusajs/medusa/core-flows"
-import { attachCartToCustomer } from "./cart-ownership"
+import { attachCartToCustomer, cartInOtherChannel } from "./cart-ownership"
 import { listCartLines } from "./tools/cart-line-lookup"
 import { CartSummary, emptyCartSummary, summarizeCart } from "./tools/cart-summary"
 import { MAX_QUANTITY } from "./tools/cart-quantity"
@@ -34,10 +34,13 @@ type CartCreationContext = {
 }
 
 // Регион (предпочитаем тенге — единственный рынок) и канал продаж для новой
-// корзины. Отсутствие любого — понятная ошибка конфигурации (не «молчаливый»
-// битый заказ).
+// корзины. Канал — витрины запроса (publishable key, см. lib/tenants/storefront):
+// он решает, чей это заказ и с каких складов резерв. Без него — канал магазина
+// по умолчанию. Отсутствие региона или канала — понятная ошибка конфигурации
+// (не «молчаливый» битый заказ).
 export const resolveCartCreationContext = async (
-  container: MedusaContainer
+  container: MedusaContainer,
+  salesChannelId?: string
 ): Promise<CartCreationContext> => {
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
@@ -56,11 +59,15 @@ export const resolveCartCreationContext = async (
       (r) => r.currency_code === CURRENCY
     ) ?? (regions[0] as { id: string; currency_code: string })
 
-  const { data: channels } = await query.graph({
-    entity: "sales_channel",
-    fields: ["id"],
+  const { data: stores } = await query.graph({
+    entity: "store",
+    fields: ["id", "default_sales_channel_id"],
   })
-  if (!channels.length) {
+  const channelId =
+    salesChannelId ??
+    (stores[0] as { default_sales_channel_id?: string | null } | undefined)
+      ?.default_sales_channel_id
+  if (!channelId) {
     throw new MedusaError(
       MedusaError.Types.UNEXPECTED_STATE,
       "No sales channel configured for the store"
@@ -69,7 +76,7 @@ export const resolveCartCreationContext = async (
 
   return {
     regionId: region.id,
-    salesChannelId: (channels[0] as { id: string }).id,
+    salesChannelId: channelId,
     currency: region.currency_code,
   }
 }
@@ -195,6 +202,8 @@ export type CartQuantityRequest = {
 export type CartQuantityInput = {
   cartId?: string
   customerId?: string
+  // Канал продаж витрины запроса (см. resolveCartCreationContext).
+  salesChannelId?: string
   items: CartQuantityRequest[]
 }
 
@@ -206,7 +215,7 @@ export type CartQuantityInput = {
 // корзину, параллельный запуск ловил бы гонку версий.
 export const applyCartQuantities = async (
   container: MedusaContainer,
-  { cartId, customerId, items }: CartQuantityInput
+  { cartId, customerId, salesChannelId, items }: CartQuantityInput
 ): Promise<{ cartId?: string; summary: CartSummary }> => {
   const targets = items.map((item) => ({
     variantId: typeof item.variant_id === "string" ? item.variant_id.trim() : "",
@@ -217,6 +226,15 @@ export const applyCartQuantities = async (
   }
 
   let currentCartId = cartId
+
+  // Корзина с витрины другого продавца — начинаем новую (см. cartInOtherChannel).
+  if (
+    currentCartId &&
+    salesChannelId &&
+    (await cartInOtherChannel(container, currentCartId, salesChannelId))
+  ) {
+    currentCartId = undefined
+  }
 
   if (currentCartId) {
     await assertCartWritable(container, currentCartId, customerId)
@@ -234,12 +252,12 @@ export const applyCartQuantities = async (
       if (target.quantity === 0) {
         continue
       }
-      const { regionId, salesChannelId, currency } =
-        await resolveCartCreationContext(container)
+      const { regionId, salesChannelId: channelId, currency } =
+        await resolveCartCreationContext(container, salesChannelId)
       const { result: cart } = await createCartWorkflow(container).run({
         input: {
           region_id: regionId,
-          sales_channel_id: salesChannelId,
+          sales_channel_id: channelId,
           currency_code: currency,
           ...(customerId ? { customer_id: customerId } : {}),
           items: [{ variant_id: target.variantId, quantity: target.quantity }],

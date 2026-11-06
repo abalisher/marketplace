@@ -45,6 +45,7 @@ describe("loadRegistryOrders", () => {
     expect(orders.get("order_1")).toEqual({
       id: "order_1",
       display_id: 24,
+      order_number: null,
       buyer: "ТОО «АстанаСтрой»",
       is_company: true,
     })
@@ -91,9 +92,26 @@ describe("findOrderIdsBySearch", () => {
 
     expect(ids).toEqual(["order_1"])
     expect(filters).toEqual([
+      // Номер нового вида: «24» — хвост номера (ORG-26-0024 и т. п.).
+      { number: { $like: "%-0024" } },
       { email: { $ilike: "%#24%" } },
       { display_id: 24 },
     ])
+  })
+
+  it("номер нового вида ищется по жизненному циклу заказа", async () => {
+    const filters: Record<string, unknown>[] = []
+    const query = queryStub((args) => {
+      filters.push(args.filters ?? {})
+      return args.entity === "order_lifecycle"
+        ? { data: [{ id: "ordlc_1", order: { id: "order_7" } }] }
+        : { data: (args.filters as { id?: string[] }).id ? [{ id: "order_7" }] : [] }
+    })
+
+    const ids = await findOrderIdsBySearch(query, "org-26-7")
+
+    expect(filters[0]).toEqual({ number: "ORG-26-0007" })
+    expect(ids).toEqual(["order_7"])
   })
 
   it("нечисловой запрос номером заказа не ищет", async () => {

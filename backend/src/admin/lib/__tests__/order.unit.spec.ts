@@ -14,6 +14,7 @@ import {
   orderQueueChipCount,
   orderStatusMeta,
   orderTransitions,
+  transitionsForActor,
 } from "../order"
 
 // Словари статусов и способов получения читаются ТОЛЬКО через функции с
@@ -107,7 +108,7 @@ describe("admin lib/order — чипы-фильтры и счётчики экр
         ORDER_PAYMENT_STATE_META[state as keyof typeof ORDER_PAYMENT_STATE_META]
       )
     }
-    for (const value of ["refunded", "", null, undefined]) {
+    for (const value of ["partially_refunded", "", null, undefined]) {
       const meta = orderPaymentStateMeta(value)
       expect(meta.label).toBe("common.unknownValue")
       expect(meta.className).toBe("sm-pay-none")
@@ -269,5 +270,34 @@ describe("admin lib/order — перенос доставки", () => {
     expect(canRescheduleDelivery(null, "new")).toBe(false)
     // pickup/counter сняты пивотом 2026-07-22, но в базе такие заказы есть.
     expect(canRescheduleDelivery("pickup", "new")).toBe(false)
+  })
+})
+
+// Кнопки заказа по роли: в компании сборку и отгрузку ведут сборщики.
+describe("transitionsForActor", () => {
+  const paths = (actor: Parameters<typeof transitionsForActor>[1], status: string) =>
+    transitionsForActor(orderTransitions("delivery", status), actor).map((t) => t.path)
+
+  it("сотруднику площадки — все переходы статуса", () => {
+    expect(paths("staff", "confirmed")).toEqual(["start-assembly", "cancel"])
+    expect(paths("staff", "assembled")).toEqual(["ship", "cancel"])
+  })
+
+  it("продавцу компании — без сборки и отгрузки", () => {
+    expect(paths("tenant_seller", "new")).toEqual(["confirm", "cancel"])
+    expect(paths("tenant_seller", "confirmed")).toEqual(["cancel"])
+    expect(paths("tenant_seller", "assembled")).toEqual(["cancel"])
+    expect(paths("tenant_seller", "in_delivery")).toEqual(["deliver"])
+    expect(paths("tenant_seller", "delivered")).toEqual(["close"])
+  })
+
+  it("сборщику — только отгрузка", () => {
+    expect(paths("picker", "new")).toEqual([])
+    expect(paths("picker", "assembled")).toEqual(["ship"])
+    expect(paths("picker", "in_delivery")).toEqual([])
+  })
+
+  it("пока роль неизвестна — кнопок нет", () => {
+    expect(paths(undefined, "new")).toEqual([])
   })
 })

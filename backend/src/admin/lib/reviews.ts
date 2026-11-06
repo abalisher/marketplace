@@ -79,6 +79,8 @@ export type DisputeHistoryEntry = {
   id: string
   order_id: string
   order_display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   category: DisputeCategory
   status: DisputeStatus
   outcome: DisputeOutcome | null

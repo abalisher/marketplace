@@ -31,6 +31,7 @@ export type DisputeHistoryEntry = {
   id: string
   order_id: string
   order_display_id: number | null
+  order_number: string | null
   category: string
   status: string
   outcome: string | null
@@ -113,15 +114,21 @@ async function loadCustomerHistory(
   // «шифровка из тридцати букв» (блокер 2 Асель), нужен номер.
   const orderIds = [...new Set(others.map((entry) => entry.order_id))]
   const displayIds = new Map<string, number | null>()
+  const numbers = new Map<string, string | null>()
   if (orderIds.length) {
     const { data } = await query.graph({
       entity: "order",
-      fields: ["id", "display_id"],
+      fields: ["id", "display_id", "order_lifecycle.number"],
       filters: { id: orderIds },
       pagination: { skip: 0, take: orderIds.length },
     })
-    for (const order of data as { id: string; display_id?: number | null }[]) {
+    for (const order of data as {
+      id: string
+      display_id?: number | null
+      order_lifecycle?: { number?: string | null } | null
+    }[]) {
       displayIds.set(order.id, order.display_id ?? null)
+      numbers.set(order.id, order.order_lifecycle?.number ?? null)
     }
   }
 
@@ -134,6 +141,7 @@ async function loadCustomerHistory(
       id: entry.id,
       order_id: entry.order_id,
       order_display_id: displayIds.get(entry.order_id) ?? null,
+      order_number: numbers.get(entry.order_id) ?? null,
       category: entry.category,
       status: entry.status,
       outcome: entry.outcome ?? null,

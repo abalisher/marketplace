@@ -8,6 +8,8 @@ import {
 } from "@medusajs/framework/utils"
 import { ESTIMATOR_MODULE } from "../../../../../modules/estimator"
 import EstimatorModuleService from "../../../../../modules/estimator/service"
+import { requestSalesChannelId } from "../../../../../lib/tenants/storefront"
+import { loadChannelAssortment } from "../../../../../lib/tenants/scope"
 
 const SEGMENTS = ["economy", "comfort", "business"] as const
 
@@ -16,6 +18,7 @@ type VariantRow = {
   inventory_items?: {
     inventory?: {
       location_levels?: {
+        location_id?: string
         stocked_quantity?: number
         reserved_quantity?: number
       }[]
@@ -32,7 +35,12 @@ type ProductRow = {
 
 // Минимальная цена варианта в валюте + признак наличия (сумма доступного по
 // уровням остатков > 0). Товары без варианта/цены в валюте пропускаются.
-const priceAndStock = (product: ProductRow, currency: string) => {
+// locationIds — склады витрины запроса (у компании свои); null — все склады.
+const priceAndStock = (
+  product: ProductRow,
+  currency: string,
+  locationIds: Set<string> | null
+) => {
   let best: number | null = null
   let available = 0
   for (const variant of product.variants ?? []) {
@@ -44,6 +52,9 @@ const priceAndStock = (product: ProductRow, currency: string) => {
     }
     for (const ii of variant.inventory_items ?? []) {
       for (const lvl of ii.inventory?.location_levels ?? []) {
+        if (locationIds && !locationIds.has(lvl.location_id ?? "")) {
+          continue
+        }
         available +=
           Number(lvl.stocked_quantity ?? 0) - Number(lvl.reserved_quantity ?? 0)
       }
@@ -66,6 +77,12 @@ export async function GET(
   const estimatorService =
     req.scope.resolve<EstimatorModuleService>(ESTIMATOR_MODULE)
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
+  // Подборка — из каталога и складов витрины запроса: у каждой компании свои.
+  const salesChannelId = requestSalesChannelId(req)
+  const assortment = salesChannelId
+    ? await loadChannelAssortment(req.scope, salesChannelId)
+    : null
+  const channelProducts = assortment ? new Set(assortment.productIds) : null
 
   let estimate
   try {
@@ -129,13 +146,16 @@ export async function GET(
           "products.product_card.segment",
           "products.variants.prices.amount",
           "products.variants.prices.currency_code",
+          "products.variants.inventory_items.inventory.location_levels.location_id",
           "products.variants.inventory_items.inventory.location_levels.stocked_quantity",
           "products.variants.inventory_items.inventory.location_levels.reserved_quantity",
         ],
         filters: { id: categoryId },
       })
       const products = ((categories?.[0]?.products ?? []) as ProductRow[]).filter(
-        (p) => p.status === "published"
+        (p) =>
+          p.status === "published" &&
+          (!channelProducts || channelProducts.has(p.id))
       )
 
       // На каждый сегмент — самый дешёвый доступный товар в валюте.
@@ -147,7 +167,11 @@ export async function GET(
         let bestPrice: number | null = null
         let bestStock = false
         for (const product of inSegment) {
-          const { price, in_stock } = priceAndStock(product, currency)
+          const { price, in_stock } = priceAndStock(
+            product,
+            currency,
+            assortment?.locationIds ?? null
+          )
           if (price != null && (bestPrice == null || price < bestPrice)) {
             bestPrice = price
             bestProduct = product

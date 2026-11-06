@@ -24,7 +24,9 @@ export type AssistantMessage = {
 
 export type PaymentAttachment = {
   type: "payment"
-  provider: "kaspi"
+  // Способ оплаты: kaspi — счёт Kaspi QR (код и ссылка), kaspi_transfer —
+  // перевод на номер Kaspi продавца, debt — «в долг» (решает продавец).
+  provider: "kaspi" | "kaspi_transfer" | "debt"
   status: string
   paid: boolean
   // Сумма к оплате в тенге (итог корзины на момент выставления счёта) — макет
@@ -33,11 +35,58 @@ export type PaymentAttachment = {
   currency: string
   qr_payload: string | null
   payment_url: string | null
+  // Номер заказа — у карточки оплаты уже оформленного заказа (перевод, долг):
+  // его покупатель пишет в комментарии к переводу. null — оплата корзины.
+  order_display_id?: number | null
+  // Номер заказа для людей (ORG-26-0007) — его и пишут в комментарии.
+  order_number?: string | null
+  // Куда переводить (перевод по номеру и погашение долга).
+  transfer?: { phone: string; recipient: string | null; note: string | null } | null
+  // Срок долга, когда продавец его одобрил.
+  due_date?: string | null
+}
+
+// Кнопки способов оплаты (под ответом «как вам удобнее оплатить?»): только те,
+// что принимает продавец корзины. Нажатие — обычная реплика покупателя в чат
+// («Способ оплаты: перевод на Kaspi»), дальше ассистент выбирает способ сам.
+// Недоступный по сумме способ приходит с available=false и причиной.
+export type PaymentMethodsAttachment = {
+  type: "payment_methods"
+  amount: number
+  currency: string
+  methods: {
+    method: "kaspi_qr" | "kaspi_transfer" | "debt"
+    available: boolean
+    reason: string | null
+  }[]
+  debt_term_days: number | null
+  debt_max_amount: number | null
+}
+
+// Кнопки слотов доставки: ближайшие окна и «другая дата» (выбор дня и окна из
+// тех же вариантов). Нажатие — реплика покупателя «Доставка: <дата>, <окно>»,
+// слот сохраняет ассистент. Кодами: подпись на своём языке собирает клиент.
+export type DeliverySlotsAttachment = {
+  type: "delivery_slots"
+  slots: { date: string; window: "morning" | "day" | "evening" }[]
+}
+
+// Оплата оформленного заказа (перевод, долг): карточка ПОСТОЯННАЯ — остаётся в
+// истории диалога под ответом, а состояние клиент каждый раз читает живым
+// (GET /store/orders/:id/payment): куда переводить, чек, смена способа, статус.
+// Снимок в истории устарел бы — «ждём перевод» висел бы и после оплаты.
+export type OrderPaymentAttachment = {
+  type: "order_payment"
+  order_id: string
+  display_id: number | null
+  // Номер заказа для людей (ORG-26-0007); null — заказ до 2026-11-02.
+  order_number?: string | null
 }
 
 export type OrderStatusAttachment = {
   type: "order_status"
   display_id: number | null
+  order_number?: string | null
   status_text: string | null
   // Стадия заказа КОДОМ `ORDER_STATUSES` (`new` … `delivered`) — по ней клиент
   // рисует степпер и подписывает бейдж на своём языке. До T3.11 сюда попадала
@@ -63,6 +112,7 @@ export type OrderStatusAttachment = {
 export type OrderDocumentsAttachment = {
   type: "documents"
   display_id: number | null
+  order_number?: string | null
   documents: {
     // invoice | waybill | internal_avr — тип документа платформы.
     doc_type: string
@@ -75,9 +125,10 @@ export type OrderDocumentsAttachment = {
 
 // Просьба войти по номеру телефона (T10.8). Оформление заказа доступно только
 // авторизованному покупателю: гость собирает корзину, а на шаге оформления
-// получает в ленте кнопку входа (единственное исключение из правила «в ленте нет
-// кнопок» — вход живёт на отдельном экране, репликой в чат его не сделать).
-// Вставку кладут guard'ы оформления (set_delivery / checkout_kaspi / place_order)
+// получает в ленте кнопку входа (исключение из правила «в ленте нет кнопок» —
+// вход живёт на отдельном экране, репликой в чат его не сделать; второе
+// исключение — форма доставки ниже).
+// Вставку кладут guard'ы оформления (set_delivery / checkout_payment / place_order)
 // и профиль покупателя, когда `customerId` в контексте нет.
 export type AuthPromptAttachment = {
   type: "auth_prompt"
@@ -87,11 +138,39 @@ export type AuthPromptAttachment = {
   reason: "checkout"
 }
 
+// Мини-форма доставки: что ассистент уже знает о получателе и каких полей не
+// хватает для оформления (`missing_fields`). Покупатель отвечает текстом или
+// заполняет форму — она сохраняет профиль через POST
+// /store/assistant/customer-profile. Кладут профиль покупателя, сохранение
+// профиля и set_delivery, пока данных не хватает; успешный set_delivery её
+// убирает (buyer-identity.dropDeliveryForm).
+export type DeliveryFormAttachment = {
+  type: "delivery_form"
+  first_name?: string
+  last_name?: string
+  phone?: string
+  address_1?: string
+  city?: string
+  missing_fields: string[]
+}
+
 export type AssistantAttachment =
   | PaymentAttachment
+  | PaymentMethodsAttachment
+  | DeliverySlotsAttachment
+  | OrderPaymentAttachment
   | OrderStatusAttachment
   | OrderDocumentsAttachment
   | AuthPromptAttachment
+  | DeliveryFormAttachment
+
+// Продавец витрины, с которой идёт диалог: компания площадки (мультипродавец)
+// или сама площадка (null в контексте). Модели — только то, что можно назвать
+// покупателю.
+export type AssistantSeller = {
+  name: string
+  bin: string | null
+}
 
 // Контекст хода ассистента — то, что stateless-диалог тянет между ходами ПОМИМО
 // истории сообщений. Клиент держит `cart_id` так же, как держит `messages`:
@@ -104,10 +183,17 @@ export type AssistantAttachment =
 // наружу, клиент держит и шлёт обратно; track_order отслеживает ИМЕННО его, а не
 // произвольный номер заказа — display_id последователен и угадываем, внутренний id
 // случаен, поэтому владение им = право смотреть статус (гостевой флоу, DECISIONS 2026-07-23).
+// Вошедшему покупателю оркестратор засчитывает только его заказ, а без токена
+// берёт его последний заказ на витрине (lib/assistant/last-order.ts).
 export type AssistantContext = {
   cartId?: string
   customerId?: string
   lastOrderId?: string
+  // Канал продаж витрины — из publishable key запроса (ядро проверило ключ).
+  // В нём создаётся корзина: канал решает, чей это заказ, с каких складов
+  // резерв и какая доставка. Корзину другого канала ход не продолжает.
+  salesChannelId?: string
+  seller?: AssistantSeller | null
   // UI-вложения, накопленные инструментами за ход. Оркестратор инициализирует
   // пустым массивом, инструменты дописывают (как cartId — мутабельно), оркестратор
   // возвращает наружу. Не участвует в диалоге с моделью — только для отрисовки.

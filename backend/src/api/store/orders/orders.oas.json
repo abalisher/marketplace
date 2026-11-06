@@ -299,14 +299,24 @@
           "id": { "type": "string" },
           "from_status": { "type": "string", "nullable": true },
           "to_status": { "type": "string" },
-          "actor_type": { "type": "string", "enum": ["buyer", "seller", "admin", "system"] },
-          "actor_id": { "type": "string", "nullable": true },
+          "actor_type": { "type": "string", "enum": ["buyer", "seller", "driver", "admin", "system"] },
           "reason": { "type": "string", "nullable": true },
           "created_at": { "type": "string", "format": "date-time", "nullable": true },
           "kind": {
             "type": "string",
             "enum": ["status", "slot"],
             "description": "Род записи: переход статуса или перенос окна доставки (T5.6b)."
+          },
+          "from_slot_date": {
+            "type": "string",
+            "nullable": true,
+            "description": "Дата слота до переноса (kind=slot)."
+          },
+          "from_slot_window": {
+            "type": "string",
+            "enum": ["morning", "day", "evening"],
+            "nullable": true,
+            "description": "Окно до переноса (kind=slot)."
           },
           "to_slot_date": {
             "type": "string",

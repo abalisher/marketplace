@@ -14,7 +14,7 @@ import {
   updateRegionsWorkflow,
   updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
-import { KASPI_PROVIDER_ID } from "../modules/payment-kaspi"
+import { PAYMENT_PROVIDER_IDS } from "../lib/payments/providers"
 import { DOCUMENTS_MODULE } from "../modules/documents"
 import DocumentsModuleService from "../modules/documents/service"
 import { CatalogCategoryHandle } from "../lib/catalog/categories"
@@ -138,18 +138,25 @@ export default async function seedKz({ container }: ExecArgs) {
   const providerIds = (
     (regionsWithProviders[0]?.payment_providers ?? []) as { id: string }[]
   ).map((p) => p.id)
-  if (!providerIds.includes(KASPI_PROVIDER_ID)) {
+  // Вместе с Kaspi — оплата «вне банка» (перевод на номер Kaspi, в долг):
+  // какие из способов принимает продавец, решают его настройки оплаты.
+  const missingProviders = PAYMENT_PROVIDER_IDS.filter(
+    (id) => !providerIds.includes(id)
+  )
+  if (missingProviders.length) {
     await updateRegionsWorkflow(container).run({
       input: {
         selector: { id: region.id },
         update: {
-          payment_providers: [...providerIds, KASPI_PROVIDER_ID],
+          payment_providers: [...providerIds, ...missingProviders],
         },
       },
     })
-    console.log(`+ провайдер ${KASPI_PROVIDER_ID} добавлен региону Kazakhstan`)
+    console.log(
+      `+ провайдеры ${missingProviders.join(", ")} добавлены региону Kazakhstan`
+    )
   } else {
-    console.log(`— провайдер ${KASPI_PROVIDER_ID} уже подключён к региону`)
+    console.log(`— платёжные провайдеры уже подключены к региону`)
   }
 
   // 3. Дефолтный канал продаж — к нему привязываем склады и товары.

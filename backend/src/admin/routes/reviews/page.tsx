@@ -1,3 +1,4 @@
+import { orderLabel } from "../../lib/order-label"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { EllipsisHorizontal, Star } from "@medusajs/icons"
 import {
@@ -15,6 +16,7 @@ import {
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { usePanelActor } from "../../hooks/use-panel-actor"
 import { useReviews } from "../../hooks/use-reviews"
 import { formatDate } from "../../lib/date"
 import {
@@ -58,6 +60,10 @@ const columnHelper = createDataTableColumnHelper<AdminReviewRow>()
 const ReviewsPage = () => {
   const { t } = useTranslation()
   const { moderateReview } = useReviews()
+  // Модерация (скрыть/опубликовать) — у площадки: компания отзывы о себе не
+  // прячет. Продавец и сборщик компании видят отзывы только на чтение.
+  const actor = usePanelActor()
+  const canModerate = actor === "staff"
 
   const [pagination, setPagination] = useState<DataTablePaginationState>({
     pageIndex: 0,
@@ -115,7 +121,11 @@ const ReviewsPage = () => {
       size: 90,
       header: t("reviews.disputes.colOrder"),
       cell: ({ row }) => {
-        const id = row.original.order?.display_id
+        const order = row.original.order
+        const id =
+          order && (order.display_id != null || order.order_number)
+            ? orderLabel(order.order_number, order.display_id)
+            : null
         return (
           <span className="sm-cell-strong">
             {id == null ? "—" : t("orderQueue.orderNo", { id })}
@@ -191,6 +201,9 @@ const ReviewsPage = () => {
       size: 60,
       header: "",
       cell: ({ row }) => {
+        if (!canModerate) {
+          return null
+        }
         const review = row.original
         const next: ReviewStatus =
           review.status === "hidden" ? "published" : "hidden"

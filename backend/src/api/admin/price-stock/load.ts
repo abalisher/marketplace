@@ -28,6 +28,7 @@ const FIELDS = [
   "title",
   "status",
   "thumbnail",
+  "metadata",
   "product_card.unit",
   "categories.handle",
   "categories.name",
@@ -52,6 +53,44 @@ export type PriceStockScope = {
   q?: string
   status?: string
   variant_ids?: string[]
+  // Канал продаж компании: продавец компании видит и правит только товары
+  // своего каталога (у каждой компании он свой — из её 1С).
+  sales_channel_id?: string
+  // Несколько каналов сразу — товары, которые продаются со склада, выбранного
+  // владельцем площадки (у склада компании это каталог компании).
+  sales_channel_ids?: string[]
+}
+
+// Каналы продаж, которые торгуют со склада.
+export const loadLocationChannelIds = async (
+  query: Query,
+  locationId: string
+): Promise<string[]> => {
+  const { data } = await query.graph({
+    entity: "sales_channel_location",
+    fields: ["sales_channel_id"],
+    filters: { stock_location_id: locationId },
+  })
+  return [
+    ...new Set(
+      (data as { sales_channel_id: string }[]).map((row) => row.sales_channel_id)
+    ),
+  ]
+}
+
+// Товары каталога канала (или нескольких каналов) продаж.
+export const loadChannelProductIds = async (
+  query: Query,
+  salesChannelId: string | string[]
+): Promise<string[]> => {
+  const { data } = await query.graph({
+    entity: "product_sales_channel",
+    fields: ["product_id"],
+    filters: { sales_channel_id: salesChannelId },
+  })
+  return [
+    ...new Set((data as { product_id: string }[]).map((row) => row.product_id)),
+  ]
 }
 
 // Товары среза. Поиск идёт по названию товара И по артикулу варианта: на складе
@@ -65,6 +104,18 @@ export const loadPriceStockProducts = async (
   }
 
   const filters: Record<string, unknown> = {}
+  const channels = scope.sales_channel_id
+    ? [scope.sales_channel_id]
+    : scope.sales_channel_ids
+  if (channels) {
+    const productIds = channels.length
+      ? await loadChannelProductIds(query, channels)
+      : []
+    if (!productIds.length) {
+      return []
+    }
+    filters.id = productIds
+  }
   if (scope.status) {
     filters.status = scope.status
   }
@@ -90,7 +141,31 @@ export const loadPriceStockProducts = async (
       order: { title: "ASC" },
     },
   })
-  return data as RawProduct[]
+  const products = data as RawProduct[]
+
+  // Себестоимость — из позиций 1С (onec_item.cost), а не из товара: в товаре
+  // её увидел бы покупатель. У товара не из 1С её нет.
+  const variantIds = products.flatMap((product) =>
+    (product.variants ?? []).map((variant) => variant.id)
+  )
+  if (variantIds.length) {
+    const { data: items } = await query.graph({
+      entity: "onec_item",
+      fields: ["variant_id", "cost"],
+      filters: { variant_id: variantIds },
+    })
+    const costs = new Map(
+      (items as unknown as { variant_id: string; cost: number | null }[])
+        .filter((item) => item.cost != null)
+        .map((item) => [item.variant_id, Number(item.cost)])
+    )
+    for (const product of products) {
+      for (const variant of product.variants ?? []) {
+        variant.cost = costs.get(variant.id) ?? null
+      }
+    }
+  }
+  return products
 }
 
 // Названия складов: id → название. Без списка id отдаёт все склады магазина
@@ -145,6 +220,10 @@ export const resolveActorName = async (
 // отфильтрованные), счётчики чипов и разрез склада. Один и тот же срез читают
 // экран (страницами) и выгрузка в файл (целиком) — иначе «выгрузить то, что
 // вижу» разъехалось бы с тем, что видно.
+//
+// locationIds — склады, которыми срез ограничен (продавец компании видит только
+// склады своего канала); без списка — все склады магазина. salesChannelId —
+// каталог компании: товары других компаний в её срез не попадают.
 export const loadPriceStockSlice = async (
   query: Query,
   params: {
@@ -153,7 +232,9 @@ export const loadPriceStockSlice = async (
     status?: string
     stock?: PriceStockFilter
     location_id?: string
-  }
+  },
+  locationIds?: string[],
+  salesChannelId?: string
 ): Promise<{
   rows: PriceStockRow[]
   counts: { total: number; zero: number; low: number }
@@ -162,7 +243,7 @@ export const loadPriceStockSlice = async (
   scope: string | null
   threshold: number
 }> => {
-  const locationNames = await loadLocationNames(query)
+  const locationNames = await loadLocationNames(query, locationIds)
   if (params.location_id && !locationNames.has(params.location_id)) {
     throw new MedusaError(MedusaError.Types.INVALID_DATA, "Склад не найден")
   }
@@ -172,17 +253,27 @@ export const loadPriceStockSlice = async (
     params.location_id ??
     (locationNames.size === 1 ? [...locationNames.keys()][0] : null)
 
+  // Владелец площадки выбрал склад — показываем товары, которые с него
+  // продаются: у склада компании это её каталог, а не все товары площадки с
+  // нулём (или остатком, заведённым когда-то по общему каталогу).
+  const locationChannels =
+    !salesChannelId && params.location_id
+      ? await loadLocationChannelIds(query, params.location_id)
+      : undefined
   const products = await loadPriceStockProducts(query, {
     q: params.q,
     status: params.status,
+    sales_channel_id: salesChannelId,
+    // Склад ни одного канала не обслуживает — фильтровать не по чему.
+    sales_channel_ids: locationChannels?.length ? locationChannels : undefined,
   })
 
   const threshold = lowStockThreshold()
   // Порядок фильтров = порядок чипов на экране: сначала поиск (выборка), затем
   // категория, затем остаток. Счётчики каждого чипа считаются по срезу ДО его
   // собственного фильтра — чип показывает, что будет, если по нему нажать.
-  const searched = buildPriceStockRows(products, scope).sort((a, b) =>
-    a.title.localeCompare(b.title, "ru")
+  const searched = buildPriceStockRows(products, scope, locationIds).sort(
+    (a, b) => a.title.localeCompare(b.title, "ru")
   )
   const inCategory = filterByCategory(searched, params.category)
 

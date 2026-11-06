@@ -1,3 +1,4 @@
+import { orderLabel } from "../../lib/order-label"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ExclamationCircle } from "@medusajs/icons"
 import {
@@ -115,7 +116,11 @@ const DisputesQueuePage = () => {
       size: 90,
       header: t("reviews.disputes.colOrder"),
       cell: ({ row }) => {
-        const id = row.original.order?.display_id
+        const order = row.original.order
+        const id =
+          order && (order.display_id != null || order.order_number)
+            ? orderLabel(order.order_number, order.display_id)
+            : null
         return (
           <span className="sm-cell-strong">
             {id == null ? "—" : t("orderQueue.orderNo", { id })}

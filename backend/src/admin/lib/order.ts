@@ -1,3 +1,4 @@
+import type { AdminOrderPayment } from "./payments"
 // DTO admin-API жизненного цикла заказа (GET /admin/order-lifecycles — очередь,
 // GET /admin/orders/:id/lifecycle — статус + лог, POST /admin/orders/:id/lifecycle/*
 // — переходы) и метаданные статусов для экранов. Значения статусов
@@ -52,6 +53,9 @@ export type OrderLifecycleEvent = {
   // Имя человека, сделавшего переход (T4.12). null — переход системы или
   // удалённая учётка: тогда подписью остаётся одна роль.
   actor_name: string | null
+  // Роль сотрудника по учётке (сборщик/продавец/администратор): подпись
+  // «в каком качестве» точнее actor_type записи. null — актор не сотрудник.
+  actor_role?: "picker" | "seller" | "driver" | "admin" | null
   reason: string | null
   // Слот до и после переноса (kind = slot; у переходов статуса — null).
   // Кодами — подпись собирает панель (lib/delivery-slot.ts).
@@ -62,9 +66,22 @@ export type OrderLifecycleEvent = {
   created_at: string
 }
 
-// Состояние оплаты строки заказа — нормализует бэкенд (rows.ts): продавцу
-// важно одно — деньги есть или ждём.
-export type OrderPaymentState = "paid" | "awaiting" | "canceled"
+// Состояние оплаты строки заказа — нормализует бэкенд (rows.ts,
+// lib/payments/panel-state.ts): деньги есть, ждём перевод, долг (просит,
+// одобрен, просрочен), к возврату.
+export type OrderPaymentState =
+  | "paid"
+  | "awaiting"
+  | "canceled"
+  | "debt_requested"
+  | "debt"
+  | "debt_overdue"
+  | "refund_due"
+  | "refunded"
+  | "receipt_review"
+
+// Способ оплаты заказа (null — заказ оформлен до способов оплаты).
+export type OrderPaymentMethod = "kaspi_qr" | "kaspi_transfer" | "debt" | "bonus"
 
 // Заказ в строке экрана «Заказы» (макет 1b): всё, что рисует таблица, бэкенд
 // отдаёт готовым (T4.2a) — покупатель человекочитаемо, признак юрлица, число
@@ -72,6 +89,8 @@ export type OrderPaymentState = "paid" | "awaiting" | "canceled"
 export type AdminOrderLifecycleRowOrder = {
   id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   email: string | null
   created_at: string | null
   customer_name: string | null
@@ -81,6 +100,7 @@ export type AdminOrderLifecycleRowOrder = {
   total: number | null
   currency_code: string | null
   payment_state: OrderPaymentState | null
+  payment_method?: OrderPaymentMethod | null
   address: string | null
 }
 
@@ -203,6 +223,8 @@ export type OrderCardDelivery = {
   shipping_method: string | null
   slot_date: string | null
   slot_window: string | null
+  // Ссылка на точку адреса в 2ГИС; null — адрес без точки на карте.
+  map_url: string | null
 }
 
 // Цели переходов: какие позиции собирать и какой fulfillment отгружать/вручать —
@@ -217,6 +239,8 @@ export type OrderCardTransitionTargets = {
 export type AdminOrderCard = {
   order_id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   created_at: string | null
   status: OrderLifecycleStatus | null
   previous_status: OrderLifecycleStatus | null
@@ -228,6 +252,9 @@ export type AdminOrderCard = {
   items: OrderCardItem[]
   totals: OrderCardTotals
   payment_state: OrderPaymentState | null
+  // Оплата заказа (способ, суммы, долг, журнал); null — заказ оформлен до
+  // появления способов оплаты.
+  payment?: AdminOrderPayment | null
   delivery: OrderCardDelivery
   // Только актуальные версии (вся история версий — на странице заказа).
   documents: AdminOrderCardDocument[]
@@ -473,6 +500,35 @@ export const ORDER_PAYMENT_STATE_META: Record<
     label: "orderQueue.payment.canceled",
     className: "sm-pay-canceled",
   },
+  debt_requested: {
+    label: "orderQueue.payment.debtRequested",
+    className: "sm-pay-debt-requested",
+  },
+  debt: { label: "orderQueue.payment.debt", className: "sm-pay-debt" },
+  debt_overdue: {
+    label: "orderQueue.payment.debtOverdue",
+    className: "sm-pay-debt-overdue",
+  },
+  refund_due: {
+    label: "orderQueue.payment.refundDue",
+    className: "sm-pay-refund-due",
+  },
+  refunded: {
+    label: "orderQueue.payment.refunded",
+    className: "sm-pay-refunded",
+  },
+  receipt_review: {
+    label: "orderQueue.payment.receiptReview",
+    className: "sm-pay-receipt-review",
+  },
+}
+
+// Подпись способа оплаты (строка очереди, карточка, отчёт).
+export const ORDER_PAYMENT_METHOD_LABEL: Record<OrderPaymentMethod, string> = {
+  kaspi_qr: "payments.method.kaspi_qr",
+  kaspi_transfer: "payments.method.kaspi_transfer",
+  debt: "payments.method.debt",
+  bonus: "payments.method.bonus",
 }
 
 const UNKNOWN_PAYMENT_META = {
@@ -667,4 +723,33 @@ export const ORDER_TRANSITIONS: Record<
     canceled: [],
     returned: [],
   },
+}
+
+// Кто работает в панели: сотрудник площадки ведёт заказ целиком; в компании
+// продавец ведёт заказ (подтверждение, отмена, вручение, закрытие), а сборку и
+// отгрузку — её сборщики. Сборщик из панели только отгружает: сборку он ведёт
+// заданиями на своём экране, и последнее задание само переводит заказ в
+// «Собран». Права проверяет бэкенд (api/utils/tenant-access.ts) — здесь лишь
+// не показываем кнопки, которые роли ответят 403.
+export type PanelActor = "staff" | "tenant_seller" | "picker"
+
+const ACTOR_TRANSITIONS: Record<PanelActor, OrderTransition["path"][] | null> = {
+  staff: null,
+  tenant_seller: ["confirm", "cancel", "deliver", "close"],
+  picker: ["ship"],
+}
+
+// Пока роль не известна — кнопок нет: лучше на миг позже, чем мигнуть
+// действием, которого у роли нет.
+export const transitionsForActor = (
+  transitions: OrderTransition[],
+  actor: PanelActor | undefined
+): OrderTransition[] => {
+  if (!actor) {
+    return []
+  }
+  const allowed = ACTOR_TRANSITIONS[actor]
+  return allowed
+    ? transitions.filter((entry) => allowed.includes(entry.path))
+    : transitions
 }

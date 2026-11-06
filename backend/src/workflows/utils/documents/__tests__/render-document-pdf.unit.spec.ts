@@ -1,7 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { renderDocumentPdf } from "../../render-document-pdf"
-import { DocumentSnapshot } from "../document-snapshot"
+import { DocumentSnapshot, itemsVat, sellerVatRate, vatIncluded } from "../document-snapshot"
 
 const OUT = process.env.DOC_PREVIEW_DIR
 
@@ -78,5 +78,30 @@ describe("render-document-pdf", () => {
     }
     const sizes = new Set(cases.map(([, b]) => b.length))
     expect(sizes.size).toBe(cases.length)
+  })
+
+  it("продавец-плательщик НДС: НДС выделяется из суммы, бланки рендерятся", async () => {
+    // 242 000 с НДС 16%: 242 000 × 16 / 116.
+    expect(vatIncluded(242000, 16)).toBe(33379.31)
+    expect(vatIncluded(315, 16)).toBe(43.45)
+    // Документ — сумма НДС строк: счёт и накладная сходятся до тиына.
+    expect(itemsVat(items, 16)).toBe(33379.32)
+    expect(sellerVatRate({ name: "ИП", vat_rate: 16 })).toBe(16)
+    expect(sellerVatRate({ name: "ИП", vat_rate: null })).toBeNull()
+    expect(sellerVatRate({ name: "ИП" })).toBeNull()
+
+    const vatSeller = { ...seller, vat_rate: 16 }
+    for (const [name, input] of [
+      ["invoice-company-vat", { type: "invoice" as const, number: "INV-2026-000014", version: 1, snapshot: { ...companySnapshot, seller: vatSeller } }],
+      ["waybill-vat", { type: "waybill" as const, number: "WB-2026-000008", version: 1, snapshot: { ...snapshot, seller: vatSeller } }],
+      ["act-vat", { type: "internal_avr" as const, number: "AVR-2026-000004", version: 1, snapshot: { ...companySnapshot, seller: vatSeller } }],
+    ] as const) {
+      const buffer = await renderDocumentPdf(input)
+      expect(buffer.subarray(0, 5).toString()).toBe("%PDF-")
+      if (OUT) {
+        fs.mkdirSync(OUT, { recursive: true })
+        fs.writeFileSync(path.join(OUT, `${name}.pdf`), buffer)
+      }
+    }
   })
 })

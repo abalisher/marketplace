@@ -9,6 +9,7 @@ import {
   missingRequisites,
   missingRequisitesMessage,
 } from "../modules/documents/requisites"
+import { loadSellerSettings } from "../lib/tenants/requisites"
 import { issueOrderDocumentWorkflow } from "../workflows/issue-order-document"
 
 type StatusChangedPayload = {
@@ -58,7 +59,20 @@ export default async function issueOrderWaybill({
   }
 
   // Как в order-invoice: с неполными реквизитами документ не выпускается (T4.9).
-  const missing = missingRequisites(await documentsService.getOrCreateSettings())
+  const { data: orders } = await container
+    .resolve(ContainerRegistrationKeys.QUERY)
+    .graph({
+      entity: "order",
+      fields: ["id", "sales_channel_id"],
+      filters: { id: data.order_id },
+    })
+  const missing = missingRequisites(
+    await loadSellerSettings(
+      container,
+      (orders?.[0] as { sales_channel_id?: string | null } | undefined)
+        ?.sales_channel_id
+    )
+  )
   if (missing.length > 0) {
     const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
     logger.warn(

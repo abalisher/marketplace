@@ -46,6 +46,7 @@ type OrderRow = {
   id: string
   display_id?: number | null
   customer_id?: string | null
+  order_lifecycle?: { number?: string | null } | null
 }
 
 type DisputeRow = {
@@ -60,7 +61,13 @@ type DisputeRow = {
 // Претензия в том виде, в каком о ней можно говорить покупателю: без внутренних
 // идентификаторов (промпт запрещает их показывать) — категория, статус словами
 // и решение оператора, если оно уже есть.
-const asBuyerFacing = (dispute: DisputeRow, displayId: number | null) => ({
+const asBuyerFacing = (
+  dispute: DisputeRow,
+  displayId: number | null,
+  orderNumber: string | null = null
+) => ({
+  // Номер для покупателя — order_number («ORG-26-0007»); display_id технический.
+  order_number: orderNumber,
   order_display_id: displayId,
   category: dispute.category,
   status: dispute.status,
@@ -146,7 +153,7 @@ export const openDisputeTool: AssistantTool = {
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
     const { data } = await query.graph({
       entity: "order",
-      fields: ["id", "display_id", "customer_id"],
+      fields: ["id", "display_id", "customer_id", "order_lifecycle.number"],
       filters: { id: context.lastOrderId },
     })
     const order = (data as OrderRow[])[0]
@@ -163,6 +170,7 @@ export const openDisputeTool: AssistantTool = {
     }
 
     const displayId = order.display_id ?? null
+    const orderNumber = order.order_lifecycle?.number ?? null
     const reviewsService =
       container.resolve<ReviewsModuleService>(REVIEWS_MODULE)
 
@@ -176,7 +184,7 @@ export const openDisputeTool: AssistantTool = {
 
     if (active) {
       return {
-        dispute: asBuyerFacing(active, displayId),
+        dispute: asBuyerFacing(active, displayId, orderNumber),
         already_open: true,
         note:
           "По этому заказу претензия уже открыта — вторую не создаём. " +
@@ -195,7 +203,7 @@ export const openDisputeTool: AssistantTool = {
     })
 
     return {
-      dispute: asBuyerFacing(result as unknown as DisputeRow, displayId),
+      dispute: asBuyerFacing(result as unknown as DisputeRow, displayId, orderNumber),
       already_open: false,
       note:
         "Претензия принята и ушла в работу магазину. Сроков рассмотрения, " +

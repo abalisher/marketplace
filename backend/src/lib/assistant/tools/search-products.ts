@@ -4,6 +4,7 @@ import {
   CATALOG_CATEGORIES,
   CatalogCategoryHandle,
 } from "../../catalog/categories"
+import { loadChannelAssortment } from "../../tenants/scope"
 import { AssistantContext, AssistantTool } from "../types"
 
 // Инструмент ассистента «поиск товаров» (срез 1). Поиск published-товаров по всем
@@ -92,7 +93,11 @@ const SYNONYMS: Record<string, string[]> = {
 }
 
 type PriceRow = { amount?: number; currency_code?: string }
-type LevelRow = { stocked_quantity?: number; reserved_quantity?: number }
+type LevelRow = {
+  location_id?: string | null
+  stocked_quantity?: number
+  reserved_quantity?: number
+}
 type VariantRow = {
   id: string
   title?: string | null
@@ -132,21 +137,40 @@ type FoundProduct = {
   variants: FoundVariant[]
 }
 
-// Доступный остаток варианта по всем уровням (stocked − reserved).
-const variantAvailable = (variant: VariantRow): number => {
+// Доступный остаток варианта (stocked − reserved) по складам канала витрины —
+// резерв при оформлении берётся только с них. Без списка складов — по всем.
+// null — вариант на складах канала витрины не заведён вовсе: ядро не даст
+// положить его в корзину этого канала, и предлагать его покупателю нельзя.
+const variantAvailable = (
+  variant: VariantRow,
+  locationIds: Set<string> | null
+): number | null => {
+  const items = variant.inventory_items ?? []
+  if (!items.length) {
+    // Остаток не ведётся — продаётся без склада.
+    return Number.POSITIVE_INFINITY
+  }
   let available = 0
-  for (const ii of variant.inventory_items ?? []) {
+  let stocked = false
+  for (const ii of items) {
     for (const lvl of ii.inventory?.location_levels ?? []) {
+      if (locationIds && !(lvl.location_id && locationIds.has(lvl.location_id))) {
+        continue
+      }
+      stocked = true
       available +=
         Number(lvl.stocked_quantity ?? 0) - Number(lvl.reserved_quantity ?? 0)
     }
   }
-  return available
+  return stocked || !locationIds ? available : null
 }
 
 // Все варианты товара с ценой в валюте (по возрастанию цены). Товар без единого
 // варианта с ценой в валюте отсеивается (возврат null).
-const collectProduct = (product: ProductRow): FoundProduct | null => {
+const collectProduct = (
+  product: ProductRow,
+  locationIds: Set<string> | null
+): FoundProduct | null => {
   const variants: FoundVariant[] = []
   for (const variant of product.variants ?? []) {
     const price = (variant.prices ?? []).find(
@@ -155,11 +179,15 @@ const collectProduct = (product: ProductRow): FoundProduct | null => {
     if (!price || price.amount == null) {
       continue
     }
+    const available = variantAvailable(variant, locationIds)
+    if (available === null) {
+      continue
+    }
     variants.push({
       variant_id: variant.id,
       variant_title: variant.title ?? null,
       price: Number(price.amount),
-      in_stock: variantAvailable(variant) > 0,
+      in_stock: available > 0,
     })
   }
   if (variants.length === 0) {
@@ -275,6 +303,7 @@ export const searchProductsTool: AssistantTool = {
       "variants.title",
       "variants.prices.amount",
       "variants.prices.currency_code",
+      "variants.inventory_items.inventory.location_levels.location_id",
       "variants.inventory_items.inventory.location_levels.stocked_quantity",
       "variants.inventory_items.inventory.location_levels.reserved_quantity",
     ]
@@ -285,12 +314,24 @@ export const searchProductsTool: AssistantTool = {
       ? { categories: { handle: categoryHandle } }
       : {}
 
+    // Ассортимент и склады канала витрины: продавец компании продаёт только
+    // товары своего канала, и «в наличии» — только то, что лежит на его складах.
+    // Фильтр по товарам канала стоит в самом запросе, а не после выборки:
+    // иначе товары канала за пределами первых SCAN_CAP строк терялись бы.
+    const channel = context.salesChannelId
+      ? await loadChannelAssortment(container, context.salesChannelId)
+      : null
+    if (channel && !channel.productIds.length) {
+      return { products: [] }
+    }
+
     const runSearch = async (titleFilter: Record<string, unknown>) => {
       const { data } = await query.graph({
         entity: "product",
         fields,
         filters: {
           status: "published",
+          ...(channel ? { id: channel.productIds } : {}),
           ...categoryFilter,
           ...titleFilter,
         },
@@ -311,7 +352,7 @@ export const searchProductsTool: AssistantTool = {
     }
 
     const products = data
-      .map(collectProduct)
+      .map((product) => collectProduct(product, channel?.locationIds ?? null))
       .filter((p): p is FoundProduct => p !== null)
       .sort((a, b) => a.variants[0].price - b.variants[0].price)
       .slice(0, limit)

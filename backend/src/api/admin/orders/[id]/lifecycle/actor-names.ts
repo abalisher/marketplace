@@ -116,3 +116,37 @@ export async function loadTransitionActorNames(
 
   return names
 }
+
+// В каком качестве сотрудник перевёл заказ. В логе у всех действий из панели
+// actor_type = admin, а у закрытия сборки — seller: тип записывает роут, а не
+// человек. Подпись берём по учётке: сборщик (роль picker), продавец (seller),
+// иначе — администратор площадки.
+export type StaffRole = "picker" | "seller" | "driver" | "admin"
+
+export async function loadStaffRoles(
+  scope: MedusaContainer,
+  events: ActorRef[]
+): Promise<Map<string, StaffRole>> {
+  const ids = [
+    ...new Set(
+      events
+        .filter((event) => event.actor_id && STAFF_ACTOR_TYPES.includes(event.actor_type))
+        .map((event) => event.actor_id as string)
+    ),
+  ]
+  const roles = new Map<string, StaffRole>()
+  if (!ids.length) {
+    return roles
+  }
+  const users = await scope
+    .resolve(Modules.USER)
+    .listUsers({ id: ids }, { select: ["id", "metadata"] })
+  for (const user of users) {
+    const role = (user.metadata as Record<string, unknown> | null)?.role
+    roles.set(
+      user.id,
+      role === "picker" || role === "seller" || role === "driver" ? role : "admin"
+    )
+  }
+  return roles
+}

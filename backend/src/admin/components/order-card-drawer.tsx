@@ -1,3 +1,4 @@
+import { orderLabel } from "../lib/order-label"
 import { ArrowUpRightOnBox, DocumentText } from "@medusajs/icons"
 import {
   Badge,
@@ -13,6 +14,7 @@ import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { useOrderLifecycle } from "../hooks/use-order-lifecycle"
+import { usePanelActor } from "../hooks/use-panel-actor"
 import { formatDate, formatDateTime } from "../lib/date"
 import { formatDeliverySlot } from "../lib/delivery-slot"
 import { DOCUMENT_TYPE_META, DocumentType } from "../lib/documents"
@@ -26,11 +28,14 @@ import {
   orderPaymentStateMeta,
   orderStatusMeta,
   orderTransitions,
+  transitionsForActor,
 } from "../lib/order"
 import { sdk } from "../lib/sdk"
 import DisputeCardDrawer from "./dispute-card-drawer"
 import { disputeCategoryMeta } from "../lib/reviews"
+import ApproveDebtPrompt from "./approve-debt-prompt"
 import CancelOrderPrompt from "./cancel-order-prompt"
+import OrderPaymentSection from "./order-payment-section"
 import DeliverOrderPrompt from "./deliver-order-prompt"
 import RescheduleDeliveryPrompt from "./reschedule-delivery-prompt"
 
@@ -59,11 +64,14 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
   const [rescheduleOpen, setRescheduleOpen] = useState(false)
   // Открытое рабочее место претензии по этому заказу (T4.11).
   const [disputeId, setDisputeId] = useState<string | null>(null)
+  // Подтверждение заказа «в долг» — диалог срока возврата.
+  const [approveDebtOpen, setApproveDebtOpen] = useState(false)
 
   useEffect(() => {
     setCancelOpen(false)
     setDeliverOpen(false)
     setRescheduleOpen(false)
+    setApproveDebtOpen(false)
   }, [orderId])
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -73,13 +81,24 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
         `/admin/orders/${orderId}/lifecycle/card`
       ),
     enabled: !!orderId,
+    // Покупатель меняет заказ сам (способ оплаты, чек, отмена): открытая
+    // карточка подтягивает свежее, чтобы продавец не решал по устаревшему.
+    refetchInterval: 20_000,
+    refetchOnWindowFocus: true,
   })
 
   const card = data?.order_card ?? null
   const statusMeta = card?.status ? orderStatusMeta(card.status) : null
+  const actor = usePanelActor()
   const transitions = card
-    ? orderTransitions(card.delivery_method, card.status)
+    ? transitionsForActor(
+        orderTransitions(card.delivery_method, card.status),
+        actor
+      )
     : []
+  // Сборщик из карточки только отгружает: перенос доставки и претензии —
+  // работа продавца.
+  const isPicker = actor === "picker"
   const cancelTransition = transitions.find((entry) => entry.path === "cancel")
   const deliverTransition = transitions.find((entry) => entry.path === "deliver")
 
@@ -92,6 +111,11 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
     }
     if (transition.prompt) {
       setCancelOpen(true)
+      return
+    }
+    // Подтвердить заказ «в долг» — значит одобрить долг: сначала срок возврата.
+    if (transition.path === "confirm" && card.payment?.status === "debt_requested") {
+      setApproveDebtOpen(true)
       return
     }
 
@@ -136,8 +160,10 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
           <div className="flex flex-col gap-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <Drawer.Title>
-                {card?.display_id != null
-                  ? t("orderQueue.orderNo", { id: card.display_id })
+                {card && (card.display_id != null || card.order_number)
+                  ? t("orderQueue.orderNo", {
+                      id: orderLabel(card.order_number, card.display_id),
+                    })
                   : t("orderCard.title")}
               </Drawer.Title>
               {statusMeta && (
@@ -162,14 +188,16 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
                     документов, отзывы и ядровые операции. Ссылка живёт в шапке,
                     а не среди кнопок футера — футер отдан действиям над
                     заказом, и четвёртая кнопка ломала его в две строки. */}
-                <button
-                  type="button"
-                  className="sm-card-link"
-                  onClick={() => navigate(`/orders/${card.order_id}`)}
-                >
-                  <ArrowUpRightOnBox />
-                  {t("orderCard.openOrder")}
-                </button>
+                {!isPicker && (
+                  <button
+                    type="button"
+                    className="sm-card-link"
+                    onClick={() => navigate(`/orders/${card.order_id}`)}
+                  >
+                    <ArrowUpRightOnBox />
+                    {t("orderCard.openOrder")}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -191,11 +219,28 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
             </Text>
           ) : (
             <>
-              <ActiveDispute card={card} onOpen={setDisputeId} />
+              <ActiveDispute
+                card={card}
+                onOpen={isPicker ? undefined : setDisputeId}
+              />
               <Timeline card={card} />
               <Customer card={card} />
+              {card.payment && (
+                <OrderPaymentSection
+                  orderId={card.order_id}
+                  displayId={card.display_id}
+                  orderNumber={card.order_number}
+                  payment={card.payment}
+                  readOnly={isPicker}
+                />
+              )}
               <Items card={card} />
-              <Delivery card={card} onReschedule={() => setRescheduleOpen(true)} />
+              <Delivery
+                card={card}
+                onReschedule={
+                  isPicker || !actor ? undefined : () => setRescheduleOpen(true)
+                }
+              />
               <Documents card={card} />
             </>
           )}
@@ -237,7 +282,11 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
       <CancelOrderPrompt
         order={
           cancelOpen && card
-            ? { id: card.order_id, display_id: card.display_id ?? undefined }
+            ? {
+                id: card.order_id,
+                display_id: card.display_id ?? undefined,
+                order_number: card.order_number,
+              }
             : null
         }
         onClose={() => setCancelOpen(false)}
@@ -256,7 +305,11 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
       <RescheduleDeliveryPrompt
         order={
           rescheduleOpen && card
-            ? { id: card.order_id, display_id: card.display_id ?? undefined }
+            ? {
+                id: card.order_id,
+                display_id: card.display_id ?? undefined,
+                order_number: card.order_number,
+              }
             : null
         }
         onClose={() => setRescheduleOpen(false)}
@@ -269,6 +322,32 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
         isPending={rescheduleMutation.isPending}
       />
 
+      <ApproveDebtPrompt
+        order={
+          approveDebtOpen && card?.payment
+            ? {
+                id: card.order_id,
+                display_id: card.display_id,
+                order_number: card.order_number,
+                amount: card.payment.amount,
+                term_days: card.payment.debt_term_days ?? 14,
+              }
+            : null
+        }
+        onClose={() => setApproveDebtOpen(false)}
+        onSubmit={(id, dueDate) => {
+          const confirm = transitions.find((entry) => entry.path === "confirm")
+          if (!confirm) {
+            return
+          }
+          transitionMutation.mutate(
+            { orderId: id, transition: confirm, body: { debt_due_date: dueDate } },
+            { onSuccess: () => setApproveDebtOpen(false) }
+          )
+        }}
+        isPending={transitionMutation.isPending}
+      />
+
       <DisputeCardDrawer
         disputeId={disputeId}
         onClose={() => setDisputeId(null)}
@@ -277,7 +356,11 @@ const OrderCardDrawer = ({ orderId, onClose }: OrderCardDrawerProps) => {
       <DeliverOrderPrompt
         order={
           deliverOpen && card
-            ? { id: card.order_id, display_id: card.display_id ?? undefined }
+            ? {
+                id: card.order_id,
+                display_id: card.display_id ?? undefined,
+                order_number: card.order_number,
+              }
             : null
         }
         onClose={() => setDeliverOpen(false)}
@@ -309,7 +392,7 @@ const ActiveDispute = ({
   onOpen,
 }: {
   card: AdminOrderCard
-  onOpen: (disputeId: string) => void
+  onOpen?: (disputeId: string) => void
 }) => {
   const { t } = useTranslation()
   const dispute = card.active_dispute
@@ -326,14 +409,16 @@ const ActiveDispute = ({
             category: t(disputeCategoryMeta(dispute.category).label),
           })}
         </Text>
-        <Button
-          size="small"
-          variant="secondary"
-          data-sm-action="open-claim"
-          onClick={() => onOpen(dispute.id)}
-        >
-          {t("reviews.card.openClaim")}
-        </Button>
+        {onOpen && (
+          <Button
+            size="small"
+            variant="secondary"
+            data-sm-action="open-claim"
+            onClick={() => onOpen(dispute.id)}
+          >
+            {t("reviews.card.openClaim")}
+          </Button>
+        )}
       </div>
       <Text size="xsmall" className="text-ui-fg-subtle">
         {dispute.description}
@@ -575,7 +660,7 @@ const Delivery = ({
   onReschedule,
 }: {
   card: AdminOrderCard
-  onReschedule: () => void
+  onReschedule?: () => void
 }) => {
   const { t } = useTranslation()
   const { delivery } = card
@@ -588,6 +673,7 @@ const Delivery = ({
       title={t("orderCard.delivery")}
       anchor="delivery"
       action={
+        onReschedule &&
         canRescheduleDelivery(card.delivery_method, card.status) ? (
           <Button
             size="small"
@@ -608,7 +694,22 @@ const Delivery = ({
         <Field label={t("orderCard.slot")}>
           {formatDeliverySlot(delivery.slot_date, delivery.slot_window)}
         </Field>
-        <Field label={t("orderCard.address")}>{address || "—"}</Field>
+        <Field label={t("orderCard.address")}>
+          <span className="flex flex-col gap-y-0.5">
+            <span>{address || "—"}</span>
+            {delivery.map_url && (
+              <a
+                href={delivery.map_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="txt-compact-small text-ui-fg-interactive hover:underline"
+                data-sm-action="open-map"
+              >
+                {t("orderCard.openMap")}
+              </a>
+            )}
+          </span>
+        </Field>
         <Field label={t("orderCard.recipient")}>
           {delivery.recipient ?? "—"}
         </Field>

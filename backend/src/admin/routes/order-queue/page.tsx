@@ -1,3 +1,4 @@
+import { orderLabel } from "../../lib/order-label"
 import { defineRouteConfig } from "@medusajs/admin-sdk"
 import { ShoppingBag } from "@medusajs/icons"
 import {
@@ -18,6 +19,7 @@ import { useTranslation } from "react-i18next"
 import OrderCardDrawer from "../../components/order-card-drawer"
 import { DataTableListError } from "../../components/data-table-list-error"
 import { useOrderLifecycle } from "../../hooks/use-order-lifecycle"
+import { usePanelActor } from "../../hooks/use-panel-actor"
 import { dataTableRow } from "../../lib/data-table-row"
 import { formatDeliverySlotShort } from "../../lib/delivery-slot"
 import { formatAmount } from "../../lib/money"
@@ -31,6 +33,7 @@ import {
   orderQueueChipCount,
   orderStatusMeta,
   orderTransitions,
+  transitionsForActor,
 } from "../../lib/order"
 import { routeLabel } from "../../lib/route-label"
 import { sdk } from "../../lib/sdk"
@@ -133,7 +136,11 @@ const OrdersPage = () => {
       size: 76,
       header: t("orderQueue.colOrder"),
       cell: ({ row }) => {
-        const id = row.original.order?.display_id
+        const order = row.original.order
+        const id =
+          order && (order.display_id != null || order.order_number)
+            ? orderLabel(order.order_number, order.display_id)
+            : null
         return (
           <span className="sm-cell-strong">
             {id == null ? "—" : t("orderQueue.orderNo", { id })}
@@ -444,11 +451,15 @@ const RowAction = ({
 }) => {
   const { t } = useTranslation()
   const { transitionMutation } = useOrderLifecycle()
+  // Сборку и отгрузку в компании ведут сборщики — продавцу компании в строке
+  // их не предлагаем (см. PanelActor).
+  const actor = usePanelActor()
 
   const order = item.order
-  const transition = orderTransitions(item.delivery_method, item.status).find(
-    (entry) => !entry.danger
-  )
+  const transition = transitionsForActor(
+    orderTransitions(item.delivery_method, item.status),
+    actor
+  ).find((entry) => !entry.danger)
 
   if (!order || !transition) {
     return <span className="sm-cell-num sm-pay-none">—</span>

@@ -3,6 +3,7 @@ import {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { prepareAssistantFiles } from "../../../../../lib/assistant/file-input"
+import { assistantStorefrontContext } from "../../../../../lib/tenants/storefront"
 import { runAssistantTurn } from "../../../../../lib/assistant/orchestrator"
 import { StoreAssistantChatType } from "../../validators"
 
@@ -76,6 +77,8 @@ export async function POST(
       req.scope,
       req.validatedBody.messages,
       {
+        // Канал и продавец витрины — из publishable key запроса.
+        ...(await assistantStorefrontContext(req.scope, req)),
         cartId: req.validatedBody.cart_id,
         customerId: req.auth_context?.actor_id,
         lastOrderId: req.validatedBody.order_id,

@@ -1,3 +1,4 @@
+import { orderLabel } from "@lib/util/order-label"
 import { HttpTypes } from "@medusajs/types"
 import { Text } from "@medusajs/ui"
 import { formatDate } from "@lib/i18n/format-date"
@@ -7,9 +8,11 @@ import { resolveLocale } from "@lib/i18n/resolve-locale"
 type OrderDetailsProps = {
   order: HttpTypes.StoreOrder
   showStatus?: boolean
+  // Номер для людей (ORG-26-0007) из оплаты заказа; нет — «№<display_id>».
+  orderNumber?: string | null
 }
 
-const OrderDetails = async ({ order, showStatus }: OrderDetailsProps) => {
+const OrderDetails = async ({ order, showStatus, orderNumber }: OrderDetailsProps) => {
   const [m, locale] = await Promise.all([getServerMessages(), resolveLocale()])
 
   // Статусы ядра переводим по словарю; неизвестное значение (новый статус
@@ -33,7 +36,9 @@ const OrderDetails = async ({ order, showStatus }: OrderDetailsProps) => {
       </Text>
       <Text className="mt-2 text-accent">
         {m.order.orderNumber}:{" "}
-        <span data-testid="order-id">{order.display_id}</span>
+        <span data-testid="order-id">
+          {orderLabel(orderNumber, order.display_id)}
+        </span>
       </Text>
 
       <div className="flex items-center text-compact-small gap-x-4 mt-4">

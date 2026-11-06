@@ -8,7 +8,8 @@ import OrderCardDrawer from "../../components/order-card-drawer"
 import { DataTableListError } from "../../components/data-table-list-error"
 import ShippingOrderRow from "../../components/shipping-order-row"
 import { useOrderLifecycle } from "../../hooks/use-order-lifecycle"
-import { orderTransitions } from "../../lib/order"
+import { usePanelActor } from "../../hooks/use-panel-actor"
+import { orderTransitions, transitionsForActor } from "../../lib/order"
 import { routeLabel } from "../../lib/route-label"
 import { sdk } from "../../lib/sdk"
 import {
@@ -51,6 +52,9 @@ const ShippingPage = () => {
     SHIPPING_QUEUE_CHIPS[0]
 
   const { transitionMutation } = useOrderLifecycle()
+  // Экран делят сотрудник площадки и сборщик компании: отгрузить может тот,
+  // кому переход разрешён (см. transitionsForActor).
+  const actor = usePanelActor()
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["shipping-queue", chip.key, pageIndex],
@@ -86,9 +90,10 @@ const ShippingPage = () => {
   // «Отгрузить» — тот же переход, что в карточке заказа; позиции и
   // fulfillment приходят готовыми в ship_target.
   const ship = (row: ShippingQueueOrder) => {
-    const transition = orderTransitions("delivery", row.order_status).find(
-      (entry) => entry.path === "ship"
-    )
+    const transition = transitionsForActor(
+      orderTransitions("delivery", row.order_status),
+      actor
+    ).find((entry) => entry.path === "ship")
     if (!transition || !row.ship_target) {
       return
     }

@@ -1,12 +1,15 @@
-import { AssistantMessage } from "@lib/data/assistant"
+import { AssistantAttachment, AssistantMessage } from "@lib/data/assistant"
 
 // Один диалог в локальной истории витрины. Бэкенд остаётся stateless: переписка
 // живёт на устройстве покупателя (DECISIONS 2026-07-24), как в mobile (T2.5).
-// Вставки НЕ сохраняются — они эфемерны и относятся к последнему ходу.
 export type ChatConversation = {
   id: string
   title: string
   messages: AssistantMessage[]
+  // Карточки ответов (статус заказа, документы) по месту ответа в ленте: ушёл
+  // со страницы и вернулся — карточки на месте, как и текст. Карточки-действия
+  // (оплата, форма доставки, вход) не сохраняются — см. isLastingAttachment.
+  cards?: Record<number, AssistantAttachment[]>
   cartId?: string
   orderId?: string
   updatedAt: number
@@ -14,6 +17,30 @@ export type ChatConversation = {
   // перетирается автозаголовком по первой реплике на каждом ходе.
   titleCustom?: boolean
 }
+
+// Карточка, которая остаётся в ленте навсегда: снимок факта (статус заказа на
+// момент ответа, документы). Карточки-действия живут только под последним
+// ответом и только в текущем открытии чата: поднятый из истории QR давно
+// оплаченной корзины или форма уже сохранённого адреса сбивали бы с толку.
+//
+// Оплата оформленного заказа (`order_payment`) — тоже постоянная: в карточке
+// только id заказа, состояние она читает живым при каждом открытии.
+export const isLastingAttachment = (attachment: AssistantAttachment): boolean =>
+  attachment.type === "order_status" ||
+  attachment.type === "documents" ||
+  attachment.type === "order_payment"
+
+// Сохраняемые карточки диалога: только «вечные» и только у ответов, которые
+// ещё есть в ленте (после «Повторить ответ» хвост истории обрезается).
+export const lastingCards = (
+  cards: Record<number, AssistantAttachment[]>,
+  messageCount: number
+): Record<number, AssistantAttachment[]> =>
+  Object.fromEntries(
+    Object.entries(cards)
+      .map(([index, list]) => [Number(index), list.filter(isLastingAttachment)] as const)
+      .filter(([index, list]) => index < messageCount && list.length > 0)
+  )
 
 const TITLE_LIMIT = 48
 

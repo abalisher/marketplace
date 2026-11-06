@@ -1,7 +1,7 @@
 import { isCompaniesEnabled } from "../../feature-flags"
 import { AssistantTool } from "../types"
 import { addToCartTool } from "./add-to-cart"
-import { checkoutKaspiTool } from "./checkout-kaspi"
+import { checkoutPaymentTool } from "./checkout-payment"
 import { clearCartTool } from "./clear-cart"
 import { estimateMaterialsTool } from "./estimate-materials"
 import { getBuyerProfileTool } from "./get-buyer-profile"
@@ -10,8 +10,10 @@ import { openDisputeTool } from "./open-dispute"
 import { placeOrderTool } from "./place-order"
 import { removeFromCartTool } from "./remove-from-cart"
 import { requestAvrTool } from "./request-avr"
+import { saveBuyerProfileTool } from "./save-buyer-profile"
 import { searchProductsTool } from "./search-products"
 import { setDeliveryTool } from "./set-delivery"
+import { submitPaymentReceiptTool } from "./submit-payment-receipt"
 import { trackOrderTool } from "./track-order"
 import { updateCartItemTool } from "./update-cart-item"
 import { viewCartTool } from "./view-cart"
@@ -28,9 +30,11 @@ export const ASSISTANT_TOOLS: AssistantTool[] = [
   removeFromCartTool,
   clearCartTool,
   getBuyerProfileTool,
+  saveBuyerProfileTool,
   setDeliveryTool,
-  checkoutKaspiTool,
+  checkoutPaymentTool,
   placeOrderTool,
+  submitPaymentReceiptTool,
   trackOrderTool,
   getOrderDocumentsTool,
   requestAvrTool,

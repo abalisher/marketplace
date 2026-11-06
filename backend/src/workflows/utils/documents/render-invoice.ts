@@ -1,6 +1,11 @@
 import { amountInWords, pluralForm } from "../../../lib/format/amount-in-words"
+import { orderLabel } from "../../../lib/orders/order-number"
 import { DocumentCanvas } from "./document-canvas"
-import { DocumentRenderInput } from "./document-snapshot"
+import {
+  DocumentRenderInput,
+  itemsVat,
+  sellerVatRate,
+} from "./document-snapshot"
 import {
   formatAmount,
   formatDocumentDate,
@@ -49,8 +54,8 @@ export const renderInvoice = (
   )
   canvas.moveDown(0.2)
   const orderLine =
-    snapshot.order.display_id != null
-      ? `Заказ № ${snapshot.order.display_id} от ${formatDocumentDate(
+    orderLabel(snapshot.order.number, snapshot.order.display_id)
+      ? `Заказ ${orderLabel(snapshot.order.number, snapshot.order.display_id)} от ${formatDocumentDate(
           snapshot.order.created_at
         )}`
       : "Заказ оформлен на маркетплейсе"
@@ -126,7 +131,12 @@ export const renderInvoice = (
       `− ${formatMoney(snapshot.totals.bonus, currency)}`
     )
   }
-  canvas.totalsLine("НДС:", "не облагается")
+  // Цены продавца — с НДС: плательщику документ выделяет НДС из суммы позиций.
+  const vatRate = sellerVatRate(snapshot.seller)
+  canvas.totalsLine(
+    vatRate ? `В т.ч. НДС ${vatRate}%:` : "НДС:",
+    vatRate ? formatMoney(itemsVat(snapshot.items, vatRate), currency) : "не облагается"
+  )
   canvas.totalsLine(
     isCompany ? "Всего к оплате:" : "Итого к оплате:",
     formatMoney(snapshot.totals.money, currency),
@@ -286,6 +296,74 @@ const renderPaymentMark = (
       "Фискальный чек на оплату приходит в приложении банка. " +
         "Настоящий документ подтверждает состав и стоимость заказа.",
       { size: 7.5, muted: true }
+    )
+  } else if (payment?.method === "kaspi_transfer" && payment.transfer_phone) {
+    // Перевод на номер Kaspi продавца: номер, получатель и что написать в
+    // комментарии, чтобы продавец сопоставил перевод с заказом.
+    canvas.paragraph("Оплата переводом Kaspi", { size: 9, bold: true })
+    canvas.moveDown(0.2)
+    if (payment.paid_amount && payment.outstanding != null) {
+      canvas.paragraph(
+        `Оплачено ${formatMoney(payment.paid_amount, snapshot.order.currency_code)}, осталось оплатить ${formatMoney(payment.outstanding, snapshot.order.currency_code)}.`,
+        { size: 8 }
+      )
+      canvas.moveDown(0.2)
+    }
+    canvas.paragraph(
+      [
+        `Номер Kaspi: ${payment.transfer_phone}`,
+        payment.transfer_recipient ? `получатель: ${payment.transfer_recipient}` : null,
+        orderLabel(snapshot.order.number, snapshot.order.display_id)
+          ? `комментарий к переводу: «Заказ ${orderLabel(snapshot.order.number, snapshot.order.display_id)}»`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
+      { size: 8 }
+    )
+    canvas.moveDown(0.3)
+    canvas.paragraph(
+      "Заказ передаётся в работу после того, как продавец получит перевод.",
+      { size: 7.5, muted: true }
+    )
+  } else if (payment?.method === "kaspi_qr") {
+    // Kaspi QR, выставленный уже после оформления (покупатель сменил способ):
+    // счёт Kaspi — на странице заказа, реквизиты для банковского платежа не нужны.
+    canvas.paragraph("Оплата: Kaspi QR", { size: 9, bold: true })
+    canvas.moveDown(0.2)
+    canvas.paragraph(
+      "Счёт Kaspi с QR-кодом — на странице заказа и в чате магазина. После оплаты заказ " +
+        "отмечается оплаченным автоматически.",
+      { size: 8 }
+    )
+  } else if (payment?.method === "debt") {
+    // В долг: срок и порядок возврата согласует продавец при подтверждении;
+    // после одобрения в счёте — срок, после частичного погашения — остаток.
+    canvas.paragraph(
+      payment.due_date
+        ? `Оплата: в долг до ${formatShortDate(payment.due_date)}`
+        : "Оплата: в долг",
+      { size: 9, bold: true }
+    )
+    canvas.moveDown(0.2)
+    if (payment.paid_amount && payment.outstanding != null) {
+      canvas.paragraph(
+        `Оплачено ${formatMoney(payment.paid_amount, snapshot.order.currency_code)}, осталось оплатить ${formatMoney(payment.outstanding, snapshot.order.currency_code)}.`,
+        { size: 8 }
+      )
+      canvas.moveDown(0.2)
+    }
+    canvas.paragraph(
+      (payment.due_date
+        ? "Отсрочка одобрена продавцом."
+        : "Отсрочку оплаты одобряет продавец при подтверждении заказа и назначает срок возврата.") +
+        (payment.transfer_phone
+          ? ` Вернуть долг можно переводом на Kaspi ${payment.transfer_phone}` +
+            (orderLabel(snapshot.order.number, snapshot.order.display_id)
+              ? ` с комментарием «Заказ ${orderLabel(snapshot.order.number, snapshot.order.display_id)}».`
+              : ".")
+          : ""),
+      { size: 8 }
     )
   } else {
     canvas.paragraph("Реквизиты для оплаты", { size: 9, bold: true })

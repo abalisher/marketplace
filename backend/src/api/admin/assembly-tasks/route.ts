@@ -11,12 +11,15 @@ import {
   emptyTaskCounts,
   loadOrderRefs,
 } from "./rows"
+import { loadAssemblyOrderIds } from "../../../lib/tenants/scope"
+import { getTenantScope } from "../../utils/tenant-access"
 import { resolveRequestPicker } from "./picker"
 import { AdminGetAssemblyTasksParamsType } from "./validators"
 
 // GET /admin/assembly-tasks — очередь заданий сборки. Один ресурс на два
-// экрана: сборщик (T10.12) видит только свою группу — категория подставляется
-// из его учётки и перекрывает присланный фильтр; отгрузка (T10.13) видит все
+// экрана: сборщик видит только свою работу — задания подтверждённых заказов
+// своей компании (сборщик площадки — заказов вне компаний) и, если у него
+// проставлена группа, только своей категории; отгрузка (T10.13) видит все
 // задания и фильтрует сама. Строку целиком собирает rows.ts — экраны ничего
 // не пересчитывают.
 export async function GET(
@@ -29,21 +32,45 @@ export async function GET(
   const service = req.scope.resolve<AssemblyModuleService>(ASSEMBLY_MODULE)
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
-  const picker = await resolveRequestPicker(req)
+  // В панель компании пускают только её сборщиков (tenant-access).
+  const tenant = getTenantScope(req)
+  const picker = tenant
+    ? { ...(await resolveRequestPicker(req)), is_picker: true }
+    : await resolveRequestPicker(req)
   const group = picker.is_picker ? picker.group : (category ?? null)
 
-  // Сборщик без группы — учётка заведена не до конца: чужие задания ему не
-  // показываем (пустая очередь честнее, чем все категории разом).
-  if (picker.is_picker && !group) {
+  const empty = () => {
     res.json({
       assembly_tasks: [],
       counts: { total: 0, by_status: emptyTaskCounts() },
-      group: null,
+      group: group ?? null,
       count: 0,
       offset,
       limit,
     })
+  }
+
+  // Сборщик площадки без группы — учётка заведена не до конца: чужие задания
+  // ему не показываем (пустая очередь честнее, чем все категории разом). У
+  // сборщика компании группа необязательна — он собирает все категории.
+  if (picker.is_picker && !tenant && !group) {
+    empty()
     return
+  }
+
+  let orderIds: string[] | null = null
+  if (picker.is_picker) {
+    orderIds = await loadAssemblyOrderIds(
+      req.scope,
+      tenant?.sales_channel_id ?? null
+    )
+    if (order_id) {
+      orderIds = orderIds.filter((id) => id === order_id)
+    }
+    if (!orderIds.length) {
+      empty()
+      return
+    }
   }
 
   // База для счётчиков чипов — всё, кроме самого статуса.
@@ -51,7 +78,9 @@ export async function GET(
   if (group) {
     baseFilters.category_handle = group
   }
-  if (order_id) {
+  if (orderIds) {
+    baseFilters.order_id = orderIds
+  } else if (order_id) {
     baseFilters.order_id = order_id
   }
 
@@ -65,8 +94,9 @@ export async function GET(
       skip: offset,
       take: limit,
       relations: ["items"],
-      // FIFO: старые задания сверху — с них и начинают.
-      order: { created_at: "ASC" },
+      // Новые задания сверху (решение владельца 2026-11-05: сборщик ищет
+      // глазами только что подтверждённый заказ; прежде был FIFO).
+      order: { created_at: "DESC" },
     }),
     countAssemblyTasks(
       (statusFilters) =>

@@ -4,6 +4,7 @@ import {
   checkoutEmail,
   missingProfileFields,
   readBuyerIdentity,
+  sameAddressText,
   requireLogin,
 } from "../tools/buyer-identity"
 import { AssistantContext } from "../types"
@@ -25,6 +26,7 @@ const BuyerIdentityFixture = (
   email: "",
   address: null,
   address_id: null,
+  address_geo: null,
   ...over,
 })
 
@@ -38,6 +40,33 @@ const containerWithCustomer = (
   }) as unknown as MedusaContainer
 
 describe("readBuyerIdentity", () => {
+  it("без адреса по умолчанию берёт самый свежий — с точкой на карте", async () => {
+    const identity = await readBuyerIdentity(
+      containerWithCustomer({
+        id: "cus_1",
+        phone: "+77011234567",
+        addresses: [
+          {
+            id: "addr_old",
+            address_1: "Асфендиярова 11",
+            is_default_shipping: false,
+            created_at: "2026-10-30T11:32:38Z",
+          },
+          {
+            id: "addr_new",
+            address_1: "Кабанбай батыр проспект, 60а/17",
+            is_default_shipping: false,
+            created_at: "2026-11-02T09:45:27Z",
+            metadata: { lat: 51.093631, lng: 71.408469 },
+          },
+        ],
+      }),
+      "cus_1"
+    )
+    expect(identity?.address_id).toEqual("addr_new")
+    expect(identity?.address_geo).toEqual({ lat: 51.093631, lng: 71.408469 })
+  })
+
   it("собирает профиль и берёт адрес по умолчанию", async () => {
     const identity = await readBuyerIdentity(
       containerWithCustomer({
@@ -127,5 +156,14 @@ describe("requireLogin", () => {
     expect(context.attachments).toEqual([
       { type: "auth_prompt", reason: "checkout" },
     ])
+  })
+})
+
+describe("один ли это адрес", () => {
+  it("не различает «ул.», «д.», запятые и регистр", () => {
+    expect(sameAddressText("ул. Асфендиярова, д. 11", "Асфендиярова 11")).toBe(true)
+    expect(sameAddressText("Асфендиярова, 11", "асфендиярова 11")).toBe(true)
+    expect(sameAddressText("Асфендиярова 11", "Асфендиярова 13")).toBe(false)
+    expect(sameAddressText("", "")).toBe(false)
   })
 })

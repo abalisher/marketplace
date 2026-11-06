@@ -8,6 +8,7 @@ import { buildExportTable, priceStockFileName } from "../export"
 import { loadPriceStockSlice } from "../load"
 import { withLocationNames } from "../rows"
 import { AdminExportPriceStockParamsType } from "../validators"
+import { getTenantScope } from "../../../utils/tenant-access"
 
 // GET /admin/price-stock/export — тот же срез, что на экране (склад, поиск,
 // чипы), но файлом и ЦЕЛИКОМ, а не страницей: продавец выгружает то, что видит,
@@ -23,13 +24,14 @@ export async function GET(
     req.validatedQuery as AdminExportPriceStockParamsType
 
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const { rows, locationNames } = await loadPriceStockSlice(query, {
-    q,
-    category,
-    status,
-    stock,
-    location_id,
-  })
+  // Продавец компании выгружает только свой каталог и склады своего канала.
+  const tenant = getTenantScope(req)
+  const { rows, locationNames } = await loadPriceStockSlice(
+    query,
+    { q, category, status, stock, location_id },
+    tenant?.stock_location_ids,
+    tenant?.sales_channel_id
+  )
 
   const csv = serializeTable(
     buildExportTable(withLocationNames(rows, locationNames))

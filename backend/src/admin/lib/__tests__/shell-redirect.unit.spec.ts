@@ -1,6 +1,10 @@
 import {
+  DELIVERY_PATH,
   HOME_PATH,
   PICKER_PATH,
+  SHIPPING_PATH,
+  REVIEWS_PATH,
+  STOCK_PATH,
   LOGIN_PATH,
   QUEUE_PATH,
   redirectFor,
@@ -15,10 +19,9 @@ import {
 const ORDER_PAGE = "/app/orders/order_01JABCDEF"
 
 describe("redirectFor", () => {
-  // Сборщик (решение владельца 2026-09-06): рабочее место мобильное, в панели
-  // ему полагается одна заглушка. До этого роль `picker` падала в `owner` и
-  // сборщик открывал панель магазина целиком.
-  it("сборщика уводит на заглушку с любого адреса панели", () => {
+  // Сборщик: в панели у него задания сборки и отгрузка. До ограничения роль
+  // `picker` падала в `owner` и сборщик открывал панель магазина целиком.
+  it("сборщика уводит на задания сборки с любого чужого адреса панели", () => {
     for (const target of [
       "/app",
       "/app/dashboard",
@@ -31,8 +34,11 @@ describe("redirectFor", () => {
     }
   })
 
-  it("сборщика не уводит с его собственной страницы и со входа", () => {
+  it("сборщика не уводит с его страниц и со входа", () => {
     expect(redirectFor(PICKER_PATH, PICKER_PATH, "picker")).toBeNull()
+    expect(redirectFor(SHIPPING_PATH, PICKER_PATH, "picker")).toBeNull()
+    expect(redirectFor(REVIEWS_PATH, PICKER_PATH, "picker")).toBeNull()
+    expect(redirectFor(STOCK_PATH, PICKER_PATH, "picker")).toBeNull()
     expect(redirectFor(`${PICKER_PATH}/`, PICKER_PATH, "picker")).toBeNull()
     expect(redirectFor("/app/login", "/app/login", "picker")).toBeNull()
   })
@@ -82,5 +88,20 @@ describe("redirectFor", () => {
 
   it("не перехватывает возврат на страницу, с которой выкинуло по сессии", () => {
     expect(redirectFor(ORDER_PAGE, LOGIN_PATH)).toBeNull()
+  })
+})
+
+// Водитель компании: в панели у него один экран — «Доставка».
+describe("redirectFor — водитель", () => {
+  it("уводит с любого адреса панели на «Доставку»", () => {
+    for (const target of ["/app", HOME_PATH, QUEUE_PATH, ORDER_PAGE, PICKER_PATH, STOCK_PATH]) {
+      expect(redirectFor(target, "/app", "driver")).toBe(DELIVERY_PATH)
+    }
+  })
+
+  it("оставляет «Доставку» и вход", () => {
+    expect(redirectFor(DELIVERY_PATH, DELIVERY_PATH, "driver")).toBeNull()
+    expect(redirectFor(`${DELIVERY_PATH}/`, DELIVERY_PATH, "driver")).toBeNull()
+    expect(redirectFor(LOGIN_PATH, LOGIN_PATH, "driver")).toBeNull()
   })
 })

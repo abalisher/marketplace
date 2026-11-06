@@ -4,7 +4,8 @@
 > `POST /store/orders` (наш placeOrder + delivery_method), гейт логина в чекауте, оплата Kaspi в
 > чекауте и чате (init/поллинг через наш роут, `KaspiPaymentButton`, общий блок счёта
 > `common/components/kaspi-pay-panel`, env `KASPI_MOCK_SCENARIO` для мока),
-> бонусы в чекауте (`lib/data/bonus.ts`, `bonus-form`, строка в cart-totals из `credit_lines` —
+> бонусы в чекауте (`lib/data/bonus.ts`; форма списания `bonus-form` снята с чекаута 2026-09-14 и
+> удалена 2026-10-01; строка в cart-totals из `credit_lines` —
 > `*credit_lines` обязателен в fields, иначе total без вычета), decodeURIComponent для
 > кириллических handle. Текущее состояние — docs/STATE.md.
 
@@ -26,7 +27,8 @@
   тьма в `.dark` на `<html>`) + классы Tailwind `text-ink`, `text-ink-secondary`, `border-line`,
   `bg-surface`, `bg-surface-dim`, `text-accent`, `bg-accent-container`, `success`/`warning`/`error`,
   `kaspi`, `scrim`, радиусы `rounded-chip|card|bubble|field`, кегли `text-body-large` и т.п.
-  Источник значений — `mobile/packages/ui_kit` (`AppColors`/`AppColorsDark`, `AppTypography`).
+  Источник значений — `mobile/packages/ui_kit` (`AppColors`/`AppColorsDark`, `AppTypography`), кроме
+  акцента: на витрине он зелёный (решение владельца 2026-10-01, затемнён до AA — см. `tokens.css`).
 - Гарнитура — **Roboto** (решение владельца 2026-09-14, эталон Gemini): `src/lib/fonts/roboto.ts`,
   один переменный файл в `src/fonts`, подключается в корневом layout, берётся через `font-sans`.
   Знака ₸ в Roboto НЕТ — он приходит вырезкой `src/lib/fonts/roboto-tenge.ts` (1 КБ), стоящей в
@@ -54,7 +56,17 @@
   `modules/assistant/components/*`; карточек подбора в ленте НЕТ (T10.19) — количество правится
   только в полосе корзины `cart-bar`, вторую точку счётчиков в ленту не возвращать;
   разбор по дискриминатору в `attachment-list`, неизвестный тип пропускается. История диалогов —
-  `lib/chat-history/` (localStorage `sm_chat_history`, бэкенд stateless). Оформление требует входа
+  `lib/chat-history/` (localStorage `sm_chat_history_<витрина>_<usr_id|guest>`; id покупателя
+  приходит с сервера, гостевая история при входе переходит покупателю). У вошедшего покупателя
+  история ещё и на сервере (`/store/assistant/conversations`, `lib/data/chat-history.ts`, решение
+  владельца 2026-10-29): после чтения устройства она сводится с серверной (`lib/chat-history/sync.ts` —
+  свежая копия побеждает, удалённый на другом устройстве диалог убирается), каждое изменение уходит
+  на сервер. Ход ассистента по-прежнему stateless. Карточки
+  `order_status`/`documents` сохраняются в историю под своим ответом и остаются в ленте; карточки-
+  действия (`payment`/`delivery_form`/`auth_prompt`) — только под последним ответом и не сохраняются
+  (`isLastingAttachment` в `lib/chat-history/conversation.ts`). Вставка
+  `delivery_form` — мини-форма доставки (`delivery-form-attachment`, поля по `missing_fields`).
+  Вопрос по ссылке `/chat?prompt=` только подставляется в поле — сам НЕ отправляется. Оформление требует входа
   (T10.8): вставка `auth_prompt` ведёт на `/account?redirect=…/chat?logged_in=1`, вход по номеру
   возвращает по `redirect`, а шаблон чата по метке `logged_in` сам продолжает диалог. Документы заказа —
   `lib/data/documents.ts` + `modules/order/components/order-documents`.
@@ -96,7 +108,10 @@
 - Текст ответа ассистента разбирается `lib/util/assistant-markdown.ts` (абзацы + `ul`/`ol`);
   инлайн-`**жирный**` рисует сам `chat-bubble`. Полного markdown-рендера нет и не нужно.
 - Возврат на `/chat` поднимает последний диалог из локальной истории (лента и токены), а не
-  начинает новый (T3.11). Вставки при этом не восстанавливаются — они эфемерны.
+  начинает новый (T3.11) — вместе с карточками заказа и документов.
+- Карточка заказа в кабинете: код получения — только до вручения; у доставленного/закрытого заказа —
+  отзыв (`modules/cabinet/components/order-review`, оценки «товары и продавец» и «доставка», по
+  одной на объект — правило проверяет бэкенд) и ссылка «напишите в чат» для претензии.
 - **Кабинет клиента** (T10.6b) — в оболочке чата: `modules/cabinet` (`CabinetShell` — тот же
   `chat-rail`, разделы в нём же `cabinet-rail-links`, ряд чипов `cabinet-nav` ТОЛЬКО на мобильном)
   и страницы `(chat)/cabinet/{orders,orders/[id],cart,documents,profile}`. Данные — `lib/data/
@@ -112,6 +127,15 @@
   этому не противоречит: он ТОЛЬКО показывает состав и итог и ведёт обратно в чат.
 - **Заказы не кэшируем** (`cache: "no-store"` в `lib/data/orders.ts`): их оформляет бэкенд — и через
   чат, и через панель, — инвалидировать тег `orders` из витрины некому (T3.9, блокер Б3).
+
+## Витрина компании-продавца (мультипродавец)
+- Адрес `/<cc>/t/<slug>` (страница `(tenant)/t/[slug]`, данные — `GET /store/tenants/:slug`). Middleware
+  запоминает компанию httpOnly-cookie `_sm_tenant` на сессию; лендинг площадки `/landing` её снимает.
+  Старые `/<cc>/companya|companyb` — 308 на новые адреса.
+- Компанию читает ТОЛЬКО сервер: `lib/data/tenant.ts`. В бэкенд она уходит своим publishable key —
+  подставляет обёртка `sdk.client.fetch` в `lib/config.ts` и прокси `app/api/assistant/*`. Не слать
+  «x-tenant-*» заголовков и не читать/писать cookie компании из клиентского кода.
+- Сессия покупателя одна на всю площадку (`_medusa_jwt`): покупатель — клиент площадки, а не компании.
 
 ## Важно про стенд
 После `npm run build` перезапускайте `npm start`: старый процесс отдаёт HTML со ссылками на уже

@@ -1,5 +1,5 @@
 import React from "react"
-import { CreditCard } from "@medusajs/icons"
+import { Cash, Clock, CreditCard } from "@medusajs/icons"
 
 import Ideal from "@modules/common/icons/ideal"
 import Bancontact from "@modules/common/icons/bancontact"
@@ -38,6 +38,17 @@ export const paymentInfoMap: Record<
     title: "Kaspi QR",
     icon: <CreditCard />,
   },
+  // Способы оплаты продавца без банка: перевод на номер Kaspi и «в долг».
+  // Подписи здесь — запасные (русский по умолчанию); на экранах покупателя
+  // заголовок берётся из словаря по коду способа (`paymentMethodByProvider`).
+  pp_transfer_offline: {
+    title: "Перевод на Kaspi",
+    icon: <Cash />,
+  },
+  pp_debt_offline: {
+    title: "В долг",
+    icon: <Clock />,
+  },
   // Add more payment providers here
 }
 
@@ -56,6 +67,56 @@ export const isManual = (providerId?: string) => {
 }
 export const isKaspi = (providerId?: string) => {
   return providerId?.startsWith("pp_kaspi_")
+}
+// Перевод на номер Kaspi продавца: заказ оформляется без оплаты, деньги
+// продавец отмечает сам.
+export const isTransfer = (providerId?: string) => {
+  return providerId?.startsWith("pp_transfer_")
+}
+// «В долг»: просьба продавцу, он одобряет (срок) или отменяет заказ.
+export const isDebt = (providerId?: string) => {
+  return providerId?.startsWith("pp_debt_")
+}
+
+// Провайдер ядра → код способа оплаты бэкенда (зеркало METHOD_PROVIDER в
+// `backend/src/lib/payments/providers.ts`). null — провайдер не из наших.
+export const paymentMethodByProvider = (
+  providerId?: string | null
+): "kaspi_qr" | "kaspi_transfer" | "debt" | null => {
+  if (!providerId) {
+    return null
+  }
+  if (isKaspi(providerId)) {
+    return "kaspi_qr"
+  }
+  if (isTransfer(providerId)) {
+    return "kaspi_transfer"
+  }
+  if (isDebt(providerId)) {
+    return "debt"
+  }
+  return null
+}
+
+// Код способа оплаты → провайдер ядра (обратная сторона
+// `paymentMethodByProvider`): нужен, чтобы взять иконку из `paymentInfoMap`.
+export const paymentProviderByMethod: Record<
+  "kaspi_qr" | "kaspi_transfer" | "debt",
+  string
+> = {
+  kaspi_qr: "pp_kaspi_kaspi",
+  kaspi_transfer: "pp_transfer_offline",
+  debt: "pp_debt_offline",
+}
+
+// Ошибка выбора способа «продавец его не принимает»: бэкенд шлёт
+// `payment_method_unavailable:<reason>:…`, medusaError делает первую букву
+// заглавной. Возвращает код причины или null, если ошибка другая.
+export const paymentMethodUnavailableReason = (
+  message?: string | null
+): string | null => {
+  const match = /^payment_method_unavailable:([a-z_]+):/i.exec(message ?? "")
+  return match ? match[1].toLowerCase() : null
 }
 
 // Add currencies that don't need to be divided by 100

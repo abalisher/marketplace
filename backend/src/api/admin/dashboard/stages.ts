@@ -167,10 +167,12 @@ export function buildStageReport(
   }
 }
 
+// salesChannelId — только заказы канала (продавец компании); null — вся площадка.
 export async function loadOrderStageReport(
   query: Query,
   lifecycleService: OrderLifecycleModuleService,
-  now: Date = new Date()
+  now: Date = new Date(),
+  salesChannelId: string | null = null
 ): Promise<OrderStageReport> {
   const windowDays = stageReportDays()
   const from = new Date(now.getTime() - windowDays * 24 * 3_600_000)
@@ -178,7 +180,10 @@ export async function loadOrderStageReport(
   const { data: lifecycles } = await query.graph({
     entity: "order_lifecycle",
     fields: ["id", "created_at"],
-    filters: { created_at: { $gte: from.toISOString() } },
+    filters: {
+      created_at: { $gte: from.toISOString() },
+      ...(salesChannelId ? { sales_channel_id: salesChannelId } : {}),
+    },
     pagination: {
       skip: 0,
       take: MONEY_SCAN_CAP,

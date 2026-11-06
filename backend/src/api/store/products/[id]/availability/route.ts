@@ -1,8 +1,10 @@
-import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MedusaResponse, MedusaStoreRequest } from "@medusajs/framework/http"
 import {
   ContainerRegistrationKeys,
   MedusaError,
 } from "@medusajs/framework/utils"
+import { requestSalesChannelId } from "../../../../../lib/tenants/storefront"
+import { loadChannelAssortment } from "../../../../../lib/tenants/scope"
 
 // Числа инвентаря сериализуются как BigNumber — приводим к number.
 const toNumber = (value: unknown) => {
@@ -25,7 +27,7 @@ type CityAvailability = {
 // GET /store/products/:id/availability — остатки опубликованного товара
 // в разрезе город → склад (город = stock_location.address.city, отдельной
 // модели города нет — см. docs/modules/catalog.md). available = stocked - reserved.
-export async function GET(req: MedusaRequest, res: MedusaResponse) {
+export async function GET(req: MedusaStoreRequest, res: MedusaResponse) {
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
   const { data: products } = await query.graph({
@@ -45,8 +47,19 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
   })
 
   const product = products[0]
+  // У каждой компании свой каталог и свои склады: витрина канала видит только
+  // товары своего канала и остатки своих складов — чужой товар для неё «не
+  // найден», чужой склад не называется.
+  const salesChannelId = requestSalesChannelId(req)
+  const assortment = salesChannelId
+    ? await loadChannelAssortment(req.scope, salesChannelId)
+    : null
   // Неопубликованный товар для витрины не существует (черновики не раскрываем).
-  if (!product || product.status !== "published") {
+  if (
+    !product ||
+    product.status !== "published" ||
+    (assortment && !assortment.productIds.includes(product.id))
+  ) {
     throw new MedusaError(
       MedusaError.Types.NOT_FOUND,
       `Product with id ${req.params.id} not found`
@@ -62,7 +75,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
       const perLocation = new Map<string, number>()
       for (const item of variant.inventory_items ?? []) {
         for (const level of item?.inventory?.location_levels ?? []) {
-          if (!level?.location_id) {
+          if (
+            !level?.location_id ||
+            (assortment && !assortment.locationIds.has(level.location_id))
+          ) {
             continue
           }
           locationIds.add(level.location_id)

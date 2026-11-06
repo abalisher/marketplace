@@ -11,7 +11,9 @@ import { sdk } from "./sdk"
 // ему полагается только заглушка со ссылкой на приложение (решение владельца
 // 2026-09-06). До этого роль `picker` не совпадала с `seller` и падала в
 // `owner`: сборщик открывал панель магазина целиком.
-export type ShellRole = "owner" | "seller" | "picker"
+// `driver` — водитель компании: в панели у него один экран — «Доставка»
+// (заказы в доставке и вручение по коду получения).
+export type ShellRole = "owner" | "seller" | "picker" | "driver"
 
 export const SHELL_ROLE_KEY = "role"
 
@@ -21,7 +23,10 @@ export const SHELL_ROLE_KEY = "role"
 const CACHE_KEY = "sm_shell_role"
 
 const isShellRole = (value: unknown): value is ShellRole =>
-  value === "owner" || value === "seller" || value === "picker"
+  value === "owner" ||
+  value === "seller" ||
+  value === "picker" ||
+  value === "driver"
 
 export const cachedShellRole = (): ShellRole | null => {
   try {

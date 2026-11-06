@@ -1,4 +1,5 @@
 import { retrieveCustomer } from "@lib/data/customer"
+import { getStorefrontTenant } from "@lib/data/tenant"
 import { resolveTheme } from "@lib/theme/resolve-theme"
 import CabinetGuest from "@modules/cabinet/components/cabinet-guest"
 import CabinetShell from "@modules/cabinet/templates/cabinet-shell"
@@ -11,13 +12,19 @@ export default async function CabinetLayout({
 }: {
   children: React.ReactNode
 }) {
-  const [theme, customer] = await Promise.all([
+  const [theme, customer, tenant] = await Promise.all([
     resolveTheme(),
     retrieveCustomer().catch(() => null),
+    getStorefrontTenant(),
   ])
 
   return (
-    <CabinetShell theme={theme} isAuthenticated={!!customer}>
+    <CabinetShell
+      theme={theme}
+      isAuthenticated={!!customer}
+      customerId={customer?.id ?? null}
+      store={tenant && { slug: tenant.slug, name: tenant.name }}
+    >
       {customer ? children : <CabinetGuest />}
     </CabinetShell>
   )

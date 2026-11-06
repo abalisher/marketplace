@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { isCompaniesEnabled } from "../../feature-flags"
 import { AssistantContext, AssistantTool } from "../types"
 import {
+  deliveryFormAttachment,
   missingProfileFields,
   readBuyerIdentity,
   requireLogin,
@@ -94,6 +95,21 @@ export const getBuyerProfileTool: AssistantTool = {
         : null,
     }
     const missing_fields = missingProfileFields(identity)
+    // Чего-то не хватает — под ответом мини-форма доставки.
+    if (missing_fields.length) {
+      context.attachments?.push(
+        deliveryFormAttachment(
+          {
+            first_name: profile.first_name ?? "",
+            last_name: profile.last_name ?? "",
+            phone: identity.phone || identity.address?.phone || "",
+            address_1: identity.address?.address_1 ?? "",
+            city: identity.address?.city ?? "",
+          },
+          missing_fields
+        )
+      )
+    }
 
     // Юрлица заморожены (T10.9): дальше про компанию не смотрим и не отвечаем.
     if (!isCompaniesEnabled()) {

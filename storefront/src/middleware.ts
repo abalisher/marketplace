@@ -130,6 +130,55 @@ const chatRedirect = (request: NextRequest, countryCode: string) => {
   )
 }
 
+// Витрина компании-продавца (мультипродавец): адрес /<cc>/t/<slug>. Компания
+// запоминается на сессию httpOnly cookie — чат и кабинет после лендинга
+// продолжают работать от её имени; читает cookie только сервер
+// (lib/data/tenant.ts), существование компании проверяет он же. Лендинг
+// площадки возвращает покупателя на витрину площадки.
+const TENANT_COOKIE = "_sm_tenant"
+const TENANT_PATH = /^\/t\/([a-z0-9-]{1,64})\/?$/
+// Адреса первой версии (до 2026-10-01) — на постоянные. «Компания А» с
+// 2026-10-08 — ИП ORGSTROY (slug orgstroy), «Компания Б» с 2026-11-04 —
+// ИП NUR-STROI (slug nurstroi).
+const LEGACY_TENANT_PATH = /^\/(companya|companyb)\/?$/
+const LEGACY_TENANT_SLUG: Record<string, string> = {
+  companya: "orgstroy",
+  companyb: "nurstroi",
+}
+const RENAMED_TENANT_PATH = /^\/t\/(companya|companyb)\/?$/
+
+const withTenant = (
+  request: NextRequest,
+  countryCode: string,
+  response: NextResponse
+): NextResponse => {
+  const rest = request.nextUrl.pathname.replace(`/${countryCode}`, "") || "/"
+  const slug = TENANT_PATH.exec(rest)?.[1]
+  if (slug) {
+    response.cookies.set(TENANT_COOKIE, slug, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+    })
+  } else if (rest === "/landing") {
+    response.cookies.delete(TENANT_COOKIE)
+  }
+  return response
+}
+
+const legacyTenantRedirect = (request: NextRequest, countryCode: string) => {
+  const rest = request.nextUrl.pathname.replace(`/${countryCode}`, "") || "/"
+  const slug =
+    LEGACY_TENANT_PATH.exec(rest)?.[1] ?? RENAMED_TENANT_PATH.exec(rest)?.[1]
+  return slug
+    ? NextResponse.redirect(
+        `${request.nextUrl.origin}/${countryCode}/t/${LEGACY_TENANT_SLUG[slug] ?? slug}`,
+        308
+      )
+    : null
+}
+
 /**
  * Middleware to handle region selection and onboarding status.
  */
@@ -151,7 +200,13 @@ export async function middleware(request: NextRequest) {
 
   // if one of the country codes is in the url and the cache id is set, return next
   if (urlHasCountryCode && cacheIdCookie) {
-    return chatRedirect(request, countryCode) ?? NextResponse.next()
+    return withTenant(
+      request,
+      countryCode,
+      legacyTenantRedirect(request, countryCode) ??
+        chatRedirect(request, countryCode) ??
+        NextResponse.next()
+    )
   }
 
   // if one of the country codes is in the url and the cache id is not set, set the cache id and redirect
@@ -162,7 +217,7 @@ export async function middleware(request: NextRequest) {
       maxAge: 60 * 60 * 24,
     })
 
-    return withCookie
+    return withTenant(request, countryCode, withCookie)
   }
 
   // check if the url is a static asset

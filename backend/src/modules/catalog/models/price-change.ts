@@ -1,8 +1,9 @@
 import { model } from "@medusajs/framework/utils"
 
-// Источник правки: руками в строке экрана «Цены и остатки» или загрузкой файла
-// (T10.14c). По нему в журнале видно, чем объяснять массовый скачок цен.
-export const PRICE_CHANGE_SOURCES = ["manual", "import"] as const
+// Источник правки: руками в строке экрана «Цены и остатки», загрузкой файла
+// (T10.14c) или синхронизацией с 1С компании (lib/onec/sync.ts). По нему в
+// журнале видно, чем объяснять массовый скачок цен.
+export const PRICE_CHANGE_SOURCES = ["manual", "import", "onec"] as const
 export type PriceChangeSource = (typeof PRICE_CHANGE_SOURCES)[number]
 
 // Журнал правок цены и остатка: кто, когда, было → стало (T10.14).
@@ -29,8 +30,10 @@ const PriceChange = model
   new_price: model.bigNumber().nullable(),
   // Остаток на складе: было → стало (абсолютные числа, не дельта).
   location_id: model.text().nullable(),
-  old_stock: model.number().nullable(),
-  new_stock: model.number().nullable(),
+  // Дробные: остаток из 1С в м³, т, м² бывает дробным (34,95 м³) и должен
+  // совпадать с 1С точь-в-точь.
+  old_stock: model.bigNumber().nullable(),
+  new_stock: model.bigNumber().nullable(),
   // Кто правил: user_id админ-пользователя + снапшот имени для журнала.
   changed_by: model.text().nullable(),
   changed_by_name: model.text().nullable(),

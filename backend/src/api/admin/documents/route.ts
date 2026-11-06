@@ -6,6 +6,9 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { DOCUMENTS_MODULE } from "../../../modules/documents"
 import DocumentsModuleService from "../../../modules/documents/service"
 import { missingRequisites } from "../../../modules/documents/requisites"
+import { loadSellerSettings } from "../../../lib/tenants/requisites"
+import { loadChannelOrderIds } from "../../../lib/tenants/scope"
+import { getTenantScope } from "../../utils/tenant-access"
 import { serializeDocumentForAdmin } from "../../utils/serialize-document"
 import { AdminGetDocumentsParamsType } from "./validators"
 import { countByType, findOrderIdsBySearch, loadRegistryOrders } from "./rows"
@@ -33,10 +36,22 @@ export async function GET(
     req.scope.resolve<DocumentsModuleService>(DOCUMENTS_MODULE)
   const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
 
-  const settings = await documentsService.getOrCreateSettings()
+  // Продавец компании видит документы только заказов своего канала, а
+  // предупреждение о реквизитах — о реквизитах своей компании.
+  const tenant = getTenantScope(req)
+  const settings = await loadSellerSettings(
+    req.scope,
+    tenant?.sales_channel_id
+  )
 
   // База для счётчиков чипов — все фильтры, кроме самого типа.
   const baseFilters: Record<string, unknown> = { is_latest: true }
+  if (tenant) {
+    baseFilters.order_id = await loadChannelOrderIds(
+      req.scope,
+      tenant.sales_channel_id
+    )
+  }
   if (sent === "sent") {
     baseFilters.sent_to_buyer_at = { $ne: null }
   } else if (sent === "unsent") {

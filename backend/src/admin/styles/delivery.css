@@ -1,0 +1,134 @@
+/*
+ * Экран «Доставка» — рабочее место водителя: карточки заказов в пути. Экран
+ * открывают с телефона, поэтому карточка крупная, а действие «Вручить» — во всю
+ * ширину на узком экране.
+ *
+ * Свои классы вместо утилит Tailwind: дашборд поставляется собранным CSS (см.
+ * shipping.css). Цвета — только токены бренда (styles/brand.css).
+ */
+
+.sm-dlv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 24px 24px;
+}
+
+.sm-dlv-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid rgb(var(--sm-border));
+  border-radius: 12px;
+  background: rgb(var(--sm-surface));
+}
+
+.sm-dlv-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sm-dlv-number {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgb(var(--sm-ink));
+}
+
+.sm-dlv-total {
+  font-size: 16px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--sm-ink));
+  white-space: nowrap;
+}
+
+.sm-dlv-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sm-dlv-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  color: rgb(var(--sm-ink));
+}
+
+.sm-dlv-row > svg {
+  flex-shrink: 0;
+  color: rgb(var(--sm-ink-muted));
+}
+
+.sm-dlv-phone {
+  font-weight: 600;
+  color: rgb(var(--sm-accent));
+  white-space: nowrap;
+}
+
+.sm-dlv-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  list-style: none;
+  border-radius: 8px;
+  background: rgb(var(--sm-surface-dim));
+  font-size: 13px;
+  color: rgb(var(--sm-ink-secondary));
+}
+
+.sm-dlv-items > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sm-dlv-qty {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sm-dlv-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.sm-dlv-action {
+  min-height: 40px;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+.sm-dlv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  font-size: 13px;
+  color: rgb(var(--sm-ink-muted));
+}
+
+/* Телефон: действие — во всю ширину под палец. */
+@media (max-width: 640px) {
+  .sm-dlv-list {
+    padding: 12px;
+  }
+
+  .sm-dlv-action {
+    width: 100%;
+    min-height: 44px;
+  }
+}

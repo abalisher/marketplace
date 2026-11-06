@@ -462,6 +462,26 @@
           "price_editable": {
             "type": "boolean",
             "description": "Цену можно править здесь: она не задана правилами (регион, канал, количество)."
+          },
+          "managed_by": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "onec",
+              null
+            ],
+            "description": "Товар из 1С компании (её собственный каталог)."
+          },
+          "onec_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "price",
+                "stock"
+              ]
+            },
+            "description": "Что из цены и остатка ведёт 1С компании: эти поля только для чтения."
           }
         }
       },
@@ -649,7 +669,8 @@
               "stock_not_managed",
               "location_required",
               "unknown_location",
-              "duplicate_change"
+              "duplicate_change",
+              "onec_managed"
             ]
           },
           "title": {
@@ -856,7 +877,8 @@
               "fraction_stock",
               "price_rules",
               "stock_not_managed",
-              "location_required"
+              "location_required",
+              "onec_managed"
             ],
             "description": "Почему строку принять нельзя; null — строка идёт в партию."
           }

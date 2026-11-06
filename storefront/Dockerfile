@@ -21,7 +21,12 @@ ARG NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_BASE_URL
 ARG NEXT_PUBLIC_DEFAULT_REGION=kz
 ARG NEXT_PUBLIC_FEATURE_COMPANIES=false
+# Кнопка тестовой оплаты Kaspi (только стенд, см. src/lib/feature-flags.ts).
+ARG NEXT_PUBLIC_KASPI_MOCK=false
 ARG NEXT_PUBLIC_MEDIA_BASE_URL
+# Ключ карты 2ГИС для выбора адреса (публичный, виден в браузере). Пусто —
+# карты нет, адрес вводится текстом.
+ARG NEXT_PUBLIC_2GIS_KEY=
 # Адрес бэкенда НА ВРЕМЯ СБОРКИ. `next build` собирает данные страниц категорий
 # и товаров, то есть обращается к Store API прямо во время сборки; без этого
 # значения он идёт в дефолтный localhost:9000 и падает с ECONNREFUSED. В
@@ -32,7 +37,9 @@ ENV MEDUSA_BACKEND_URL=$MEDUSA_BACKEND_URL \
     NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
     NEXT_PUBLIC_DEFAULT_REGION=$NEXT_PUBLIC_DEFAULT_REGION \
     NEXT_PUBLIC_FEATURE_COMPANIES=$NEXT_PUBLIC_FEATURE_COMPANIES \
+    NEXT_PUBLIC_KASPI_MOCK=$NEXT_PUBLIC_KASPI_MOCK \
     NEXT_PUBLIC_MEDIA_BASE_URL=$NEXT_PUBLIC_MEDIA_BASE_URL \
+    NEXT_PUBLIC_2GIS_KEY=$NEXT_PUBLIC_2GIS_KEY \
     NODE_ENV=production
 
 RUN npm run build

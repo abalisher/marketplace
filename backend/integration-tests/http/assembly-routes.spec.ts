@@ -258,7 +258,10 @@ medusaIntegrationTestRunner({
 
     // Оформляет оплаченный заказ из перечисленных категорий и раскладывает его
     // на задания сборки (в бою распад делает подписчик на order.placed).
-    const placeOrderWithCategories = async (handles: string[]) => {
+    const placeOrderWithCategories = async (
+      handles: string[],
+      { confirm = true }: { confirm?: boolean } = {}
+    ) => {
       seq += 1
       const { result: cart } = await createCartWorkflow(container).run({
         input: {
@@ -307,6 +310,14 @@ medusaIntegrationTestRunner({
       // Распад делает подписчик на order.placed — событие доставляется после
       // завершения workflow, поэтому ждём появления заданий.
       await waitForTasks(result.order.id, handles.length)
+      // Сборщик берёт задания только подтверждённого продавцом заказа.
+      if (confirm) {
+        await api.post(
+          `/admin/orders/${result.order.id}/lifecycle/confirm`,
+          {},
+          { headers: adminHeaders }
+        )
+      }
       return result.order.id
     }
 
@@ -425,6 +436,38 @@ medusaIntegrationTestRunner({
     })
 
     describe("работа сборщика и агрегат статуса", () => {
+      it("неподтверждённый заказ сборщик не видит и взять не может", async () => {
+        const orderId = await placeOrderWithCategories(["electrical"], {
+          confirm: false,
+        })
+
+        const { data } = await api.get(
+          `/admin/assembly-tasks?order_id=${orderId}`,
+          { headers: pickerHeaders }
+        )
+        expect(data.assembly_tasks).toHaveLength(0)
+
+        const [task] = (await tasksOfOrder(orderId)).assembly_tasks
+        const res = await api
+          .post(`/admin/assembly-tasks/${task.id}/start`, {}, { headers: adminHeaders })
+          .catch((e) => e.response)
+        expect(res.status).toEqual(400)
+        expect(await lifecycleStatus(orderId)).toEqual("new")
+      })
+
+      it("первое взятое задание переводит заказ в «Собирается»", async () => {
+        const orderId = await placeOrderWithCategories(["finishing", "electrical"])
+        expect(await lifecycleStatus(orderId)).toEqual("confirmed")
+
+        const [first, second] = (await tasksOfOrder(orderId)).assembly_tasks
+        await api.post(`/admin/assembly-tasks/${first.id}/start`, {}, { headers: adminHeaders })
+        expect(await lifecycleStatus(orderId)).toEqual("assembling")
+
+        // Второе задание статус заказа уже не трогает.
+        await api.post(`/admin/assembly-tasks/${second.id}/start`, {}, { headers: adminHeaders })
+        expect(await lifecycleStatus(orderId)).toEqual("assembling")
+      })
+
       it("заказ собран, когда закрыто последнее задание", async () => {
         const orderId = await placeOrderWithCategories([
           "finishing",
@@ -436,7 +479,7 @@ medusaIntegrationTestRunner({
         expect(first.assembly_task.status).toEqual("assembled")
         // Заказ ещё в сборке: второе задание не закрыто.
         expect(first.order_assembly.is_finished).toBe(false)
-        expect(await lifecycleStatus(orderId)).toEqual("new")
+        expect(await lifecycleStatus(orderId)).toEqual("assembling")
 
         const second = await workTask(tasks[1].id)
         expect(second.order_assembly.is_finished).toBe(true)

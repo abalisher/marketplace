@@ -10,16 +10,15 @@ import {
   toast,
 } from "@medusajs/ui"
 import { useQuery } from "@tanstack/react-query"
+import { useFeatureFlags } from "../hooks/use-feature-flags"
 import { useTranslation } from "react-i18next"
 import { useDocuments } from "../hooks/use-documents"
 import { formatDateTime } from "../lib/date"
 import {
-  AdminDocumentSettingsResponse,
   AdminOrderDocument,
   AdminOrderDocumentsResponse,
   DOCUMENT_TYPE_META,
   DocumentType,
-  REQUIRED_REQUISITE_FIELDS,
 } from "../lib/documents"
 import { sdk } from "../lib/sdk"
 
@@ -42,6 +41,7 @@ const ISSUABLE_TYPES: DocumentType[] = ["invoice", "waybill", "internal_avr"]
 const OrderDocumentsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
   const { t } = useTranslation()
   const { issueMutation, markSentMutation } = useDocuments()
+  const { data: featureFlags } = useFeatureFlags()
 
   const { data: response, isLoading } = useQuery({
     queryKey: ["order-documents", data.id],
@@ -51,25 +51,11 @@ const OrderDocumentsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
       ),
   })
 
-  // Полнота реквизитов продавца — то же правило, что на бэкенде: без БИН,
-  // адреса и банка документ не выпускается.
-  const { data: settingsResponse } = useQuery({
-    queryKey: ["document-settings"],
-    queryFn: () =>
-      sdk.client.fetch<AdminDocumentSettingsResponse>("/admin/document-settings"),
-  })
-
-  const settings = settingsResponse?.document_settings
-  const requisitesReady =
-    !!settings &&
-    REQUIRED_REQUISITE_FIELDS.every((field) => {
-      const value = (settings as unknown as Record<string, string | null>)[field]
-      return (
-        typeof value === "string" &&
-        value.trim() !== "" &&
-        !(field === "seller_name" && value.trim() === "Marketplace")
-      )
-    })
+  // Готовность реквизитов продавца этого заказа считает бэкенд (у заказа
+  // компании — её реквизиты, у заказа площадки — площадки). Пока ответа нет,
+  // выпуск не предлагаем и причину не называем.
+  const requisites = response?.requisites
+  const requisitesReady = requisites?.ready ?? false
 
   const documents = response?.documents ?? []
   const latestByType = new Map<string, AdminOrderDocument>(
@@ -116,7 +102,11 @@ const OrderDocumentsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
           сохранится, версия увеличится). */}
       <div className="flex flex-col gap-y-2 px-6 py-4">
         <div className="flex flex-wrap items-center gap-2">
-          {ISSUABLE_TYPES.map((type) => {
+          {ISSUABLE_TYPES.filter(
+            // Внутренний АВР — только для заказов юрлиц: пока юрлица на
+            // площадке выключены (FEATURE_COMPANIES), кнопки нет.
+            (type) => type !== "internal_avr" || featureFlags.companies
+          ).map((type) => {
             const existing = latestByType.get(type)
             return (
               <Button
@@ -137,9 +127,13 @@ const OrderDocumentsCardWidget = ({ data }: DetailWidgetProps<AdminOrder>) => {
             )
           })}
         </div>
-        {!requisitesReady && (
+        {requisites && !requisites.ready && (
           <Text size="small" className="text-ui-fg-error">
-            {t("documents.widget.requisitesMissing")}
+            {t(
+              requisites.tenant
+                ? "documents.widget.requisitesMissingTenant"
+                : "documents.widget.requisitesMissing"
+            )}
           </Text>
         )}
       </div>

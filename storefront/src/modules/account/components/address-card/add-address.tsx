@@ -2,16 +2,17 @@
 
 import { Plus } from "@medusajs/icons"
 import { Button, Heading } from "@medusajs/ui"
-import { useEffect, useState, useActionState } from "react"
+import { useEffect, useRef, useState, useActionState } from "react"
 
 import useToggleState from "@lib/hooks/use-toggle-state"
-import CountrySelect from "@modules/checkout/components/country-select"
 import Input from "@modules/common/components/input"
+import PhoneInput from "@modules/common/components/phone-input"
 import Modal from "@modules/common/components/modal"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import { HttpTypes } from "@medusajs/types"
 import { addCustomerAddress } from "@lib/data/customer"
 import { useMessages } from "@lib/i18n/i18n-context"
+import AddressMapFields from "@modules/account/components/address-map-fields"
 
 const AddAddress = ({
   region,
@@ -23,6 +24,7 @@ const AddAddress = ({
   const m = useMessages()
   const [successState, setSuccessState] = useState(false)
   const { state, open, close: closeModal } = useToggleState(false)
+  const address1Ref = useRef<HTMLInputElement>(null)
 
   const [formState, formAction] = useActionState(addCustomerAddress, {
     isDefaultShipping: addresses.length === 0,
@@ -50,26 +52,29 @@ const AddAddress = ({
 
   return (
     <>
-      {/* Кнопка «новый адрес» — строка, а не карточка в рост соседних: в
-          профиле кабинета (T10.6) адресов часто нет вовсе, и пустой блок
-          220px читался как сломанный экран (находка гейта U T10.6b). */}
+      {/* «Добавить адрес» — компактная кнопка в шапке списка адресов, а не
+          пустая карточка в рост адреса (она читалась как сломанный блок). */}
       <button
-        className="border border-line rounded-rounded p-4 min-h-[72px] w-full flex items-center justify-between gap-3"
+        type="button"
+        className="inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-full border border-line px-3.5 text-body-medium font-semibold text-accent transition-colors hover:bg-surface-dim"
         onClick={open}
         data-testid="add-address-button"
       >
-        <span className="text-body-large font-semibold">
-          {m.account.newAddress}
-        </span>
         <Plus />
+        {m.account.addAddress}
       </button>
 
-      <Modal isOpen={state} close={close} data-testid="add-address-modal">
+      <Modal
+        isOpen={state}
+        close={close}
+        size="large"
+        data-testid="add-address-modal"
+      >
         <Modal.Title>
           <Heading className="mb-2">{m.account.addAddress}</Heading>
         </Modal.Title>
         <form action={formAction}>
-          <Modal.Body>
+          <Modal.Body className="pr-4">
             <div className="flex flex-col gap-y-2">
               <div className="grid grid-cols-2 gap-x-2">
                 <Input
@@ -87,13 +92,13 @@ const AddAddress = ({
                   data-testid="last-name-input"
                 />
               </div>
+              {/* Магазин возит только по Астане: город и страна — сами, без
+                  полей (индекс, область и страна только путали покупателя). */}
+              <input type="hidden" name="city" value="Астана" />
+              <input type="hidden" name="country_code" value="kz" />
+              <AddressMapFields address1Ref={address1Ref} />
               <Input
-                label={m.common.address.company}
-                name="company"
-                autoComplete="organization"
-                data-testid="company-input"
-              />
-              <Input
+                ref={address1Ref}
                 label={m.common.address.address}
                 name="address_1"
                 required
@@ -106,39 +111,9 @@ const AddAddress = ({
                 autoComplete="address-line2"
                 data-testid="address-2-input"
               />
-              <div className="grid grid-cols-[144px_1fr] gap-x-2">
-                <Input
-                  label={m.common.address.postalCode}
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label={m.common.address.city}
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  data-testid="city-input"
-                />
-              </div>
-              <Input
-                label={m.account.provinceState}
-                name="province"
-                autoComplete="address-level1"
-                data-testid="state-input"
-              />
-              <CountrySelect
-                region={region}
-                name="country_code"
-                required
-                autoComplete="country"
-                data-testid="country-select"
-              />
-              <Input
+              <PhoneInput
                 label={m.common.address.phone}
                 name="phone"
-                autoComplete="phone"
                 data-testid="phone-input"
               />
             </div>

@@ -1,9 +1,6 @@
+import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Table, Text } from "@medusajs/ui"
 
-import LineItemOptions from "@modules/common/components/line-item-options"
-import LineItemPrice from "@modules/common/components/line-item-price"
-import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
 import Thumbnail from "@modules/products/components/thumbnail"
 
 type ItemProps = {
@@ -11,46 +8,55 @@ type ItemProps = {
   currencyCode: string
 }
 
+// Строка состава заказа: миниатюра, название, вариант (единица — «шт»,
+// «Мешок 50 кг») и «количество × цена за единицу», справа — сумма строки
+// (со скидкой — над ней зачёркнутая сумма без скидки).
 const Item = ({ item, currencyCode }: ItemProps) => {
-  return (
-    <Table.Row className="w-full" data-testid="product-row">
-      <Table.Cell className="!pl-0 p-4 w-24">
-        <div className="flex w-16">
-          <Thumbnail thumbnail={item.thumbnail} size="square" />
-        </div>
-      </Table.Cell>
+  const money = (amount: number) =>
+    convertToLocale({ amount, currency_code: currencyCode })
+  const unitPrice = money(item.unit_price ?? 0)
+  const total = item.total ?? 0
+  const original = item.original_total ?? total
 
-      <Table.Cell className="text-left">
-        <Text
-          className="text-body-large font-semibold text-ink"
+  return (
+    <li className="flex items-center gap-3 py-3" data-testid="product-row">
+      <div className="w-14 shrink-0 overflow-hidden rounded-chip">
+        <Thumbnail thumbnail={item.thumbnail} size="square" />
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span
+          className="line-clamp-2 text-body-large font-semibold text-ink"
           data-testid="product-name"
         >
           {item.product_title}
-        </Text>
-        <LineItemOptions variant={item.variant} data-testid="product-variant" />
-      </Table.Cell>
-
-      <Table.Cell className="!pr-0">
-        <span className="!pr-0 flex flex-col items-end h-full justify-center">
-          <span className="flex gap-x-1 ">
-            <Text className="text-ink-secondary">
-              <span data-testid="product-quantity">{item.quantity}</span>x{" "}
-            </Text>
-            <LineItemUnitPrice
-              item={item}
-              style="tight"
-              currencyCode={currencyCode}
-            />
-          </span>
-
-          <LineItemPrice
-            item={item}
-            style="tight"
-            currencyCode={currencyCode}
-          />
         </span>
-      </Table.Cell>
-    </Table.Row>
+        <span className="text-body-medium tabular-nums text-ink-secondary">
+          {item.variant?.title && (
+            <span data-testid="product-variant">{item.variant.title} · </span>
+          )}
+          <span data-testid="product-quantity">{item.quantity}</span> ×{" "}
+          {unitPrice}
+        </span>
+      </div>
+
+      <div className="flex shrink-0 flex-col items-end">
+        {total < original && (
+          <span
+            className="text-body-medium tabular-nums text-ink-secondary line-through"
+            data-testid="product-original-price"
+          >
+            {money(original)}
+          </span>
+        )}
+        <span
+          className="text-body-large font-semibold tabular-nums text-ink"
+          data-testid="product-price"
+        >
+          {money(total)}
+        </span>
+      </div>
+    </li>
   )
 }
 

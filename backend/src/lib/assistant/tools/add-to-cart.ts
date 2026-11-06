@@ -83,7 +83,7 @@ export const addToCartTool: AssistantTool = {
     if (!context.cartId) {
       // Первое добавление — создаём корзину и запоминаем её id в контексте хода.
       const { regionId, salesChannelId, currency } =
-        await resolveCartCreationContext(container)
+        await resolveCartCreationContext(container, context.salesChannelId)
       const { result: cart } = await createCartWorkflow(container).run({
         input: {
           region_id: regionId,

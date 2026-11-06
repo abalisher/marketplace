@@ -43,3 +43,30 @@ export const StoreOpenDispute = z.object({
   description: z.string().trim().min(1).max(4000),
 })
 export type StoreOpenDisputeType = z.infer<typeof StoreOpenDispute>
+
+// Смена способа оплаты оформленного заказа покупателем.
+export const StoreChangeOrderPaymentMethod = z.object({
+  method: z.enum(["kaspi_qr", "kaspi_transfer", "debt"]),
+})
+export type StoreChangeOrderPaymentMethodType = z.infer<
+  typeof StoreChangeOrderPaymentMethod
+>
+
+// Чек Kaspi покупателя: снимок экрана или PDF-квитанция содержимым (base64).
+// Типы и предел — как у вложений чата (8 МБ на файл).
+export const RECEIPT_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "application/pdf",
+] as const
+export const StoreSubmitPaymentReceipt = z.object({
+  file: z.object({
+    name: z.string().max(200).nullable().optional(),
+    mime_type: z.enum(RECEIPT_MIME_TYPES),
+    // ~8 МБ файла в base64.
+    data: z.string().min(16).max(11_200_000),
+  }),
+})
+export type StoreSubmitPaymentReceiptType = z.infer<typeof StoreSubmitPaymentReceipt>

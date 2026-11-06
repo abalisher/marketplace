@@ -37,17 +37,23 @@ const railClass = (isCollapsed: boolean, isDrawerOpen: boolean) =>
 const CabinetShell = ({
   theme,
   isAuthenticated,
+  customerId,
+  store,
   children,
 }: {
   theme: Theme
   // Вошёл ли покупатель: рельс показывает кнопку выхода только вошедшему.
   isAuthenticated: boolean
+  // Чья история диалогов на устройстве (см. lib/chat-history/storage.ts).
+  customerId: string | null
+  // Компания-продавец витрины; null — витрина площадки.
+  store: { slug: string; name: string } | null
   children: React.ReactNode
 }) => {
   const m = useMessages()
   const router = useRouter()
   const { countryCode } = useParams() as { countryCode: string }
-  const chatHistory = useChatHistory()
+  const chatHistory = useChatHistory({ store: store?.slug ?? null, customerId })
   const [isDrawerOpen, setIsDrawerOpen] = useState(false)
   const [isRailCollapsed, setIsRailCollapsed] = useState(false)
 
@@ -87,6 +93,7 @@ const CabinetShell = ({
           onRemove={chatHistory.remove}
           onNew={() => openChat()}
           isAuthenticated={isAuthenticated}
+          brand={store?.name}
         />
       </div>
 

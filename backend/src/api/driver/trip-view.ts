@@ -1,3 +1,4 @@
+import type { DriverOrderRef } from "../../lib/logistics/driver-trips"
 import { OrderAddressSnapshot } from "../../lib/orders/driver-pool"
 
 // Рейс и его точка, как их видит приложение водителя (идиома driver-view.ts).
@@ -20,6 +21,8 @@ export type DriverTripStopView = {
   // Номер заказа, как его называет продавец в панели: водитель говорит
   // «двадцать восьмой», а не order_01H… (T5.2b).
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number: string | null
   type: string
   sequence: number
   status: string
@@ -83,12 +86,13 @@ export const toDriverTripView = (trip: TripRow): DriverTripView => ({
 // весь список).
 export const toDriverTripStopView = (
   stop: TripStopRow,
-  displayId: number | null = null
+  ref: DriverOrderRef | null = null
 ): DriverTripStopView => ({
   id: stop.id,
   trip_id: stop.trip_id,
   order_id: stop.order_id,
-  display_id: displayId,
+  display_id: ref?.display_id ?? null,
+  order_number: ref?.number ?? null,
   type: stop.type,
   sequence: stop.sequence,
   status: stop.status,
@@ -100,7 +104,7 @@ export const toDriverTripStopView = (
 export const toDriverTripWithStopsView = (
   trip: TripRow,
   stops: TripStopRow[],
-  orderNumbers: Map<string, number>
+  orderNumbers: Map<string, DriverOrderRef>
 ): DriverTripWithStopsView => ({
   ...toDriverTripView(trip),
   stops: stops

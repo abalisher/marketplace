@@ -13,6 +13,7 @@ import { formatPhone } from "@lib/util/format-phone"
 import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import Input from "@modules/common/components/input"
+import PhoneInput from "@modules/common/components/phone-input"
 
 type Props = {
   setCurrentView: (view: LOGIN_VIEW) => void
@@ -158,15 +159,13 @@ const PhoneLogin = ({ setCurrentView }: Props) => {
             {m.account.phone.subtitle}
           </p>
           <form className="w-full" onSubmit={submitPhone}>
-            <Input
+            <PhoneInput
               label={m.account.phone.phoneLabel}
               name="phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
               value={phone}
-              onChange={(event) => setPhone(event.target.value)}
+              onChange={setPhone}
               required
+              autoFocus
               data-testid="phone-input"
             />
             <p className="text-body-small text-ink-secondary mt-2">

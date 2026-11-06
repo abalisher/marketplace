@@ -4,14 +4,16 @@ import {
   MedusaError,
   Modules,
 } from "@medusajs/framework/utils"
-import { DOCUMENTS_MODULE } from "../../modules/documents"
-import DocumentsModuleService from "../../modules/documents/service"
+import { loadSellerSettings } from "../../lib/tenants/requisites"
 import {
   missingRequisites,
   missingRequisitesMessage,
 } from "../../modules/documents/requisites"
 import { DocumentType } from "../../modules/documents/models/constants"
 import { DocumentSnapshot } from "../utils/documents/document-snapshot"
+import { numericAmount } from "../../lib/payments/amount"
+import { transferDetails } from "../../lib/payments/methods"
+import { loadPaymentSettings } from "../../lib/payments/settings"
 
 export type BuildOrderDocumentSnapshotStepInput = {
   order_id: string
@@ -45,8 +47,6 @@ export const buildOrderDocumentSnapshotStep = createStep(
   "build-order-document-snapshot",
   async (input: BuildOrderDocumentSnapshotStepInput, { container }) => {
     const orderService = container.resolve(Modules.ORDER)
-    const documentsService =
-      container.resolve<DocumentsModuleService>(DOCUMENTS_MODULE)
     const query = container.resolve(ContainerRegistrationKeys.QUERY)
 
     const order = await orderService.retrieveOrder(input.order_id, {
@@ -58,7 +58,8 @@ export const buildOrderDocumentSnapshotStep = createStep(
         "shipping_address",
       ],
     })
-    const settings = await documentsService.getOrCreateSettings()
+    // Продавец заказа: компания канала продаж либо сама площадка.
+    const settings = await loadSellerSettings(container, order.sales_channel_id)
 
     // Документ с пустыми реквизитами продавца не выпускается вовсе (T4.9,
     // блокер 20 фокус-группы T4.6): счёт без БИН, адреса и банка бухгалтерия
@@ -90,6 +91,7 @@ export const buildOrderDocumentSnapshotStep = createStep(
         "payment_collections.status",
         "payment_collections.payments.provider_id",
         "payment_collections.payments.captured_at",
+        "order_lifecycle.number",
       ],
       filters: { id: input.order_id },
     })
@@ -203,12 +205,49 @@ export const buildOrderDocumentSnapshotStep = createStep(
       (collection) => collection.payments ?? []
     )
     const captured = payments.find((item) => !!item.captured_at) ?? null
+    // Способ оплаты заказа (перевод, долг) и номер для перевода — из записи
+    // оплаты заказа и настроек продавца (модуль order_payment).
+    const { data: orderPayments } = await query.graph({
+      entity: "order_payment",
+      fields: [
+        "method",
+        "status",
+        "sales_channel_id",
+        "amount",
+        "paid_amount",
+        "due_date",
+      ],
+      filters: { order_id: input.order_id },
+    })
+    const orderPayment = (orderPayments as {
+      method?: string | null
+      status?: string | null
+      sales_channel_id?: string | null
+      amount?: unknown
+      paid_amount?: unknown
+      due_date?: string | Date | null
+    }[])[0]
+    const paidAmount = numericAmount(orderPayment?.paid_amount) ?? 0
+    const owed = Math.max((numericAmount(orderPayment?.amount) ?? 0) - paidAmount, 0)
+    const transfer =
+      orderPayment?.method === "kaspi_transfer" || orderPayment?.method === "debt"
+        ? transferDetails(await loadPaymentSettings(container, orderPayment.sales_channel_id))
+        : null
+    // «Оплачено» — когда получено всё: у заказа с оплатой продавца решает её
+    // состояние (частичное погашение долга — ещё не оплата), у прежних
+    // заказов — отметка захвата платежа ядра.
     const payment = {
-      paid: !!captured,
+      paid: orderPayment ? orderPayment.status === "paid" : !!captured,
       provider: captured?.provider_id ?? payments[0]?.provider_id ?? null,
       captured_at: captured?.captured_at
         ? new Date(captured.captured_at).toISOString()
         : null,
+      method: orderPayment?.method ?? null,
+      transfer_phone: transfer?.phone ?? null,
+      transfer_recipient: transfer?.recipient ?? null,
+      due_date: orderPayment?.due_date ? new Date(orderPayment.due_date).toISOString() : null,
+      paid_amount: orderPayment ? paidAmount : null,
+      outstanding: orderPayment ? owed : null,
     }
 
     const snapshot: DocumentSnapshot = {
@@ -225,11 +264,15 @@ export const buildOrderDocumentSnapshotStep = createStep(
         kbe: settings.seller_kbe,
         knp: settings.seller_knp,
         director_name: settings.director_name,
+        vat_rate: settings.vat_rate,
       },
       footer_note: settings.footer_note,
       buyer,
       order: {
         display_id: order.display_id ?? null,
+        number:
+          (orderRow as { order_lifecycle?: { number?: string | null } | null } | null)
+            ?.order_lifecycle?.number ?? null,
         currency_code,
         created_at: order.created_at
           ? new Date(order.created_at).toISOString()

@@ -18,6 +18,12 @@ import {
 import { isCompaniesEnabled } from "../../../lib/feature-flags"
 import { loadOrderTotals, paymentState } from "../order-lifecycles/rows"
 import {
+  loadOrderPaymentStates,
+  PanelOrderPayment,
+} from "../../../lib/payments/panel-state"
+import { numericAmount } from "../../../lib/payments/amount"
+import { isDebtOverdue, roundMoney } from "../../../lib/payments/order-payment-state"
+import {
   MONEY_SCAN_CAP,
   OPEN_ORDER_STATUSES,
   REVENUE_WEEK_DAYS,
@@ -44,6 +50,14 @@ export type DashboardReceivables = {
   companies: number
 }
 
+// Долги покупателей «в долг» (физлица, способ оплаты продавца).
+export type DashboardDebts = {
+  outstanding: number
+  overdue: number
+  open_orders: number
+  requested_orders: number
+}
+
 export type DashboardMoney = {
   currency_code: string
   revenue_today: number
@@ -58,6 +72,8 @@ export type DashboardMoney = {
   awaiting_payment: number
   // Заказы окна в чужой валюте — в суммы не попали (см. SHOP_CURRENCY).
   other_currency_orders: number
+  // Долги покупателей по заказам «в долг».
+  debts: DashboardDebts
   // Дебиторка юрлиц. null — юрлица выключены флагом (MVP только физлица):
   // плитку рисовать нечем, а «₸ 0» на ней было бы неправдой.
   receivables: DashboardReceivables | null
@@ -123,12 +139,16 @@ const inShopCurrency = (order: MoneyOrder) =>
 // Заказы окна выручки: оформленные не раньше начала недели магазина.
 async function loadRevenueOrders(
   query: Query,
-  from: Date
+  from: Date,
+  salesChannelId: string | null
 ): Promise<MoneyOrder[]> {
   const { data } = await query.graph({
     entity: "order",
     fields: MONEY_ORDER_FIELDS,
-    filters: { created_at: { $gte: from.toISOString() } },
+    filters: {
+      created_at: { $gte: from.toISOString() },
+      ...(salesChannelId ? { sales_channel_id: salesChannelId } : {}),
+    },
     pagination: {
       skip: 0,
       take: MONEY_SCAN_CAP,
@@ -140,13 +160,19 @@ async function loadRevenueOrders(
 
 // Заказы, по которым магазин ещё работает: id берём со стороны жизненного цикла
 // (статусы наши, ядро о них не знает), а деньги — со стороны заказа.
-async function loadInProgressOrders(query: Query): Promise<MoneyOrder[]> {
+async function loadInProgressOrders(
+  query: Query,
+  salesChannelId: string | null
+): Promise<MoneyOrder[]> {
   const { data: lifecycles } = await query.graph({
     entity: "order_lifecycle",
     fields: ["id", "order.id"],
     // Деньги в работе — заказы в открытых статусах (включая «в доставке»):
     // доставленный заказ деньгами в работе уже не является.
-    filters: { status: OPEN_ORDER_STATUSES },
+    filters: {
+      status: OPEN_ORDER_STATUSES,
+      ...(salesChannelId ? { sales_channel_id: salesChannelId } : {}),
+    },
     pagination: { skip: 0, take: MONEY_SCAN_CAP },
   })
 
@@ -172,6 +198,7 @@ async function loadInProgressOrders(query: Query): Promise<MoneyOrder[]> {
 function receivables(
   orders: MoneyOrder[],
   totals: Map<string, number | null>,
+  payments: Map<string, PanelOrderPayment>,
   now: number
 ): DashboardReceivables {
   const termDays = receivableTermDays()
@@ -185,7 +212,7 @@ function receivables(
     if (!companyId || !inShopCurrency(order)) {
       continue
     }
-    if (paymentState(order) === "paid") {
+    if (paymentState(order, payments.get(order.id) ?? null) === "paid") {
       continue
     }
     const amount = totals.get(order.id) ?? 0
@@ -205,10 +232,62 @@ function receivables(
   return { total, overdue, term_days: termDays, companies: companies.size }
 }
 
+// Долги покупателей («в долг»): сколько должны по одобренным долгам, из них
+// просрочено, и сколько просьб ждут решения продавца. Отдельно от выручки:
+// долг — это ещё не деньги.
+async function loadDebtSummary(
+  query: Query,
+  salesChannelId: string | null,
+  now: Date
+): Promise<DashboardDebts> {
+  const { data } = await query.graph({
+    entity: "order_payment",
+    fields: ["status", "amount", "paid_amount", "due_date"],
+    filters: {
+      method: "debt",
+      status: ["debt", "debt_requested"],
+      ...(salesChannelId ? { sales_channel_id: salesChannelId } : {}),
+    },
+  })
+  let outstanding = 0
+  let overdue = 0
+  let open = 0
+  let requested = 0
+  for (const row of data as {
+    status: "debt" | "debt_requested"
+    amount: unknown
+    paid_amount: unknown
+    due_date: string | Date | null
+  }[]) {
+    if (row.status === "debt_requested") {
+      requested += 1
+      continue
+    }
+    const left = Math.max(
+      (numericAmount(row.amount) ?? 0) - (numericAmount(row.paid_amount) ?? 0),
+      0
+    )
+    open += 1
+    outstanding += left
+    if (isDebtOverdue(row.status, row.due_date, now)) {
+      overdue += left
+    }
+  }
+  return {
+    outstanding: roundMoney(outstanding),
+    overdue: roundMoney(overdue),
+    open_orders: open,
+    requested_orders: requested,
+  }
+}
+
+// salesChannelId — деньги только заказов канала (продавец компании); null —
+// по всей площадке.
 export async function loadDashboardMoney(
   query: Query,
   orderService: IOrderModuleService,
-  now: Date = new Date()
+  now: Date = new Date(),
+  salesChannelId: string | null = null
 ): Promise<DashboardMoney> {
   const dayStart = shopDayStart(now, shopTimeZone())
   const weekStart = new Date(
@@ -216,13 +295,20 @@ export async function loadDashboardMoney(
   )
 
   const [weekOrders, inProgressOrders] = await Promise.all([
-    loadRevenueOrders(query, weekStart),
-    loadInProgressOrders(query),
+    loadRevenueOrders(query, weekStart, salesChannelId),
+    loadInProgressOrders(query, salesChannelId),
   ])
 
-  const totals = await loadOrderTotals(orderService, [
+  const orderIds = [
     ...new Set([...weekOrders, ...inProgressOrders].map((order) => order.id)),
+  ]
+  const [totals, payments, debts] = await Promise.all([
+    loadOrderTotals(orderService, orderIds),
+    loadOrderPaymentStates(query, orderIds, now),
+    loadDebtSummary(query, salesChannelId, now),
   ])
+  const stateOf = (order: MoneyOrder) =>
+    paymentState(order, payments.get(order.id) ?? null)
 
   let revenueToday = 0
   let revenueTodayOrders = 0
@@ -238,7 +324,7 @@ export async function loadDashboardMoney(
     // Выручка — только оплаченные заказы: у Kaspi авторизация И ЕСТЬ оплата
     // (см. paymentState), а неоплаченный заказ ещё не деньги. Отменённые сюда
     // не попадают по тому же признаку.
-    if (paymentState(order) !== "paid") {
+    if (stateOf(order) !== "paid") {
       continue
     }
     const amount = totals.get(order.id) ?? 0
@@ -262,7 +348,7 @@ export async function loadDashboardMoney(
     const amount = totals.get(order.id) ?? 0
     inProgress += amount
     inProgressCount += 1
-    if (paymentState(order) !== "paid") {
+    if (stateOf(order) !== "paid") {
       awaitingPayment += amount
     }
   }
@@ -278,8 +364,9 @@ export async function loadDashboardMoney(
     in_progress_orders: inProgressCount,
     awaiting_payment: awaitingPayment,
     other_currency_orders: otherCurrency,
+    debts,
     receivables: isCompaniesEnabled()
-      ? receivables(inProgressOrders, totals, now.getTime())
+      ? receivables(inProgressOrders, totals, payments, now.getTime())
       : null,
   }
 }

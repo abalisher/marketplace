@@ -2,12 +2,13 @@
 
 import React, { useEffect, useActionState } from "react"
 
-import Input from "@modules/common/components/input"
+import PhoneInput from "@modules/common/components/phone-input"
 
 import AccountInfo from "../account-info"
 import { HttpTypes } from "@medusajs/types"
 import { updateCustomer } from "@lib/data/customer"
 import { useMessages } from "@lib/i18n/i18n-context"
+import { formatPhone } from "@lib/util/format-phone"
 
 type MyInformationProps = {
   customer: HttpTypes.StoreCustomer
@@ -50,7 +51,7 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
     <form action={formAction} className="w-full">
       <AccountInfo
         label={m.common.address.phone}
-        currentInfo={customer.phone || "—"}
+        currentInfo={customer.phone ? formatPhone(customer.phone) : "—"}
         isSuccess={successState}
         isError={!!state.error}
         errorMessage={state.error}
@@ -58,13 +59,11 @@ const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
         data-testid="account-phone-editor"
       >
         <div className="grid grid-cols-1 gap-y-2">
-          <Input
+          <PhoneInput
             label={m.common.address.phone}
             name="phone"
-            type="phone"
-            autoComplete="phone"
             required
-            defaultValue={customer.phone ?? ""}
+            defaultValue={customer.phone}
             data-testid="phone-input"
           />
         </div>

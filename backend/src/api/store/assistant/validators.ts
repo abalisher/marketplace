@@ -110,3 +110,48 @@ export const StoreAssistantTranscribe = z.object({
 export type StoreAssistantTranscribeType = z.infer<
   typeof StoreAssistantTranscribe
 >
+
+// Тело POST /store/assistant/customer-profile — мини-форма доставки в ленте чата.
+// Только профиль: телефона учётки здесь нет (он меняется только через SMS-код),
+// корзину форма не трогает — адрес на заказ ставит ассистент (set_delivery).
+export const StoreAssistantCustomerProfile = z
+  .object({
+    first_name: z.string().trim().max(100).optional(),
+    last_name: z.string().trim().max(100).optional(),
+    phone: z.string().trim().max(24).optional(),
+    address_1: z.string().trim().max(300).optional(),
+    city: z.string().trim().max(100).optional(),
+    postal_code: z.string().trim().max(20).optional(),
+    // Точка, выбранная на карте 2ГИС (булавка). Одна координата без другой —
+    // не точка: saveBuyerProfile её не запишет (lib/geo.ts).
+    lat: z.number().min(-90).max(90).optional(),
+    lng: z.number().min(-180).max(180).optional(),
+  })
+  .strict()
+export type StoreAssistantCustomerProfileType = z.infer<
+  typeof StoreAssistantCustomerProfile
+>
+
+// Копия диалога с устройства покупателя (синхронизация истории чата). Пределы —
+// с запасом над локальной историей: лента — сотни реплик, не мегабайты.
+export const StoreUpsertChatConversation = z.object({
+  id: z.string().trim().min(1).max(100),
+  title: z.string().max(200),
+  title_custom: z.boolean().optional(),
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(50_000),
+      })
+    )
+    .min(1)
+    .max(500),
+  cards: z.record(z.string(), z.array(z.record(z.string(), z.unknown()))).nullable().optional(),
+  cart_id: z.string().max(100).nullable().optional(),
+  order_id: z.string().max(100).nullable().optional(),
+  updated_at: z.number().int().nonnegative(),
+})
+export type StoreUpsertChatConversationType = z.infer<
+  typeof StoreUpsertChatConversation
+>

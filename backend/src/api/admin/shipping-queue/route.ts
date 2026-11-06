@@ -24,6 +24,7 @@ import {
   shippingStage,
 } from "./rows"
 import { loadUserNames } from "../user-names"
+import { getTenantScope } from "../../utils/tenant-access"
 import { AdminGetShippingQueueParamsType } from "./validators"
 
 // GET /admin/shipping-queue — рабочий стол отгрузки (T10.13): заказы, которые
@@ -48,10 +49,15 @@ export async function GET(
   const userService = req.scope.resolve(Modules.USER)
 
   // Заказы «до отгрузки», FIFO — старые сверху: это очередь, а не журнал.
+  // Продавец компании видит только заказы её канала продаж.
+  const tenant = getTenantScope(req)
   const { data: lifecycles } = await query.graph({
     entity: "order_lifecycle",
     fields: ["id", "status", "created_at", "order.id"],
-    filters: { status: SHIPPING_QUEUE_STATUSES },
+    filters: {
+      status: SHIPPING_QUEUE_STATUSES,
+      ...(tenant ? { sales_channel_id: tenant.sales_channel_id } : {}),
+    },
     pagination: {
       skip: 0,
       take: SHIPPING_QUEUE_SCAN_CAP,

@@ -31,6 +31,21 @@ export const ORDER_STATUS_TRANSITIONS: Record<
   },
 }
 
+// Подписи статусов для сообщений об ошибках: панель показывает текст ответа
+// как есть.
+const STATUS_LABEL: Record<string, string> = {
+  new: "Новый",
+  confirmed: "Подтверждён",
+  assembling: "Собирается",
+  partially_assembled: "Собран частично",
+  assembled: "Собран",
+  in_delivery: "В доставке",
+  delivered: "Доставлен",
+  closed: "Закрыт",
+  canceled: "Отменён",
+  returned: "Возврат",
+}
+
 // Инвариант стейт-машины: бросает, если переход из from в to не разрешён для
 // данного способа получения. Чистая функция (не метод сервиса) — тестируется
 // без БД и переиспользуется в workflow-шагах до применения перехода.
@@ -43,7 +58,7 @@ export function assertOrderStatusTransition(
   if (!allowed.includes(to)) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      `Order status transition ${from} → ${to} is not allowed for ${method}`
+      `Нельзя перевести заказ из «${STATUS_LABEL[from] ?? from}» в «${STATUS_LABEL[to] ?? to}».`
     )
   }
 }
@@ -62,13 +77,13 @@ export function assertDeliveryConfirmation(input: {
   if (!input.stored_code) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "Order has no delivery code issued — cannot confirm delivery"
+      "Код получения ещё не выдан — вручение подтвердить нельзя."
     )
   }
   if (!input.provided_code || input.provided_code !== input.stored_code) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      "Delivery code is missing or invalid"
+      "Код получения не указан или неверный."
     )
   }
 }
@@ -95,13 +110,13 @@ export function assertSlotRescheduleAllowed(input: {
   if (input.method !== "delivery") {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      `Order with method ${input.method} has no delivery slot to reschedule`
+      "У заказа нет слота доставки — переносить нечего."
     )
   }
   if (!SLOT_RESCHEDULE_STATUSES.includes(input.status)) {
     throw new MedusaError(
       MedusaError.Types.NOT_ALLOWED,
-      `Delivery slot cannot be rescheduled in status ${input.status}`
+      `Перенести доставку нельзя: заказ «${STATUS_LABEL[input.status] ?? input.status}».`
     )
   }
 }
@@ -190,7 +205,7 @@ class OrderLifecycleModuleService extends MedusaService({
     if (from.date === input.date && from.window === input.window) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
-        "Order is already scheduled for this delivery slot"
+        "Заказ уже назначен на это окно доставки."
       )
     }
 

@@ -9,6 +9,7 @@ import {
   completeCartWorkflow,
   createRemoteLinkStep,
   emitEventStep,
+  useQueryGraphStep,
 } from "@medusajs/medusa/core-flows"
 import { Modules } from "@medusajs/framework/utils"
 import { ORDER_LIFECYCLE_MODULE } from "../modules/order-lifecycle"
@@ -16,6 +17,7 @@ import { COMPANY_MODULE } from "../modules/company"
 import { BONUS_MODULE } from "../modules/bonus"
 import { BONUS_SPENT_EVENT } from "../modules/bonus/events"
 import { captureOrderPaymentStep } from "./steps/capture-order-payment"
+import { createOrderPaymentStep } from "./payments/steps/create-order-payment"
 import { createOrderLifecycleStep } from "./steps/create-order-lifecycle"
 import { ensureCartPaymentAuthorizedStep } from "./steps/ensure-cart-payment-authorized"
 import { resolveCartDeliverySlotStep } from "./steps/resolve-cart-delivery-slot"
@@ -34,7 +36,10 @@ export type PlaceOrderWorkflowInput = {
 // навешивается наш жизненный цикл: OrderLifecycle=new + link 1:1 к заказу, и
 // (если покупатель — сотрудник компании) link заказа к компании. Ядро само
 // эмитит order.placed — свой дубль не шлём (см. modules/order-lifecycle/events.ts).
-// Предусловие 100% предоплаты: сессия есть, Kaspi-сессия оплачена (шаг ниже);
+// Предусловие: выбран способ оплаты, который продавец принимает, а Kaspi QR
+// оплачен (шаг ниже); перевод и «в долг» оформляются без денег — их
+// поступление отмечает продавец; Kaspi QR с оплатой после оформления (чат)
+// тоже — на заказ выставляется счёт Kaspi (create-order-payment);
 // сумма к оплате — уже за вычетом бонусной кредитной линии (apply-cart-bonus).
 // Списание бонусных лотов — строго после проверки оплаты и до completeCart:
 // его компенсация (revertSpend) откатит списание при упавшем завершении.
@@ -65,11 +70,22 @@ export const placeOrderWorkflow = createWorkflow(
       })),
     })
 
+    // Канал продаж заказа копируется в lifecycle: по нему очередь и дашборд
+    // показывают продавцу компании только её заказы (см. модель).
+    const { data: placedOrders } = useQueryGraphStep({
+      entity: "order",
+      fields: ["id", "sales_channel_id"],
+      filters: { id: order.id },
+    }).config({ name: "load-placed-order-channel" })
+
     const lifecycle = createOrderLifecycleStep(
-      transform({ input, slot }, (d) => ({
+      transform({ input, slot, placedOrders }, (d) => ({
         delivery_method: d.input.delivery_method,
         delivery_date: d.slot.delivery_date,
         delivery_window: d.slot.delivery_window,
+        sales_channel_id:
+          (d.placedOrders[0] as { sales_channel_id?: string | null } | undefined)
+            ?.sales_channel_id ?? null,
       }))
     )
 
@@ -108,10 +124,27 @@ export const placeOrderWorkflow = createWorkflow(
     )
     createRemoteLinkStep(links)
 
+    // Оплата заказа: способ, сумма, состояние (журнал оплат, отчёт по долгам).
+    createOrderPaymentStep(
+      transform({ order, payment, lifecycle }, (d) => ({
+        order_id: d.order.id,
+        method: d.payment.method,
+        order_number: (d.lifecycle as { number?: string | null }).number ?? null,
+        deferred: d.payment.deferred,
+      }))
+    )
+
     // Оплата Kaspi QR авторизована ⇒ деньги переведены: списываем сразу, чтобы
     // у заказа не было второго состояния оплаты, которое кто-то должен
-    // подтверждать руками (T4.14).
-    captureOrderPaymentStep({ order_id: order.id })
+    // подтверждать руками (T4.14). Перевод и долг списываются, когда продавец
+    // отметит поступление (record-order-payment).
+    when(
+      "kaspi-qr-paid",
+      { payment },
+      ({ payment }) => payment.method === "kaspi_qr" && !payment.deferred
+    ).then(() => {
+      captureOrderPaymentStep({ order_id: order.id })
+    })
 
     when(
       "bonus-was-spent",

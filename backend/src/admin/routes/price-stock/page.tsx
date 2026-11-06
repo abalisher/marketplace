@@ -35,7 +35,7 @@ import PriceStockImportDrawer from "../../components/price-stock-import-drawer"
 import { usePriceStockApply } from "../../hooks/use-price-stock"
 import { usePriceStockExchange } from "../../hooks/use-price-stock-import"
 import { PRODUCT_STATUS_META, ProductModerationStatus } from "../../lib/catalog"
-import { formatTenge } from "../../lib/money"
+import { formatQuantity, formatTenge, formatTengeExact } from "../../lib/money"
 import {
   AdminPriceStockCategoriesResponse,
   AdminPriceStockRow,
@@ -62,6 +62,7 @@ import {
   offscreenTitles,
   priceStockRowTitle,
   sanitizeAmountInput,
+  markupPercent,
 } from "../../lib/price-stock"
 import { PRICE_STOCK_FILE_ERROR_LABELS } from "../../lib/price-stock-import"
 import { routeLabel } from "../../lib/route-label"
@@ -420,7 +421,7 @@ const PriceStockPage = () => {
                 ? row.price == null
                   ? "—"
                   : formatTenge(row.price)
-                : `${row.stocked} ${row.unit ?? t("priceStock.unitFallback")}`}
+                : `${formatQuantity(row.stocked)} ${row.unit ?? t("priceStock.unitFallback")}`}
             </span>
             <span className="sm-ps-sub">{t(labels.short)}</span>
           </div>
@@ -488,7 +489,7 @@ const PriceStockPage = () => {
     }),
     columnHelper.display({
       id: "product",
-      size: 380,
+      size: 480,
       header: t("priceStock.colProduct"),
       cell: ({ row }) => {
         const item = row.original
@@ -496,7 +497,12 @@ const PriceStockPage = () => {
         const meta = status ? PRODUCT_STATUS_META[status] : undefined
         return (
           <div className="sm-ps-title">
-            <span className="sm-ps-title-text">{priceStockRowTitle(item)}</span>
+            <span
+              className="sm-ps-title-text"
+              title={priceStockRowTitle(item)}
+            >
+              {priceStockRowTitle(item)}
+            </span>
             <span className="sm-ps-sub">
               {[
                 item.sku ? t("priceStock.sku", { sku: item.sku }) : null,
@@ -527,6 +533,33 @@ const PriceStockPage = () => {
       headerAlign: "right",
       cell: ({ row }) => amountCell(row.original, "price"),
     }),
+    columnHelper.accessor((row) => row.cost ?? null, {
+      id: "cost",
+      size: 150,
+      header: t("priceStock.colCost"),
+      headerAlign: "right",
+      cell: ({ row }) => {
+        const item = row.original
+        if (item.cost == null) {
+          return <span className="sm-ps-nums text-ui-fg-muted">—</span>
+        }
+        const markup = markupPercent(item)
+        return (
+          <div className="sm-ps-cell">
+            <span className="sm-ps-nums">{formatTengeExact(item.cost)}</span>
+            <span className="sm-ps-sub">
+              {item.managed_by === "file"
+                ? markup == null
+                  ? t("priceStock.costSourceFile")
+                  : t("priceStock.costMarkupFile", { n: markup })
+                : markup == null
+                  ? t("priceStock.costSource")
+                  : t("priceStock.costMarkup", { n: markup })}
+            </span>
+          </div>
+        )
+      },
+    }),
     columnHelper.accessor((row) => row.stocked, {
       id: "stock",
       size: 180,
@@ -544,18 +577,20 @@ const PriceStockPage = () => {
         return (
           <div className="sm-ps-cell">
             <span className="sm-ps-nums sm-ps-strong">
-              {item.available} {item.unit ?? t("priceStock.unitFallback")}
+              {formatQuantity(item.available)} {item.unit ?? t("priceStock.unitFallback")}
             </span>
             {item.reserved > 0 && (
               <span className="sm-ps-sub">
-                {t("priceStock.reserved", { n: item.reserved })}
+                {t("priceStock.reserved", { n: formatQuantity(item.reserved) })}
               </span>
             )}
             {/* Разрез склада: «на этом складе 400 из 660» — иначе цифра в
                 клетке читается как весь остаток магазина. */}
             {item.reserved <= 0 && item.stocked_total !== item.stocked && (
               <span className="sm-ps-sub">
-                {t("priceStock.totalStock", { total: item.stocked_total })}
+                {t("priceStock.totalStock", {
+                  total: formatQuantity(item.stocked_total),
+                })}
               </span>
             )}
           </div>

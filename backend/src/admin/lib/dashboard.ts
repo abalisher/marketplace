@@ -8,6 +8,8 @@ import { OrderLifecycleStatus } from "./order"
 export type AdminDashboardOrderRow = {
   order_id: string
   display_id: number | null
+  // Номер для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  order_number?: string | null
   customer: string | null
   status: OrderLifecycleStatus
   item_count: number

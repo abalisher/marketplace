@@ -11,7 +11,11 @@ import {
 } from "@medusajs/framework/utils"
 import { ORDER_LIFECYCLE_MODULE } from "../../../../../modules/order-lifecycle"
 import OrderLifecycleModuleService from "../../../../../modules/order-lifecycle/service"
-import { loadTransitionActorNames } from "./actor-names"
+import {
+  StaffRole,
+  loadStaffRoles,
+  loadTransitionActorNames,
+} from "./actor-names"
 
 // Запись лога переходов в том виде, в каком её описывает контракт
 // (AdminOrderLifecycleEvent): служебные поля модели (order_lifecycle_id,
@@ -30,6 +34,9 @@ export type LifecycleEvent = {
   // «кто перевёл» не отвечает. null — переход системы или удалённая учётка,
   // тогда экран подписывает переход одной ролью.
   actor_name: string | null
+  // Роль сотрудника для подписи (picker | seller | admin) — по учётке, а не по
+  // actor_type записи (см. loadStaffRoles); null — актор не сотрудник.
+  actor_role: string | null
   reason: string | null
   // Слот до и после переноса (kind = slot; у переходов статуса — null).
   // Кодами: подпись «6 сент., 13:00–17:00» собирает панель на своём языке.
@@ -42,6 +49,8 @@ export type LifecycleEvent = {
 
 export type LifecycleDetail = {
   order_id: string
+  // Номер заказа для людей (ORG-26-0007); у заказов до 2026-11-02 — null.
+  number: string | null
   status: string | null
   previous_status: string | null
   note: string | null
@@ -69,7 +78,8 @@ type RawLifecycleEvent = {
 
 const toEvent = (
   event: RawLifecycleEvent,
-  names: Map<string, string>
+  names: Map<string, string>,
+  roles: Map<string, StaffRole>
 ): LifecycleEvent => ({
   id: event.id,
   // Записи, сделанные до T5.6b, kind не имеют — это переходы статуса.
@@ -79,6 +89,7 @@ const toEvent = (
   actor_type: event.actor_type,
   actor_id: event.actor_id,
   actor_name: event.actor_id ? (names.get(event.actor_id) ?? null) : null,
+  actor_role: event.actor_id ? (roles.get(event.actor_id) ?? null) : null,
   reason: event.reason,
   from_slot_date: event.from_slot_date ?? null,
   from_slot_window: event.from_slot_window ?? null,
@@ -103,6 +114,7 @@ export async function loadLifecycleDetail(
     fields: [
       "id",
       "order_lifecycle.id",
+      "order_lifecycle.number",
       "order_lifecycle.status",
       "order_lifecycle.previous_status",
       "order_lifecycle.note",
@@ -124,6 +136,7 @@ export async function loadLifecycleDetail(
     orders[0] as {
       order_lifecycle?: {
         id: string
+        number?: string | null
         status: string
         previous_status: string | null
         note: string | null
@@ -137,6 +150,7 @@ export async function loadLifecycleDetail(
   if (!lifecycle) {
     return {
       order_id: orderId,
+      number: null,
       status: null,
       previous_status: null,
       note: null,
@@ -153,15 +167,16 @@ export async function loadLifecycleDetail(
     { order_lifecycle: lifecycle.id },
     { order: { created_at: "ASC" } }
   )
-  const actorNames = await loadTransitionActorNames(
-    scope,
-    history as RawLifecycleEvent[]
-  )
+  const [actorNames, staffRoles] = await Promise.all([
+    loadTransitionActorNames(scope, history as RawLifecycleEvent[]),
+    loadStaffRoles(scope, history as RawLifecycleEvent[]),
+  ])
 
   // delivery_code админу НЕ отдаём: код — секрет покупателя, водитель узнаёт
   // его при вручении (в этом смысл приёмки по коду).
   return {
     order_id: orderId,
+    number: lifecycle.number ?? null,
     status: lifecycle.status,
     previous_status: lifecycle.previous_status,
     note: lifecycle.note,
@@ -169,7 +184,7 @@ export async function loadLifecycleDetail(
     delivery_date: lifecycle.delivery_date,
     delivery_window: lifecycle.delivery_window,
     history: (history as RawLifecycleEvent[]).map((event) =>
-      toEvent(event, actorNames)
+      toEvent(event, actorNames, staffRoles)
     ),
   }
 }

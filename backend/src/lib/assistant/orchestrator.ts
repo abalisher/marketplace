@@ -7,8 +7,10 @@ import {
   geminiStream,
 } from "../gemini"
 import { dedupeAttachments } from "./attachments"
-import { attachCartToCustomer } from "./cart-ownership"
+import { attachCartToCustomer, cartInOtherChannel } from "./cart-ownership"
+import { resolveLastOrderId } from "./last-order"
 import { isCompaniesEnabled } from "../feature-flags"
+import { loadChannelDeliveryPrice } from "../tenants/storefront"
 import { buildAssistantSystemPrompt } from "./system-prompt"
 import { summarizeCart } from "./tools/cart-summary"
 import { findAssistantTool, getAssistantTools } from "./tools/registry"
@@ -139,6 +141,19 @@ export const runAssistantTurn = async (
   // Пер-ходовый guard сильного округления add_to_cart (см. types.ts).
   context.roundingGuardVariants = new Set()
 
+  // Корзина с витрины другого продавца — ход начинает новую (см. cartInOtherChannel).
+  if (
+    context.cartId &&
+    context.salesChannelId &&
+    (await cartInOtherChannel(container, context.cartId, context.salesChannelId))
+  ) {
+    context.cartId = undefined
+  }
+
+  // Заказ хода: токен клиента, а у вошедшего покупателя — его последний заказ
+  // на этой витрине (см. resolveLastOrderId).
+  context.lastOrderId = await resolveLastOrderId(container, context)
+
   // Покупатель вошёл посреди диалога (кнопка входа в ленте, T10.8) — корзина,
   // собранная гостем, переезжает на него до того, как отработают инструменты.
   if (context.cartId && context.customerId) {
@@ -183,7 +198,15 @@ export const runAssistantTurn = async (
     : null
   const systemInstruction = {
     parts: [
-      { text: buildAssistantSystemPrompt({ companiesEnabled: isCompaniesEnabled() }) },
+      {
+        text: buildAssistantSystemPrompt({
+          companiesEnabled: isCompaniesEnabled(),
+          seller: context.seller ?? null,
+          deliveryPrice: context.salesChannelId
+            ? await loadChannelDeliveryPrice(container, context.salesChannelId)
+            : undefined,
+        }),
+      },
       ...(cartSnapshot ? [{ text: cartSnapshot }] : []),
     ],
   }

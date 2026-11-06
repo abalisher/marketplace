@@ -11,6 +11,7 @@ import {
   isFieldChanged,
   isFieldFractional,
   offscreenTitles,
+  markupPercent,
   priceLock,
   priceStockRowTitle,
   sanitizeAmountInput,
@@ -162,6 +163,23 @@ describe("priceLock / stockLock", () => {
   it("позиция на нескольких складах без разреза — сначала выберите склад", () => {
     expect(stockLock(row({ location_id: null }))).toBe("locationRequired")
   })
+
+  it("цену и остаток ведёт 1С — обе клетки закрыты с причиной «из 1С»", () => {
+    const onec = row({
+      managed_by: "onec",
+      onec_fields: ["price", "stock"],
+      price_editable: false,
+      stock_editable: false,
+    })
+    expect(priceLock(onec)).toBe("onec")
+    expect(stockLock(onec)).toBe("onec")
+  })
+
+  it("1С не присылает цену и остаток — продавец правит их сам", () => {
+    const own = row({ managed_by: "onec", onec_fields: [] })
+    expect(priceLock(own)).toBeNull()
+    expect(stockLock(own)).toBeNull()
+  })
 })
 
 describe("buildPriceStockChanges", () => {
@@ -268,5 +286,13 @@ describe("priceStockRowTitle", () => {
     expect(priceStockRowTitle(row({ variant_title: "50 кг" }))).toBe(
       "Цемент М400 — 50 кг"
     )
+  })
+})
+
+describe("markupPercent", () => {
+  it("наценка цены продажи над себестоимостью", () => {
+    expect(markupPercent(row({ price: 6466, cost: 5172.41 }))).toBe(25)
+    expect(markupPercent(row({ price: 1000, cost: null }))).toBeNull()
+    expect(markupPercent(row({ price: null, cost: 800 }))).toBeNull()
   })
 })

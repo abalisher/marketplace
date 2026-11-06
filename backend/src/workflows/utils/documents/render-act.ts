@@ -1,6 +1,11 @@
 import { amountInWords } from "../../../lib/format/amount-in-words"
+import { orderLabel } from "../../../lib/orders/order-number"
 import { DocumentCanvas } from "./document-canvas"
-import { DocumentRenderInput } from "./document-snapshot"
+import {
+  DocumentRenderInput,
+  itemsVat,
+  sellerVatRate,
+} from "./document-snapshot"
 import {
   currencyLabel,
   formatAmount,
@@ -66,8 +71,8 @@ export const renderAct = (
   )
   canvas.labeledLine(
     "Основание:",
-    snapshot.order.display_id != null
-      ? `Заказ № ${snapshot.order.display_id} от ${formatDocumentDate(
+    orderLabel(snapshot.order.number, snapshot.order.display_id)
+      ? `Заказ ${orderLabel(snapshot.order.number, snapshot.order.display_id)} от ${formatDocumentDate(
           snapshot.order.created_at
         )}`
       : "Заказ маркетплейса"
@@ -101,7 +106,12 @@ export const renderAct = (
       `− ${formatMoney(snapshot.totals.bonus, currency)}`
     )
   }
-  canvas.totalsLine("НДС:", "не облагается")
+  // Цены продавца — с НДС: плательщику документ выделяет НДС из суммы позиций.
+  const vatRate = sellerVatRate(snapshot.seller)
+  canvas.totalsLine(
+    vatRate ? `В т.ч. НДС ${vatRate}%:` : "НДС:",
+    vatRate ? formatMoney(itemsVat(snapshot.items, vatRate), currency) : "не облагается"
+  )
   canvas.totalsLine(
     "Всего оказано услуг на сумму:",
     formatMoney(snapshot.totals.money, currency),

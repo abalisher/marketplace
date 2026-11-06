@@ -56,7 +56,7 @@ const ProfileName: React.FC<MyInformationProps> = ({ customer }) => {
   return (
     <form action={formAction} className="w-full overflow-visible">
       <AccountInfo
-        label={m.account.name}
+        label={m.cabinet.profile.fullName}
         currentInfo={fullName}
         isSuccess={successState}
         isError={!!state?.error}

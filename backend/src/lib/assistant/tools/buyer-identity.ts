@@ -1,5 +1,6 @@
 import { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import { GeoPoint, geoFromMetadata, geoPoint } from "../../geo"
 import {
   createCustomerAddressesWorkflow,
   updateCustomerAddressesWorkflow,
@@ -8,6 +9,7 @@ import {
 import {
   AssistantContext,
   AuthPromptAttachment,
+  DeliveryFormAttachment,
 } from "../types"
 
 // Личность покупателя на шаге оформления (T10.8). Оформление доступно ТОЛЬКО
@@ -38,6 +40,9 @@ export type BuyerIdentity = {
   email: string
   // Адрес доставки по умолчанию, если покупатель уже оформлял заказ.
   address: BuyerAddress | null
+  // Точка адреса на карте (булавка 2ГИС), если покупатель выбирал адрес на
+  // карте. Отдельно от адреса: в ответы модели и форму доставки она не идёт.
+  address_geo: GeoPoint | null
   address_id: string | null
 }
 
@@ -50,6 +55,8 @@ type AddressRow = {
   city?: string | null
   postal_code?: string | null
   is_default_shipping?: boolean | null
+  metadata?: Record<string, unknown> | null
+  created_at?: string | Date | null
 }
 
 type CustomerRow = {
@@ -112,6 +119,8 @@ export const readBuyerIdentity = async (
       "addresses.city",
       "addresses.postal_code",
       "addresses.is_default_shipping",
+      "addresses.metadata",
+      "addresses.created_at",
     ],
     filters: { id: customerId },
   })
@@ -122,9 +131,12 @@ export const readBuyerIdentity = async (
   }
 
   const addresses = customer.addresses ?? []
-  // Адрес по умолчанию, а если его не отметили — первый: покупатель на MVP
-  // возит на один адрес, и «последний, куда везли» полезнее пустоты.
-  const row = addresses.find((a) => a.is_default_shipping) ?? addresses[0]
+  // Адрес по умолчанию, а если его не отметили — самый свежий: покупатель
+  // добавляет адрес, чтобы на него и везли («последний» полезнее случайного).
+  const newest = [...addresses].sort(
+    (a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+  )[0]
+  const row = addresses.find((a) => a.is_default_shipping) ?? newest
 
   return {
     customer_id: customer.id,
@@ -133,6 +145,7 @@ export const readBuyerIdentity = async (
     last_name: str(customer.last_name),
     email: str(customer.email),
     address_id: row?.id ?? null,
+    address_geo: geoFromMetadata(row?.metadata),
     address: row
       ? {
           first_name: str(row.first_name),
@@ -184,55 +197,114 @@ export const missingProfileFields = (
   return missing
 }
 
-// Сохранить данные оформления в профиль: ФИО и телефон — в учётку, адрес — в
-// адресную книгу как адрес доставки по умолчанию. Благодаря этому следующий
-// заказ спрашивает только подтверждение адреса (DoD T10.8).
+// Один ли это адрес: «ул. Асфендиярова, д. 11» = «Асфендиярова 11». Модель
+// пересказывает адрес по-своему, и строгое сравнение заводило бы «новый» адрес
+// (и теряло точку с карты) из-за запятой или «ул.».
+const ADDRESS_NOISE = new Set(["ул", "улица", "пр", "пр-т", "проспект", "д", "дом"])
+export const sameAddressText = (a: string | null | undefined, b: string | null | undefined) => {
+  const key = (value: string | null | undefined) =>
+    (value ?? "")
+      .toLowerCase()
+      .replace(/ё/g, "е")
+      .split(/[\s,.]+/)
+      .filter((word) => word && !ADDRESS_NOISE.has(word))
+      .join(" ")
+  return !!key(a) && key(a) === key(b)
+}
+
+// Город по умолчанию: магазин работает по Астане, город не спрашиваем.
+export const DEFAULT_CITY = "Астана"
+
+export type BuyerProfileInput = {
+  first_name?: string
+  last_name?: string
+  // Контактный телефон получателя — ложится ТОЛЬКО в адрес доставки.
+  phone?: string
+  address_1?: string
+  city?: string
+  postal_code?: string
+  // Точка, выбранная на карте (булавка 2ГИС).
+  lat?: number
+  lng?: number
+}
+
+// Сохранить данные оформления в профиль — целиком или частично (покупатель
+// назвал только имя, форма в чате прислала только адрес): ФИО — в учётку, адрес
+// — в адресную книгу как адрес доставки по умолчанию. Следующий заказ
+// спрашивает только подтверждение адреса (DoD T10.8).
+//
+// - Телефон учётки не трогаем НИКОГДА: это ключ входа по номеру (T10.7), и
+//   сменить его можно только через SMS-код. Иначе учётка email-эпохи без
+//   телефона «присвоила» бы чужой номер, и владелец номера при первом входе
+//   попал бы в чужой кабинет. Названный телефон — контакт получателя в адресе.
+// - Адрес без имени получателя не заводим: заглушка вместо имени уехала бы в
+//   накладную. Имя спросится, адрес сохранится вместе с ним.
+// - Другая улица — новая запись адресной книги (по умолчанию), а не правка
+//   прежней: «в этот раз на дачу» не должно стирать домашний адрес.
+//
+// Ошибки записи не глушим: инструмент вернёт их модели, и она не скажет
+// покупателю «сохранено», когда ничего не сохранилось.
 export const saveBuyerProfile = async (
   container: MedusaContainer,
   identity: BuyerIdentity,
-  address: BuyerAddress
-): Promise<void> => {
-  const update: Record<string, string> = {}
-  if (address.first_name && address.first_name !== identity.first_name) {
-    update.first_name = address.first_name
-  }
-  if (address.last_name && address.last_name !== identity.last_name) {
-    update.last_name = address.last_name
-  }
-  // Телефон учётки — ключ входа по номеру (T10.7), перезаписывать его контактным
-  // телефоном получателя нельзя: покупатель мог назвать номер прораба на объекте.
-  // Проставляем, только если в учётке его почему-то нет.
-  if (!identity.phone && address.phone) {
-    update.phone = address.phone
-  }
+  input: BuyerProfileInput
+): Promise<BuyerIdentity> => {
+  const firstName = str(input.first_name)
+  const lastName = str(input.last_name)
 
+  const update: Record<string, string> = {}
+  if (firstName && firstName !== identity.first_name) {
+    update.first_name = firstName
+  }
+  if (lastName && lastName !== identity.last_name) {
+    update.last_name = lastName
+  }
   if (Object.keys(update).length) {
     await updateCustomersWorkflow(container).run({
       input: { selector: { id: identity.customer_id }, update },
     })
   }
 
+  const saved: BuyerIdentity = {
+    ...identity,
+    first_name: firstName || identity.first_name,
+    last_name: lastName || identity.last_name,
+  }
+
+  const address1 = str(input.address_1)
+  const recipientFirstName = firstName || saved.first_name || identity.address?.first_name || ""
+  if (!address1 || !recipientFirstName) {
+    return saved
+  }
+
+  const sameAddress =
+    !!identity.address_id && sameAddressText(identity.address?.address_1, address1)
+  const address: BuyerAddress = {
+    first_name: recipientFirstName,
+    last_name: lastName || saved.last_name || identity.address?.last_name || "",
+    phone: str(input.phone) || identity.address?.phone || identity.phone,
+    address_1: address1,
+    city: str(input.city) || identity.address?.city || DEFAULT_CITY,
+    postal_code:
+      str(input.postal_code) || (sameAddress ? identity.address?.postal_code ?? "" : ""),
+  }
+  // Точка с карты: новая — пишем; не прислали, а адрес тот же — остаётся
+  // прежняя (metadata не трогаем); новый адрес текстом — без точки.
+  const geo = geoPoint(input.lat, input.lng)
   const addressInput = {
-    first_name: address.first_name,
-    last_name: address.last_name,
-    phone: address.phone,
-    address_1: address.address_1,
-    city: address.city,
-    postal_code: address.postal_code,
+    ...address,
     country_code: "kz",
+    ...(geo ? { metadata: { lat: geo.lat, lng: geo.lng } } : {}),
   }
 
-  if (identity.address_id) {
+  if (sameAddress) {
     await updateCustomerAddressesWorkflow(container).run({
-      input: {
-        selector: { id: identity.address_id },
-        update: addressInput,
-      },
+      input: { selector: { id: identity.address_id! }, update: addressInput },
     })
-    return
+    return { ...saved, address, address_geo: geo ?? identity.address_geo }
   }
 
-  await createCustomerAddressesWorkflow(container).run({
+  const { result } = await createCustomerAddressesWorkflow(container).run({
     input: {
       addresses: [
         {
@@ -243,4 +315,38 @@ export const saveBuyerProfile = async (
       ],
     },
   })
+  return {
+    ...saved,
+    address,
+    address_geo: geo,
+    address_id: (result as { id: string }[])[0]?.id ?? null,
+  }
+}
+
+// Мини-форма доставки в ленте чата: что уже известно о получателе и каких
+// полей не хватает. Покупатель может ответить текстом или заполнить форму.
+export const deliveryFormAttachment = (
+  known: {
+    first_name?: string
+    last_name?: string
+    phone?: string
+    address_1?: string
+    city?: string
+  },
+  missing: string[]
+): DeliveryFormAttachment => ({
+  type: "delivery_form",
+  first_name: known.first_name ?? "",
+  last_name: known.last_name ?? "",
+  phone: known.phone ?? "",
+  address_1: known.address_1 ?? "",
+  city: known.city || DEFAULT_CITY,
+  missing_fields: missing,
+})
+
+// Сохранённые данные известны — форма в ленте больше не нужна.
+export const dropDeliveryForm = (context: AssistantContext): void => {
+  context.attachments = context.attachments?.filter(
+    (attachment) => attachment.type !== "delivery_form"
+  )
 }

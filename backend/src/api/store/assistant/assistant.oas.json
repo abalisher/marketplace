@@ -208,6 +208,59 @@
           }
         }
       }
+    },
+    "/store/assistant/customer-profile": {
+      "post": {
+        "operationId": "PostAssistantCustomerProfile",
+        "summary": "Save buyer profile from the chat delivery form",
+        "description": "Мини-форма доставки в ленте чата сохраняет имя и адрес покупателя без хода модели. Только вошедший покупатель. Правила записи — как у инструмента save_buyer_profile: телефон учётки не меняется, адрес без имени получателя не заводится, новая улица — новый адрес доставки по умолчанию. Корзину не меняет.",
+        "tags": [
+          "Assistant"
+        ],
+        "parameters": [
+          {
+            "name": "x-publishable-api-key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "security": [
+          {
+            "jwt_token": []
+          },
+          {
+            "cookie_auth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoreAssistantCustomerProfile"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Сохранённый профиль и поля, которых ещё не хватает.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoreAssistantCustomerProfileRes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Покупатель не вошёл."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -463,6 +516,9 @@
             "$ref": "#/components/schemas/StoreAssistantOrderDocuments"
           },
           {
+            "$ref": "#/components/schemas/StoreAssistantDeliveryForm"
+          },
+          {
             "$ref": "#/components/schemas/StoreAssistantAuthPrompt"
           }
         ],
@@ -612,7 +668,11 @@
           },
           "delivery_window": {
             "type": "string",
-            "enum": ["morning", "day", "evening"],
+            "enum": [
+              "morning",
+              "day",
+              "evening"
+            ],
             "nullable": true,
             "description": "Окно приезда машины: morning 09:00–13:00, day 13:00–17:00, evening 17:00–21:00. null — слота у заказа нет."
           }
@@ -782,6 +842,130 @@
             "type": "string",
             "nullable": true,
             "description": "Основной язык записи кодом BCP-47 без региона (ru, kk, en). null — модель не определила."
+          }
+        }
+      },
+      "StoreAssistantDeliveryForm": {
+        "type": "object",
+        "description": "Мини-форма доставки: что ассистент уже знает о получателе и каких полей не хватает для оформления. Покупатель отвечает текстом или заполняет форму — она сохраняет профиль через POST /store/assistant/customer-profile. Успешная установка адреса доставки в том же ходе форму убирает.",
+        "required": [
+          "type",
+          "missing_fields"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "delivery_form"
+            ]
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "address_1": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "first_name",
+                "last_name",
+                "address_1",
+                "phone"
+              ]
+            },
+            "description": "Поля, которых не хватает для оформления."
+          }
+        }
+      },
+      "StoreAssistantCustomerProfile": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "Данные из мини-формы доставки. Телефон — контакт получателя в адресе доставки; телефон учётки (ключ входа) этим не меняется.",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "last_name": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "phone": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "address_1": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "postal_code": {
+            "type": "string",
+            "maxLength": 20
+          }
+        }
+      },
+      "StoreAssistantCustomerProfileRes": {
+        "type": "object",
+        "required": [
+          "profile",
+          "missing_fields"
+        ],
+        "properties": {
+          "profile": {
+            "type": "object",
+            "required": [
+              "first_name",
+              "last_name",
+              "address"
+            ],
+            "properties": {
+              "first_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "last_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "address": {
+                "type": "object",
+                "nullable": true,
+                "required": [
+                  "address_1",
+                  "city"
+                ],
+                "properties": {
+                  "address_1": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

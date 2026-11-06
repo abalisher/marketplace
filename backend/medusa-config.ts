@@ -12,6 +12,11 @@ const withMobileOrigins = (cors?: string) =>
 module.exports = defineConfig({
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
+    // Сессии входа в панель — в Redis: без него ядро держит их в памяти
+    // процесса, и каждый перезапуск бэкенда (выкладка) разлогинивал всех
+    // сотрудников посреди работы — действие падало с «Unauthorized»
+    // (2026-10-05). Без REDIS_URL (локально, тесты) — память, как раньше.
+    redisUrl: process.env.REDIS_URL,
     http: {
       storeCors: withMobileOrigins(process.env.STORE_CORS),
       // Приложение сборщика в web-сборке (:3100) ходит в admin-роуты заданий,
@@ -66,6 +71,18 @@ module.exports = defineConfig({
     {
       resolve: "./src/modules/driver",
     },
+    {
+      resolve: "./src/modules/tenant",
+    },
+    {
+      resolve: "./src/modules/onec",
+    },
+    {
+      resolve: "./src/modules/order-payment",
+    },
+    {
+      resolve: "./src/modules/chat-history",
+    },
     // Ядровый файловый модуль объявлен явно ТОЛЬКО ради базового адреса
     // ссылок. По умолчанию локальный провайдер собирает их от
     // `http://localhost:9000/static`, и этот адрес уезжает в БД полем
@@ -109,13 +126,21 @@ module.exports = defineConfig({
         ],
       },
     },
-    // Ядровый платёжный модуль с нашим провайдером Kaspi за шлюзом. Системный
-    // провайдер (pp_system_default) ядро регистрирует само — здесь только Kaspi.
-    // Транспорт выбирается по env KASPI_MODE (mock|live), см. create-kaspi-client.ts.
+    // Ядровый платёжный модуль с нашими провайдерами: Kaspi QR и оплата «вне
+    // банка» (перевод по номеру Kaspi и «в долг», payment-offline). Системный
+    // провайдер (pp_system_default) ядро регистрирует само, но оформление его не
+    // принимает (lib/payments/providers.ts). Транспорт Kaspi — по env KASPI_MODE
+    // (mock|live), ключи — у каждого продавца свои: провайдер читает их из
+    // настроек оплаты канала, поэтому модуль order_payment — его зависимость.
     {
       resolve: "@medusajs/medusa/payment",
+      dependencies: ["order_payment"],
       options: {
         providers: [
+          {
+            resolve: "./src/modules/payment-offline",
+            id: "offline",
+          },
           {
             resolve: "./src/modules/payment-kaspi",
             id: "kaspi",

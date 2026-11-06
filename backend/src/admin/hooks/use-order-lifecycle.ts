@@ -12,6 +12,8 @@ type TransitionBody = {
   fulfillment_id?: string
   reason?: string | null
   delivery_code?: string
+  // Подтверждение заказа «в долг» — срок возврата `YYYY-MM-DD`.
+  debt_due_date?: string
 }
 
 type TransitionVars = {

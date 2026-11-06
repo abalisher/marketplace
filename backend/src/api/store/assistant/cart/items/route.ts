@@ -3,6 +3,7 @@ import {
   MedusaResponse,
 } from "@medusajs/framework/http"
 import { applyCartQuantities } from "../../../../../lib/assistant/cart-write"
+import { requestSalesChannelId } from "../../../../../lib/tenants/storefront"
 import { StoreAssistantCartItemsType } from "../../validators"
 
 // POST /store/assistant/cart/items — счётчики «−/+» на карточках подбора
@@ -21,6 +22,7 @@ export async function POST(
   const { cartId, summary } = await applyCartQuantities(req.scope, {
     cartId: req.validatedBody.cart_id,
     customerId: req.auth_context?.actor_id,
+    salesChannelId: requestSalesChannelId(req),
     items: req.validatedBody.items,
   })
 

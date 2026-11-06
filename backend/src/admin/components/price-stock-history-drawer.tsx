@@ -113,6 +113,14 @@ const PriceStockHistoryDrawer = ({ open, variantId, onClose }: Props) => {
                 {t("priceStock.history.sourceImport")}
               </Text>
             )}
+            {row.source === "onec" && (
+              <Text size="xsmall" className="text-ui-fg-muted">
+                {/* Прогон из Excel пишет в журнал от имени «Excel» (lib/onec/sync.ts). */}
+                {row.changed_by_name === "Excel"
+                  ? t("priceStock.history.sourceFile")
+                  : t("priceStock.history.sourceOnec")}
+              </Text>
+            )}
           </div>
         </Table.Cell>
       </Table.Row>

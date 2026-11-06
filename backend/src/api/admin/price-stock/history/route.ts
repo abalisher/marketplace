@@ -8,6 +8,7 @@ import CatalogModuleService from "../../../../modules/catalog/service"
 import { loadLocationNames } from "../load"
 import { buildHistoryRow } from "../rows"
 import { AdminGetPriceStockHistoryParamsType } from "../validators"
+import { getTenantScope } from "../../../utils/tenant-access"
 
 // GET /admin/price-stock/history — журнал правок цены и остатка: кто, когда,
 // было → стало. Весь журнал (лента экрана) или по одной позиции (карточка
@@ -23,8 +24,14 @@ export async function GET(
     req.validatedQuery as AdminGetPriceStockHistoryParamsType
 
   const service = req.scope.resolve<CatalogModuleService>(CATALOG_MODULE)
+  // Продавец компании видит журнал остатков своих складов; правки цен и
+  // остатков других компаний (с именами сотрудников) ему не показываем.
+  const tenant = getTenantScope(req)
   const [changes, count] = await service.listAndCountPriceChanges(
-    variant_id ? { variant_id } : {},
+    {
+      ...(variant_id ? { variant_id } : {}),
+      ...(tenant ? { location_id: tenant.stock_location_ids } : {}),
+    },
     { skip: offset, take: limit, order: { created_at: "DESC" } }
   )
 

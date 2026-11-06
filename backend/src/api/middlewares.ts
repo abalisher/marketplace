@@ -26,11 +26,14 @@ import {
   StoreCancelOrder,
   StoreCreateReview,
   StoreOpenDispute,
+  StoreChangeOrderPaymentMethod,
   StorePlaceOrder,
+  StoreSubmitPaymentReceipt,
 } from "./store/orders/validators"
 import {
   StoreApplyCartBonus,
   StoreInitKaspiPayment,
+  StoreSelectPaymentMethod,
 } from "./store/carts/validators"
 import { StoreGetBonusParams } from "./store/bonus/validators"
 import { StoreCreateEstimate } from "./store/estimates/validators"
@@ -68,8 +71,16 @@ import {
   AdminImportPriceStock,
 } from "./admin/price-stock/validators"
 import {
+  AdminGetOnecParams,
+  AdminSyncOnec,
+  AdminTestOnecConnection,
+  AdminUploadOnecFile,
+  AdminUpsertOnecConnection,
+} from "./admin/onec/validators"
+import {
   AdminCancelOrder,
   AdminCompleteAssembly,
+  AdminConfirmOrder,
   AdminDeliverOrder,
   AdminGetOrderLifecyclesParams,
   AdminRescheduleOrder,
@@ -93,7 +104,9 @@ import {
 import {
   StoreAssistantCartItems,
   StoreAssistantChat,
+  StoreAssistantCustomerProfile,
   StoreAssistantTranscribe,
+  StoreUpsertChatConversation,
 } from "./store/assistant/validators"
 import {
   StoreRequestPhoneOtp,
@@ -113,14 +126,40 @@ import {
   AdminGetDriversParams,
   AdminSetDriverStatus,
 } from "./admin/drivers/validators"
+import {
+  AdminGetPaymentSettingsParams,
+  AdminUpsertPaymentSettings,
+} from "./admin/payment-settings/validators"
+import {
+  AdminAcceptPaymentReceipt,
+  AdminRecordOrderPayment,
+  AdminRejectPaymentReceipt,
+} from "./admin/orders/[id]/payment/validators"
+import {
+  AdminExportPaymentReportParams,
+  AdminGetDebtsParams,
+  AdminGetPaymentEntriesParams,
+  AdminGetReceiptsParams,
+} from "./admin/payment-report/validators"
+import { closedCoreRoute } from "./utils/closed-core-route"
 import { driverCors } from "./utils/driver-cors"
 import { requireActiveDriver } from "./utils/require-active-driver"
+import { enforceTenantAccess } from "./utils/tenant-access"
+import { AdminCreateTenantCustomer } from "./admin/tenant-customers/validators"
 
 // Сквозные middleware кастомных роутов: аутентификация store-роутов компании
 // (все требуют залогиненного customer) и zod-валидация тел/query.
 // Роуты /admin/* защищены аутентификацией ядра автоматически.
 export default defineMiddlewares({
   routes: [
+    // Продавец компании видит в admin-API только свой канал продаж (белый
+    // список адресов — utils/tenant-access.ts). Без метода — значит раньше
+    // ядровых валидаторов: фильтр ядровых списков подставляется до них.
+    // Ядровая аутентификация /admin к этому моменту уже отработала.
+    {
+      matcher: "/admin/*",
+      middlewares: [enforceTenantAccess],
+    },
     // Юрлица заморожены на MVP (T10.9): весь домен отвечает 404, пока
     // FEATURE_COMPANIES выключен. Гейт стоит ПЕРВЫМ — раньше аутентификации и
     // валидаторов, чтобы отключённый раздел не просил вход и не разбирал тело.
@@ -233,6 +272,41 @@ export default defineMiddlewares({
         validateAndTransformBody(StoreInitKaspiPayment),
       ],
     },
+    // Способ оплаты корзины (Kaspi QR, перевод по номеру, в долг): список —
+    // как поллинг (гостю по cart_id), выбор — только вошедшему владельцу.
+    {
+      matcher: "/store/carts/:id/payment-method",
+      method: "GET",
+      middlewares: [
+        authenticate("customer", ["session", "bearer"], {
+          allowUnauthenticated: true,
+        }),
+      ],
+    },
+    {
+      matcher: "/store/carts/:id/payment-method",
+      method: "POST",
+      middlewares: [
+        authenticate("customer", ["session", "bearer"]),
+        validateAndTransformBody(StoreSelectPaymentMethod),
+      ],
+    },
+    // Ядровые обходы оформления закрыты. Завершение корзины ядром создаёт заказ
+    // без нашего жизненного цикла и без проверки оплаты (оформление — только
+    // POST /store/orders), а ядровое создание платёжной сессии позволило бы
+    // выбрать системный провайдер (заказ без денег) или подставить в сессию
+    // чужой канал (счёт Kaspi другого продавца). Способ оплаты выбирается
+    // только нашими роутами выше.
+    {
+      matcher: "/store/carts/:id/complete",
+      method: "POST",
+      middlewares: [closedCoreRoute],
+    },
+    {
+      matcher: "/store/payment-collections/:id/payment-sessions",
+      method: "POST",
+      middlewares: [closedCoreRoute],
+    },
     // Dev-подтверждение мок-оплаты (T8.6): доступ как у поллинга — гостевая
     // корзина подтверждается своим cart_id. Роут отвечает 404 вне KASPI_MODE=mock.
     {
@@ -331,6 +405,18 @@ export default defineMiddlewares({
       matcher: "/store/orders*",
       middlewares: [authenticate("customer", ["session", "bearer"])],
     },
+    {
+      matcher: "/store/orders/:id/payment",
+      method: "POST",
+      middlewares: [validateAndTransformBody(StoreChangeOrderPaymentMethod)],
+    },
+    // Чек Kaspi покупателя содержимым: 8 МБ файла + накладные base64.
+    {
+      matcher: "/store/orders/:id/payment/receipts",
+      method: "POST",
+      bodyParser: { sizeLimit: "12mb" },
+      middlewares: [validateAndTransformBody(StoreSubmitPaymentReceipt)],
+    },
     // Кабинет клиента (T10.6): стадии всех заказов, все документы одним списком
     // и текущая корзина покупателя. Роуты личные — только залогиненный
     // покупатель. `/store/carts/me` объявлен ДО ядрового `/store/carts/:id`,
@@ -414,6 +500,11 @@ export default defineMiddlewares({
       middlewares: [validateAndTransformBody(AdminDeliverOrder)],
     },
     {
+      matcher: "/admin/orders/:id/lifecycle/confirm",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminConfirmOrder)],
+    },
+    {
       matcher: "/admin/orders/:id/lifecycle/cancel",
       method: "POST",
       middlewares: [validateAndTransformBody(AdminCancelOrder)],
@@ -449,6 +540,85 @@ export default defineMiddlewares({
         }),
       ],
     },
+    // --- Интеграция с 1С компании ---
+    {
+      matcher: "/admin/onec",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(AdminGetOnecParams, {})],
+    },
+    {
+      matcher: "/admin/onec",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpsertOnecConnection)],
+    },
+    {
+      matcher: "/admin/onec/check",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminTestOnecConnection)],
+    },
+    {
+      matcher: "/admin/onec/sync",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminSyncOnec)],
+    },
+    {
+      matcher: "/admin/onec/file",
+      method: "POST",
+      // Excel-файл каталога base64: до 10 МБ файла + накладные кодирования.
+      bodyParser: { sizeLimit: "15mb" },
+      middlewares: [validateAndTransformBody(AdminUploadOnecFile)],
+    },
+    // --- Оплаты: способы оплаты продавца, движения денег по заказу, отчёт ---
+    {
+      matcher: "/admin/payment-settings",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(AdminGetPaymentSettingsParams, {})],
+    },
+    {
+      matcher: "/admin/payment-settings",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminUpsertPaymentSettings)],
+    },
+    {
+      matcher: "/admin/orders/:id/payment/receive",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminRecordOrderPayment)],
+    },
+    {
+      matcher: "/admin/orders/:id/payment/refund",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminRecordOrderPayment)],
+    },
+    {
+      matcher: "/admin/orders/:id/payment/receipts/:receipt_id/accept",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminAcceptPaymentReceipt)],
+    },
+    {
+      matcher: "/admin/orders/:id/payment/receipts/:receipt_id/reject",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminRejectPaymentReceipt)],
+    },
+    {
+      matcher: "/admin/payment-report/receipts",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(AdminGetReceiptsParams, {})],
+    },
+    {
+      matcher: "/admin/payment-report",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(AdminGetPaymentEntriesParams, {})],
+    },
+    {
+      matcher: "/admin/payment-report/debts",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(AdminGetDebtsParams, {})],
+    },
+    {
+      matcher: "/admin/payment-report/export",
+      method: "GET",
+      middlewares: [validateAndTransformQuery(AdminExportPaymentReportParams, {})],
+    },
     // --- Цены и остатки одним экраном (T10.14) ---
     {
       matcher: "/admin/price-stock",
@@ -459,6 +629,11 @@ export default defineMiddlewares({
           defaults: ["id", "title", "status"],
         }),
       ],
+    },
+    {
+      matcher: "/admin/tenant-customers",
+      method: "POST",
+      middlewares: [validateAndTransformBody(AdminCreateTenantCustomer)],
     },
     {
       matcher: "/admin/price-stock",
@@ -719,6 +894,28 @@ export default defineMiddlewares({
         validateAndTransformBody(StoreAssistantCartItems),
       ],
     },
+    // История чата на всех устройствах покупателя: только вошедший. Тело —
+    // лента диалога целиком (сотни реплик), отсюда предел больше обычного.
+    {
+      matcher: "/store/assistant/conversations*",
+      middlewares: [authenticate("customer", ["session", "bearer"])],
+    },
+    {
+      matcher: "/store/assistant/conversations",
+      method: "POST",
+      bodyParser: { sizeLimit: "4mb" },
+      middlewares: [validateAndTransformBody(StoreUpsertChatConversation)],
+    },
+    {
+      // Мини-форма доставки в ленте чата: только вошедший покупатель.
+      matcher: "/store/assistant/customer-profile",
+      method: "POST",
+      middlewares: [
+        authenticate("customer", ["session", "bearer"]),
+        validateAndTransformBody(StoreAssistantCustomerProfile),
+      ],
+    },
+
     // Распознавание голосового сообщения (T10.2): аудио → текст, БЕЗ хода
     // модели-ассистента. Гость допускается — говорить он начинает до входа.
     // Тело несёт запись содержимым (base64): 8 МБ записи + накладные расходы

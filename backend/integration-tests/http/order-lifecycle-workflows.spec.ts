@@ -424,7 +424,7 @@ medusaIntegrationTestRunner({
             },
             throwOnError: true,
           }),
-          "missing or invalid"
+          "не указан или неверный"
         )
         expect(await lifecycleStatus(order.id)).toEqual("in_delivery")
 
@@ -645,7 +645,7 @@ medusaIntegrationTestRunner({
               reason: "по звонку",
             },
           }),
-          "cannot be rescheduled"
+          "Перенести доставку нельзя"
         )
 
         // Окно осталось прежним: отклонённый перенос ничего не переписал.
@@ -806,7 +806,7 @@ medusaIntegrationTestRunner({
             input: { order_id: order.id, actor_type: "seller" },
             throwOnError: true,
           }),
-          "not allowed"
+          "Нельзя перевести"
         )
 
         expect(await lifecycleStatus(order.id)).toEqual("new")

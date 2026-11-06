@@ -210,6 +210,55 @@ describe("строка экрана", () => {
   })
 })
 
+describe("товар из 1С компании", () => {
+  const managed = product({
+    metadata: { source: "1c", onec_key: "k1", onec_fields: ["price", "stock"] },
+  })
+  const own = product({ metadata: { source: "1c", onec_key: "k1", onec_fields: [] } })
+
+  it("что ведёт 1С — только для чтения, строка помечена", () => {
+    const row = buildPriceStockRow(managed, variant())
+    expect(row.managed_by).toBe("onec")
+    expect(row.onec_fields).toEqual(["price", "stock"])
+    expect(row.price_editable).toBe(false)
+    expect(row.stock_editable).toBe(false)
+  })
+
+  it("чего 1С не присылает — правит продавец", () => {
+    const row = buildPriceStockRow(own, variant())
+    expect(row.managed_by).toBe("onec")
+    expect(row.price_editable).toBe(true)
+    expect(row.stock_editable).toBe(true)
+  })
+
+  it("товар первой версии без метки полей — ведёт 1С целиком", () => {
+    const legacy = product({ metadata: { source: "1c" } })
+    expect(buildPriceStockRow(legacy, variant()).onec_fields).toEqual(["price", "stock"])
+  })
+
+  it("обычный товар не помечен", () => {
+    const row = buildPriceStockRow(product(), variant())
+    expect(row.managed_by).toBeNull()
+    expect(row.onec_fields).toEqual([])
+  })
+
+  it("правка поля, которое ведёт 1С, — понятный отказ", () => {
+    const found = { product: managed, variant: variant() }
+    expect(
+      resolveChange({ variant_id: "variant_1", stock: 5 }, found).issue
+    ).toMatchObject({ code: "onec_managed" })
+    expect(
+      resolveChange({ variant_id: "variant_1", price: 1 }, found).issue
+    ).toMatchObject({ code: "onec_managed" })
+  })
+
+  it("правка поля, которое 1С не ведёт, проходит", () => {
+    const found = { product: own, variant: variant() }
+    expect(resolveChange({ variant_id: "variant_1", price: 2600 }, found).resolved)
+      .toMatchObject({ new_price: 2600 })
+  })
+})
+
 describe("разбор правки", () => {
   const found = { product: product(), variant: variant() }
 

@@ -58,7 +58,10 @@ export async function POST(
 
     res.status(201).json({
       trip: toDriverTripView(result.trip),
-      stop: toDriverTripStopView(result.stop, found.order.display_id),
+      stop: toDriverTripStopView(result.stop, {
+        display_id: found.order.display_id,
+        number: found.order.order_number,
+      }),
     })
   } catch (error) {
     if (!isOrderTaken(error)) {

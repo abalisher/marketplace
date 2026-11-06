@@ -106,14 +106,64 @@
           "default": "'delivery'",
           "comment": null,
           "enumItems": [
-            "delivery",
-            "pickup",
-            "counter"
+            "delivery"
           ],
           "mappedType": "enum"
         },
         "delivery_code": {
           "name": "delivery_code",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "delivery_date": {
+          "name": "delivery_date",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "delivery_window": {
+          "name": "delivery_window",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [
+            "morning",
+            "day",
+            "evening"
+          ],
+          "mappedType": "enum"
+        },
+        "sales_channel_id": {
+          "name": "sales_channel_id",
           "type": "text",
           "unsigned": false,
           "autoincrement": false,
@@ -190,6 +240,15 @@
           "expression": "CREATE INDEX IF NOT EXISTS \"IDX_order_lifecycle_deleted_at\" ON \"order_lifecycle\" (\"deleted_at\") WHERE deleted_at IS NULL"
         },
         {
+          "keyName": "IDX_order_lifecycle_sales_channel_id",
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "primary": false,
+          "unique": false,
+          "expression": "CREATE INDEX IF NOT EXISTS \"IDX_order_lifecycle_sales_channel_id\" ON \"order_lifecycle\" (\"sales_channel_id\") WHERE deleted_at IS NULL"
+        },
+        {
           "keyName": "order_lifecycle_pkey",
           "columnNames": [
             "id"
@@ -221,6 +280,25 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "text"
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'status'",
+          "comment": null,
+          "enumItems": [
+            "status",
+            "slot"
+          ],
+          "mappedType": "enum"
         },
         "from_status": {
           "name": "from_status",
@@ -292,6 +370,7 @@
           "enumItems": [
             "buyer",
             "seller",
+            "driver",
             "admin",
             "system"
           ],
@@ -328,6 +407,78 @@
           "comment": null,
           "enumItems": [],
           "mappedType": "text"
+        },
+        "from_slot_date": {
+          "name": "from_slot_date",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "from_slot_window": {
+          "name": "from_slot_window",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [
+            "morning",
+            "day",
+            "evening"
+          ],
+          "mappedType": "enum"
+        },
+        "to_slot_date": {
+          "name": "to_slot_date",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
+        "to_slot_window": {
+          "name": "to_slot_window",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "enumItems": [
+            "morning",
+            "day",
+            "evening"
+          ],
+          "mappedType": "enum"
         },
         "order_lifecycle_id": {
           "name": "order_lifecycle_id",
