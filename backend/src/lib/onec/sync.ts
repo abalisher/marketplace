@@ -2,6 +2,7 @@ import { MedusaContainer } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { linkProductsToSalesChannelWorkflow } from "@medusajs/medusa/core-flows"
 import { ensureCatalogCategories } from "../catalog/ensure-catalog-categories"
+import { loadProductCategories } from "../catalog/load-product-categories"
 import { loadChannelStockLocationIds } from "../tenants/scope"
 import { TENANT_MODULE } from "../../modules/tenant"
 import TenantModuleService from "../../modules/tenant/service"
@@ -278,7 +279,6 @@ const PRODUCT_FIELDS = [
   "status",
   "product_card.id",
   "product_card.unit",
-  "categories.handle",
   "variants.id",
   "variants.title",
   "variants.sku",
@@ -331,6 +331,13 @@ const loadExisting = async (
     for (const product of data as RawProduct[]) {
       products.set(product.id, product)
     }
+  }
+
+  // Категории — отдельным запросом: полем `categories.handle` выборка тысячи
+  // товаров занимала секунды (lib/catalog/load-product-categories.ts).
+  const categoriesByProduct = await loadProductCategories(query, [...products.keys()])
+  for (const [id, product] of products) {
+    product.categories = categoriesByProduct.get(id) ?? []
   }
 
   const rows: ExistingRow[] = []

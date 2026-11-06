@@ -28,6 +28,7 @@ const row = (patch: Partial<AdminPriceStockRow> = {}): AdminPriceStockRow => ({
   title: "Цемент М400",
   variant_title: "Цемент М400",
   sku: "CEM-400",
+  brand: null,
   unit: "мешок",
   status: "published",
   category_handle: "finishing",

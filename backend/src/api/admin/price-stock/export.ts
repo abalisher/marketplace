@@ -13,6 +13,7 @@ import { PriceStockRow, priceStockRowTitle } from "./rows"
 export const PRICE_STOCK_EXPORT_HEADER = [
   "Артикул",
   "Товар",
+  "Бренд",
   "Категория",
   "Единица",
   "Цена, ₸",
@@ -35,6 +36,7 @@ export const buildExportTable = (
   ...rows.map((row) => [
     row.sku ?? PRICE_STOCK_EXPORT_NO_SKU,
     priceStockRowTitle(row),
+    row.brand ?? "",
     row.category_name ?? "",
     row.unit ?? "",
     row.price ?? "",

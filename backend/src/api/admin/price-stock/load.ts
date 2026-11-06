@@ -1,6 +1,7 @@
 import { AuthenticatedMedusaRequest } from "@medusajs/framework/http"
 import { RemoteQueryFunction } from "@medusajs/framework/types"
 import { MedusaError, Modules } from "@medusajs/framework/utils"
+import { loadProductCategories } from "../../../lib/catalog/load-product-categories"
 import { lowStockThreshold } from "../dashboard/constants"
 import {
   PriceStockFilter,
@@ -18,11 +19,14 @@ type Query = Omit<RemoteQueryFunction, symbol>
 // Сколько позиций каталога просматриваем за раз. Отдельного индекса «мало на
 // складе» у ядра нет, строка экрана — вариант, а не товар, поэтому страница
 // режется в памяти (тот же приём, что в сводке дня и очереди отгрузки).
-// Для одного магазина каталог заведомо меньше потолка.
-export const PRICE_STOCK_SCAN_CAP = 1000
+// Каталог компании из Excel уже больше тысячи позиций (NUR-STROI — 1161), а
+// выборка без категорий в поле — полсекунды на тысячу: потолок с запасом.
+export const PRICE_STOCK_SCAN_CAP = 5000
 
 // Поля одной строки экрана: название и статус товара, единица из карточки,
-// категория, цена варианта в валюте и уровни остатка по складам.
+// цена варианта в валюте и уровни остатка по складам. Категории — отдельным
+// запросом (loadProductCategories): полем `categories.*` выборка тысячи
+// товаров шла 4,5 с вместо 0,6 с.
 const FIELDS = [
   "id",
   "title",
@@ -30,8 +34,6 @@ const FIELDS = [
   "thumbnail",
   "metadata",
   "product_card.unit",
-  "categories.handle",
-  "categories.name",
   "variants.id",
   "variants.title",
   "variants.sku",
@@ -142,6 +144,14 @@ export const loadPriceStockProducts = async (
     },
   })
   const products = data as RawProduct[]
+
+  const categories = await loadProductCategories(
+    query,
+    products.map((product) => product.id)
+  )
+  for (const product of products) {
+    product.categories = categories.get(product.id) ?? []
+  }
 
   // Себестоимость — из позиций 1С (onec_item.cost), а не из товара: в товаре
   // её увидел бы покупатель. У товара не из 1С её нет.

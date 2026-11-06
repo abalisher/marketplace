@@ -11,6 +11,7 @@ import { CATALOG_CATEGORY_HANDLES } from "../../../lib/catalog/categories"
 import {
   ONEC_PRODUCT_SOURCE,
   OnecManagedField,
+  brandOf,
   onecFieldsOf,
   roundQuantity,
 } from "../../../lib/onec/plan"
@@ -96,6 +97,9 @@ export type PriceStockRow = {
   title: string
   variant_title: string | null
   sku: string | null
+  // Бренд товара (product.metadata.brand — из 1С или Excel компании); null —
+  // не указан. Одинаковые товары разных брендов продавец различает по нему.
+  brand: string | null
   unit: string | null
   status: string | null
   category_handle: string | null
@@ -270,6 +274,7 @@ export const buildPriceStockRow = (
     title: product.title,
     variant_title: variant.title ?? null,
     sku: variant.sku ?? null,
+    brand: brandOf(product.metadata),
     unit: product.product_card?.unit ?? null,
     status: product.status ?? null,
     category_handle: category?.handle ?? null,

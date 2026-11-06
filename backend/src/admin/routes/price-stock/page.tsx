@@ -519,6 +519,16 @@ const PriceStockPage = () => {
       },
     }),
     columnHelper.display({
+      id: "brand",
+      size: 150,
+      header: t("priceStock.colBrand"),
+      cell: ({ row }) => (
+        <span className="truncate" title={row.original.brand ?? undefined}>
+          {row.original.brand ?? "—"}
+        </span>
+      ),
+    }),
+    columnHelper.display({
       id: "category",
       size: 170,
       header: t("priceStock.colCategory"),

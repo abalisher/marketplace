@@ -419,6 +419,11 @@
             "type": "string",
             "nullable": true
           },
+          "brand": {
+            "type": "string",
+            "nullable": true,
+            "description": "Бренд товара (торговая марка) из 1С или Excel компании"
+          },
           "price": {
             "type": "number",
             "nullable": true,

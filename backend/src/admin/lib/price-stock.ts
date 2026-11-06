@@ -26,6 +26,7 @@ export type AdminPriceStockRow = {
   title: string
   variant_title: string | null
   sku: string | null
+  brand: string | null
   unit: string | null
   status: string | null
   category_handle: string | null
