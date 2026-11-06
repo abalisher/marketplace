@@ -236,6 +236,21 @@ describe("товар из 1С компании", () => {
     expect(buildPriceStockRow(legacy, variant()).onec_fields).toEqual(["price", "stock"])
   })
 
+  it("каталог из Excel: цену и остаток из файла продавец правит здесь же", () => {
+    const fromFile = product({
+      metadata: { source: "1c", onec_key: "k1", onec_fields: ["price", "stock"], onec_feed: "file" },
+    })
+    const row = buildPriceStockRow(fromFile, variant())
+    expect(row.managed_by).toBe("file")
+    expect(row.onec_fields).toEqual([])
+    expect(row.price_editable).toBe(true)
+    expect(row.stock_editable).toBe(true)
+    expect(
+      resolveChange({ variant_id: "variant_1", price: 2600 }, { product: fromFile, variant: variant() })
+        .resolved
+    ).toMatchObject({ new_price: 2600 })
+  })
+
   it("обычный товар не помечен", () => {
     const row = buildPriceStockRow(product(), variant())
     expect(row.managed_by).toBeNull()

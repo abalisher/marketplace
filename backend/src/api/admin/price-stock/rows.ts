@@ -132,7 +132,10 @@ export type PriceStockRow = {
   managed_by: "onec" | "file" | null
   // Что из цены и остатка ведёт 1С: эти клетки только для чтения (правка
   // перезаписалась бы следующей синхронизацией). Чего 1С не присылает, то
-  // задаёт продавец.
+  // задаёт продавец. У каталога из Excel закрытых клеток нет (решение
+  // владельца 2026-11-06): файл — способ загрузить много разом, а не учётная
+  // система; одну цену продавец правит здесь, следующая загрузка файла
+  // запишет значения из файла.
   onec_fields: OnecManagedField[]
 }
 
@@ -266,7 +269,8 @@ export const buildPriceStockRow = (
   )
   const category = product.categories?.[0]
   const onec = isOnecManaged(product)
-  const onecFields = onecFieldsOf(product.metadata)
+  const onecFields =
+    product.metadata?.onec_feed === "file" ? [] : onecFieldsOf(product.metadata)
 
   return {
     variant_id: variant.id,
