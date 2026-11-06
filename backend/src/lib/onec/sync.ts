@@ -36,6 +36,8 @@ import {
   OnecDesiredProduct,
   OnecExistingProduct,
   OnecProductUpdate,
+  assignFileCodes,
+  brandOf,
   managedFieldsOf,
   onecFieldsOf,
   onecMetadata,
@@ -263,7 +265,6 @@ export const feedSummary = (feed: OnecFeed): OnecTestResult => {
 
 type ExistingRow = OnecExistingProduct & {
   variant_title: string | null
-  sku: string | null
   inventory_item_id: string | null
   carry_prices: { amount: number; currency_code: string }[]
   price_editable: boolean
@@ -349,6 +350,8 @@ const loadExisting = async (
     rows.push({
       onec_item_id: item.id,
       key: item.external_key,
+      code: item.external_code ?? null,
+      brand: brandOf(product.metadata),
       present: item.present,
       product_id: product.id,
       variant_id: variant.id,
@@ -584,9 +587,11 @@ export const runOnecSync = async (
     }
     // Цену и остаток 1С ведёт, только если присылает их.
     const managed = managedFieldsOf(parsed.fields)
+    // Excel: позициям без кода и артикула — порядковые номера.
+    const items = fromFile ? assignFileCodes(parsed.items, existing).items : parsed.items
     const plan = planOnecSync(
       tenant.slug,
-      parsed.items,
+      items,
       existing,
       managed,
       !!parsed.fields.cost,
@@ -676,7 +681,10 @@ export const runOnecSync = async (
       updateOnecProductsWorkflow(container).run({
         input: {
           products: batch
-            .filter((update) => Object.keys(update.product).length > 0)
+            .filter(
+              (update) =>
+                Object.keys(update.product).length > 0 || update.code !== undefined
+            )
             .map((update) => ({
               id: update.existing.product_id,
               ...(update.product.title !== undefined
@@ -692,16 +700,29 @@ export const runOnecSync = async (
               categoryIds[update.product.category]
                 ? { category_ids: [categoryIds[update.product.category]] }
                 : {}),
-              ...(update.product.onec_fields !== undefined
+              // Метаданные пишутся целиком: метка 1С, код, поля, бренд.
+              ...(update.product.onec_fields !== undefined ||
+              update.product.brand !== undefined ||
+              update.code !== undefined
                 ? {
                     metadata: onecMetadata(
                       update.existing.key,
                       update.desired.code,
-                      update.product.onec_fields,
-                      update.desired.feed
+                      update.desired.onec_fields,
+                      update.desired.feed,
+                      update.desired.brand
                     ),
                   }
                 : {}),
+            })),
+          variants: batch
+            .filter(
+              (update) =>
+                update.code !== undefined && update.existing.sku !== update.code.sku
+            )
+            .map((update) => ({
+              id: update.existing.variant_id,
+              sku: update.code!.sku,
             })),
           cards: batch
             .filter(
@@ -715,10 +736,13 @@ export const runOnecSync = async (
           // Себестоимость из 1С — в нашу таблицу позиций, не в товар (витрина
           // отдаёт варианты целиком, себестоимость утекла бы покупателю).
           items: batch
-            .filter((update) => update.cost !== undefined)
+            .filter((update) => update.cost !== undefined || update.code !== undefined)
             .map((update) => ({
               id: update.existing.onec_item_id,
-              cost: update.cost?.new ?? null,
+              ...(update.cost !== undefined ? { cost: update.cost.new ?? null } : {}),
+              ...(update.code !== undefined
+                ? { external_code: update.code.code }
+                : {}),
             })),
         },
         throwOnError: true,

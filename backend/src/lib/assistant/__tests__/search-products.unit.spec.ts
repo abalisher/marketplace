@@ -349,3 +349,76 @@ describe("assistant search_products attachments", () => {
     })
   })
 })
+
+describe("search_products: бренд", () => {
+  const product = (id: string, title: string, brand: string | null, price: number) => ({
+    id,
+    title,
+    status: "published",
+    metadata: brand ? { brand } : {},
+    variants: [{ id: `var_${id}`, prices: [{ amount: price, currency_code: "kzt" }] }],
+  })
+
+  const recordingContainer = (answer: (filters: Record<string, unknown>) => unknown[]) => {
+    const calls: Record<string, unknown>[] = []
+    const container = {
+      resolve: (key: string) => {
+        if (key === ContainerRegistrationKeys.QUERY) {
+          return {
+            graph: async ({ filters }: { filters: Record<string, unknown> }) => {
+              calls.push(filters)
+              return { data: answer(filters) }
+            },
+          }
+        }
+        throw new Error(`unexpected resolve: ${key}`)
+      },
+    } as unknown as MedusaContainer
+    return { container, calls }
+  }
+
+  it("отдаёт бренд каждого товара — одноимённые товары разных брендов различимы", async () => {
+    const { container } = recordingContainer(() => [
+      product("p1", "Гипсокартон 12,5 мм Knauf", "Knauf", 2600),
+      product("p2", "Гипсокартон 12,5 мм Волма", "Волма", 2450),
+    ])
+    const out = await searchProductsTool.execute(
+      container,
+      { query: "гипсокартон" },
+      { attachments: [] }
+    )
+    expect((out.products as { title: string; brand: string | null }[]).map((p) => p.brand)).toEqual([
+      "Волма",
+      "Knauf",
+    ])
+    expect(out).not.toHaveProperty("brand_not_found")
+  })
+
+  it("названный бренд сужает поиск по названию", async () => {
+    const { container, calls } = recordingContainer(() => [
+      product("p1", "Гипсокартон 12,5 мм Knauf", "Knauf", 2600),
+    ])
+    await searchProductsTool.execute(
+      container,
+      { query: "гипсокартон", brand: "Knauf" },
+      { attachments: [] }
+    )
+    expect(calls[0]).toMatchObject({
+      $and: [{ title: { $ilike: "%гипсокартон%" } }, { title: { $ilike: "%knauf%" } }],
+    })
+  })
+
+  it("бренда нет — честный признак brand_not_found и тот же товар других брендов", async () => {
+    const { container, calls } = recordingContainer((filters) =>
+      "$and" in filters ? [] : [product("p2", "Гипсокартон 12,5 мм Волма", "Волма", 2450)]
+    )
+    const out = await searchProductsTool.execute(
+      container,
+      { query: "гипсокартон", brand: "Gyproc" },
+      { attachments: [] }
+    )
+    expect(out.brand_not_found).toBe("Gyproc")
+    expect((out.products as { brand: string | null }[])[0].brand).toBe("Волма")
+    expect(calls).toHaveLength(2)
+  })
+})

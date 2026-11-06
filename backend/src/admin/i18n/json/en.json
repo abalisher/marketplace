@@ -1664,7 +1664,8 @@
       "group": "Group",
       "barcode": "Barcode",
       "description": "Description",
-      "cost": "Cost"
+      "cost": "Cost",
+      "brand": "Brand"
     },
     "runs": {
       "title": "Synchronization log",

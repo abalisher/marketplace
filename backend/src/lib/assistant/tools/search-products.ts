@@ -4,6 +4,7 @@ import {
   CATALOG_CATEGORIES,
   CatalogCategoryHandle,
 } from "../../catalog/categories"
+import { brandOf } from "../../onec/plan"
 import { loadChannelAssortment } from "../../tenants/scope"
 import { AssistantContext, AssistantTool } from "../types"
 
@@ -110,6 +111,7 @@ type ProductRow = {
   title: string
   status: string
   thumbnail?: string | null
+  metadata?: Record<string, unknown> | null
   product_card?: { unit?: string | null } | null
   categories?: CategoryRow[]
   variants?: VariantRow[]
@@ -128,6 +130,9 @@ type FoundVariant = {
 type FoundProduct = {
   product_id: string
   title: string
+  // Бренд (торговая марка); null — не указан. Одноимённые товары разных
+  // брендов — разные товары с разной ценой: покупатель выбирает по бренду.
+  brand: string | null
   unit: string | null
   image_url: string | null
   // Категория каталога (одна из четырёх) — по ней ассистент группирует список
@@ -197,6 +202,7 @@ const collectProduct = (
   return {
     product_id: product.id,
     title: product.title,
+    brand: brandOf(product.metadata),
     unit: product.product_card?.unit ?? null,
     image_url: product.thumbnail ?? null,
     category: product.categories?.[0]?.name ?? null,
@@ -217,7 +223,10 @@ export const searchProductsTool: AssistantTool = {
       "«утеплитель для фасада 100 мм»). Пустой результат — ещё НЕ доказательство, " +
       "что товара нет: перед ответом «у нас такого нет» повтори поиск более общим " +
       "словом (вместо «ввгнг 2.5» — «кабель», вместо «муфта» — «фитинг») или " +
-      "запроси всю категорию через category.",
+      "запроси всю категорию через category. У товара есть brand (торговая марка): " +
+      "одинаковые товары разных брендов — разные позиции с разной ценой. Покупатель " +
+      "назвал бренд — передай его в brand; результат brand_not_found значит, что " +
+      "такого бренда нет, а в products — тот же товар других брендов.",
     parameters: {
       type: "OBJECT",
       properties: {
@@ -234,6 +243,12 @@ export const searchProductsTool: AssistantTool = {
             CATALOG_CATEGORIES.map((c) => `${c.handle} — ${c.name}`).join("; ") +
             ".",
           enum: CATALOG_CATEGORIES.map((c) => c.handle),
+        },
+        brand: {
+          type: "STRING",
+          description:
+            "Бренд (торговая марка), если покупатель его назвал: «Knauf», «Ceresit», " +
+            "«DUHENG MAX». Не выдумывай бренд сам.",
         },
         limit: {
           type: "NUMBER",
@@ -260,6 +275,7 @@ export const searchProductsTool: AssistantTool = {
     if (!rawQuery && !categoryHandle) {
       return { products: [] }
     }
+    const rawBrand = typeof args.brand === "string" ? args.brand.trim() : ""
     const rawLimit = Number(args.limit)
     const limit =
       Number.isFinite(rawLimit) && rawLimit > 0
@@ -296,6 +312,7 @@ export const searchProductsTool: AssistantTool = {
       "title",
       "status",
       "thumbnail",
+      "metadata",
       "product_card.unit",
       "categories.handle",
       "categories.name",
@@ -340,15 +357,34 @@ export const searchProductsTool: AssistantTool = {
       return data as ProductRow[]
     }
 
-    // Пустой запрос при заданной категории — обзор ассортимента категории.
-    let data = await runSearch(rawQuery ? andFilter : {})
+    // Бренд ищем в названии: при загрузке из 1С и Excel он дописан к
+    // наименованию (lib/onec/parse-items.ts → withBrand), у товаров, заведённых
+    // руками, он там же. Фильтр — подстрока бренда целиком («duheng max»).
+    const withBrandFilter = (filter: Record<string, unknown>) =>
+      rawBrand ? { $and: [filter, like(rawBrand.toLowerCase())] } : filter
 
-    // AND ничего не дал, а слов было несколько — пробуем ЛЮБОЕ из слов (OR).
-    // Иначе одно лишнее слово в запросе («щебень 20-40», где в названии товара
-    // фракция другая) превращалось в «у нас такого нет», и покупатель уходил за
-    // товаром, который есть на складе.
-    if (rawQuery && data.length === 0 && tokens.length > 1) {
-      data = await runSearch({ $or: tokens.map(like) })
+    const search = async (brandFilter: boolean) => {
+      const scoped = (filter: Record<string, unknown>) =>
+        brandFilter ? withBrandFilter(filter) : filter
+      // Пустой запрос при заданной категории — обзор ассортимента категории.
+      let rows = await runSearch(scoped(rawQuery ? andFilter : {}))
+      // AND ничего не дал, а слов было несколько — пробуем ЛЮБОЕ из слов (OR).
+      // Иначе одно лишнее слово в запросе («щебень 20-40», где в названии
+      // товара фракция другая) превращалось в «у нас такого нет», и покупатель
+      // уходил за товаром, который есть на складе.
+      if (rawQuery && rows.length === 0 && tokens.length > 1) {
+        rows = await runSearch(scoped({ $or: tokens.map(like) }))
+      }
+      return rows
+    }
+
+    let data = await search(!!rawBrand)
+    // Названного бренда нет — отвечаем честно: показываем тот же товар других
+    // брендов с пометкой, а не молча подменяем бренд.
+    let brandNotFound = false
+    if (rawBrand && data.length === 0) {
+      data = await search(false)
+      brandNotFound = true
     }
 
     const products = data
@@ -361,6 +397,6 @@ export const searchProductsTool: AssistantTool = {
     // на демо покупатели не понимали, зачем под ответом список со счётчиками,
     // а длинный подбор закрывал сам ответ. Выбор идёт текстом, количество
     // правится в полосе корзины.
-    return { products }
+    return brandNotFound ? { products, brand_not_found: rawBrand } : { products }
   },
 }

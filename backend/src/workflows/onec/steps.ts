@@ -125,10 +125,20 @@ export const createOnecItemsStep = createStep(
 export type UpdateOnecItemsStepInput = {
   // present — позиция есть / пропала в 1С; cost — себестоимость из 1С. Не
   // переданное поле не трогаем.
-  items: { id: string; present?: boolean; cost?: number | null }[]
+  items: {
+    id: string
+    present?: boolean
+    cost?: number | null
+    external_code?: string | null
+  }[]
 }
 
-type OnecItemSnapshot = { id: string; present: boolean; cost: number | null }
+type OnecItemSnapshot = {
+  id: string
+  present: boolean
+  cost: number | null
+  external_code: string | null
+}
 
 // Отметки позиций 1С: есть ли она в последнем ответе и её себестоимость.
 // Компенсация возвращает прежние значения.
@@ -150,6 +160,9 @@ export const updateOnecItemsStep = createStep(
         ...(item.present !== undefined ? { present: item.present } : {}),
         ...(item.present ? { last_seen_at: now } : {}),
         ...(item.cost !== undefined ? { cost: item.cost } : {}),
+        ...(item.external_code !== undefined
+          ? { external_code: item.external_code }
+          : {}),
       }))
     )
     return new StepResponse(
@@ -158,6 +171,7 @@ export const updateOnecItemsStep = createStep(
         id: item.id,
         present: item.present,
         cost: item.cost == null ? null : Number(item.cost),
+        external_code: item.external_code ?? null,
       }))
     )
   },

@@ -73,7 +73,44 @@ describe("readOnecFile", () => {
       "b.xlsx"
     )
     expect(feed.items[0].key).toEqual("Песок мытый")
-    expect(feed.issues[0].message).toMatch(/по наименованию/)
+    expect(feed.items[0].code).toBeNull()
+    expect(feed.issues[0].message).toMatch(/порядковые номера/)
+  })
+
+  it("строка с пустым кодом не теряется: связывается по наименованию", () => {
+    const feed = readOnecFile(
+      xlsx([
+        ["Код", "Наименование", "Остаток"],
+        ["00125", "Цемент ПЦ 400", 12],
+        [null, "Песок мытый", 3],
+      ]),
+      "b.xlsx"
+    )
+    expect(feed.items.map((item) => [item.key, item.code])).toEqual([
+      ["00125", "00125"],
+      ["Песок мытый", null],
+    ])
+    expect(feed.issues[0].message).toMatch(/У 1 строк не заполнен код/)
+  })
+
+  it("бренд — отдельное поле позиции: одноимённые товары разных брендов не сливаются", () => {
+    const feed = readOnecFile(
+      xlsx([
+        ["Наименование", "Торговая марка", "Цена"],
+        ["Гипсокартон 12,5 мм", "Knauf", 2600],
+        ["Гипсокартон 12,5 мм", "Волма", 2450],
+        ["Гипсокартон Knauf 9,5 мм", "Knauf", 2300],
+      ]),
+      "b.xlsx"
+    )
+    expect(feed.fields.brand).toEqual("Торговая марка")
+    expect(feed.items.map((item) => [item.name, item.brand])).toEqual([
+      ["Гипсокартон 12,5 мм Knauf", "Knauf"],
+      ["Гипсокартон 12,5 мм Волма", "Волма"],
+      ["Гипсокартон Knauf 9,5 мм", "Knauf"],
+    ])
+    expect(new Set(feed.items.map((item) => item.key)).size).toEqual(3)
+    expect(feed.name_parts).toEqual(["Торговая марка"])
   })
 
   it("только себестоимость — ценой продажи она не становится, цену ставит продавец", () => {
@@ -122,7 +159,8 @@ describe("readOnecFile", () => {
       "Кельма",
     ])
     // Закупочная цена — себестоимость, ценой продажи не становится.
-    expect(branded.items[0]).toMatchObject({ cost: 315, price: null })
+    expect(branded.items[0]).toMatchObject({ cost: 315, price: null, brand: "DUHENG MAX" })
+    expect(branded.items[2].brand).toBeNull()
     expect(branded.name_parts).toEqual(["Бренд", "Характеристика"])
   })
 
@@ -149,7 +187,7 @@ describe("buildOnecFileTemplate", () => {
     expect(feed.sheet).toEqual("Каталог")
     expect(feed.items).toHaveLength(0)
     expect(Object.keys(feed.fields).sort()).toEqual(
-      ["code", "cost", "group", "name", "price", "stock", "unit"].sort()
+      ["brand", "code", "cost", "group", "name", "price", "stock", "unit"].sort()
     )
   })
 })
@@ -173,6 +211,7 @@ describe("товары из Excel помечены источником", () => 
       cost: null,
       barcode: null,
       group: null,
+      brand: null,
     }
     expect(desiredProduct("companyb", item, ["price", "stock"], false, "file").feed).toEqual(
       "file"

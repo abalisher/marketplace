@@ -63,7 +63,8 @@ export const importOnecProductsWorkflow = createWorkflow(
           product.key,
           product.code,
           product.onec_fields,
-          product.feed
+          product.feed,
+          product.brand
         ),
         options: [{ title: ONEC_OPTION_TITLE, values: [product.unit] }],
         variants: [

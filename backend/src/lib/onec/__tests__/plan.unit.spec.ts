@@ -1,8 +1,10 @@
 import { OnecItem } from "../parse-items"
 import {
+  assignFileCodes,
   desiredProduct,
   diffProduct,
   normalizeUnit,
+  onecMetadata,
   OnecExistingProduct,
   onecHandle,
   onecSku,
@@ -22,6 +24,7 @@ const item = (patch: Partial<OnecItem> = {}): OnecItem => ({
   cost: null,
   barcode: null,
   group: null,
+  brand: null,
   ...patch,
 })
 
@@ -33,6 +36,9 @@ const existingFor = (
   return {
     onec_item_id: `oi_${source.key}`,
     key: source.key,
+    code: desired.code,
+    sku: desired.sku,
+    brand: desired.brand,
     present: true,
     product_id: `prod_${source.key}`,
     variant_id: `var_${source.key}`,
@@ -310,3 +316,81 @@ describe("себестоимость из 1С", () => {
     ).toBeNull()
   })
 })
+
+describe("порядковые коды позиций Excel без кода", () => {
+  const bare = (name: string) => item({ key: name, code: null, article: null, name })
+
+  it("первая загрузка — номера по порядку строк; позиции с кодом не трогаются", () => {
+    const { items, assigned } = assignFileCodes(
+      [bare("Песок"), item({ key: "00-7", code: "00-7" }), bare("Щебень"), bare("Цемент")],
+      []
+    )
+    expect(items.map((i) => i.code)).toEqual(["1", "00-7", "2", "3"])
+    expect(assigned).toBe(3)
+  })
+
+  it("номер закреплён за позицией, новая получает следующий свободный", () => {
+    const { items } = assignFileCodes(
+      [bare("Щебень"), bare("Гравий"), bare("Песок")],
+      [
+        { key: "Песок", code: "1" },
+        { key: "Щебень", code: "2" },
+        // Снятая с витрины позиция свой номер держит — повторно он не выдаётся.
+        { key: "Цемент", code: "3" },
+      ]
+    )
+    expect(items.map((i) => i.code)).toEqual(["2", "4", "1"])
+  })
+
+  it("номер не совпадает с кодом из файла", () => {
+    const { items } = assignFileCodes(
+      [item({ key: "1", code: "1" }), bare("Песок")],
+      []
+    )
+    expect(items[1].code).toBe("2")
+  })
+
+  it("артикул и адрес строятся из номера", () => {
+    const [coded] = assignFileCodes([bare("Песок мытый")], []).items
+    const desired = desiredProduct("nurstroi", coded, ["stock"], false, "file")
+    expect(desired.sku).toBe("NURSTROI-1")
+    expect(desired.handle).toBe("nurstroi-pesok-mytyy-1")
+  })
+
+  it("товар, заведённый без кода, получает номер и новый артикул при следующей загрузке", () => {
+    const source = bare("Песок мытый")
+    const before = existingFor(source, { code: null, sku: "NURSTROI-Песок-мытый" })
+    const [coded] = assignFileCodes([source], [before]).items
+    const update = diffProduct(
+      before,
+      desiredProduct("nurstroi", coded, ["price", "stock"], false, "file")
+    )
+    expect(update?.code).toEqual({ code: "1", sku: "NURSTROI-1" })
+  })
+
+  it("код товаров 1С синхронизация не переписывает", () => {
+    const source = item({ code: "00-002" })
+    const update = diffProduct(
+      existingFor(source, { code: "00-001" }),
+      desiredProduct("orgstroy", source)
+    )
+    expect(update).toBeNull()
+  })
+})
+
+describe("бренд", () => {
+  it("попадает в метаданные товара и обновляется при смене", () => {
+    const source = item({ brand: "Knauf", name: "Гипсокартон Knauf" })
+    const desired = desiredProduct("orgstroy", source)
+    expect(desired.brand).toBe("Knauf")
+    expect(onecMetadataBrand(desired)).toBe("Knauf")
+    expect(diffProduct(existingFor(source), desired)).toBeNull()
+    expect(
+      diffProduct(existingFor(source, { brand: null }), desired)?.product.brand
+    ).toBe("Knauf")
+  })
+})
+
+const onecMetadataBrand = (desired: ReturnType<typeof desiredProduct>) =>
+  onecMetadata(desired.key, desired.code, desired.onec_fields, desired.feed, desired.brand)
+    .brand

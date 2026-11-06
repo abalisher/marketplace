@@ -79,6 +79,7 @@ describe("parseOnecItems", () => {
         cost: null,
         barcode: null,
         group: "Сухие смеси",
+        brand: null,
       },
     ])
     expect(result.fields).toMatchObject({
@@ -324,5 +325,23 @@ describe("учётная цена — себестоимость, не цена 
       price: null,
       cost: 1100,
     })
+  })
+})
+
+describe("бренд позиции", () => {
+  it("берётся из поля бренда (в том числе ссылкой на справочник) и дописывается к наименованию", () => {
+    const { items, fields } = parseOnecItems([
+      { Код: "1", Наименование: "Затирка FIXLINE 2 кг", Бренд: "AlinEX" },
+      { Код: "2", Наименование: "Затирка CE 33 2 кг", Производитель: { Наименование: "Ceresit" } },
+      { Код: "3", Наименование: "Затирка AlinEX FIXLINE 4 кг", Бренд: "alinex" },
+      { Код: "4", Наименование: "Кельма" },
+    ])
+    expect(fields.brand).toEqual("Бренд")
+    expect(items.map((item) => [item.name, item.brand])).toEqual([
+      ["Затирка FIXLINE 2 кг AlinEX", "AlinEX"],
+      ["Затирка CE 33 2 кг Ceresit", "Ceresit"],
+      ["Затирка AlinEX FIXLINE 4 кг", "alinex"],
+      ["Кельма", null],
+    ])
   })
 })

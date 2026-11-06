@@ -52,20 +52,31 @@ export const managedFieldsOf = (fields: {
 // раньше), чтобы не переписывать их метаданные.
 export type OnecFeedKind = "http" | "file"
 
-// Метаданные товара из 1С: метка источника, ключ позиции и поля, которые ведёт
-// 1С (по ним «Цены и остатки» закрывают клетки).
+// Метаданные товара из 1С: метка источника, ключ позиции, поля, которые ведёт
+// 1С (по ним «Цены и остатки» закрывают клетки), и бренд — его отдают поиск
+// ассистента и витрина (бренд — публичное свойство товара, не учётное).
 export const onecMetadata = (
   key: string,
   code: string | null,
   fields: OnecManagedField[],
-  feed: OnecFeedKind = "http"
+  feed: OnecFeedKind = "http",
+  brand: string | null = null
 ) => ({
   source: ONEC_PRODUCT_SOURCE,
   onec_key: key,
   onec_code: code,
   onec_fields: fields,
   ...(feed === "file" ? { onec_feed: "file" } : {}),
+  brand,
 })
+
+// Бренд товара из его метаданных; null — не задан.
+export const brandOf = (
+  metadata: Record<string, unknown> | null | undefined
+): string | null =>
+  typeof metadata?.brand === "string" && metadata.brand.trim()
+    ? metadata.brand.trim()
+    : null
 
 // Какие поля товара ведёт 1С — из его метаданных.
 export const onecFieldsOf = (
@@ -87,6 +98,7 @@ export type OnecDesiredProduct = {
   feed: OnecFeedKind
   key: string
   code: string | null
+  brand: string | null
   title: string
   description: string | null
   unit: string
@@ -110,6 +122,11 @@ export type OnecDesiredProduct = {
 export type OnecExistingProduct = {
   onec_item_id: string
   key: string
+  // Код позиции, сохранённый при прошлой синхронизации (onec_item.external_code).
+  code: string | null
+  // Артикул варианта (SKU) — строится из кода.
+  sku: string | null
+  brand: string | null
   present: boolean
   product_id: string
   variant_id: string
@@ -135,7 +152,11 @@ export type OnecProductUpdate = {
     status?: "published" | "draft"
     category?: CatalogCategoryHandle
     onec_fields?: OnecManagedField[]
+    brand?: string | null
   }
+  // Код позиции сменился (Excel: присвоен порядковый номер) — новый код и
+  // артикул варианта.
+  code?: { code: string | null; sku: string }
   unit?: string
   price?: { old: number | null; new: number }
   stock?: { old: number | null; new: number }
@@ -287,6 +308,7 @@ export const desiredProduct = (
     feed,
     key: item.key,
     code: item.code,
+    brand: item.brand,
     title: item.name,
     description,
     unit,
@@ -301,6 +323,52 @@ export const desiredProduct = (
     sku: onecSku(tenantSlug, item),
     handle: onecHandle(tenantSlug, item),
   }
+}
+
+// Коды позиций Excel без кода и артикула: порядковые номера 1, 2, 3… в
+// порядке строк файла. Номер закрепляется за позицией (onec_item.external_code)
+// и при следующих загрузках не меняется; новая строка получает следующий
+// свободный номер. Номера, которые уже заняты кодами файла или позициями
+// компании (в том числе снятыми с витрины), не выдаются повторно.
+export const assignFileCodes = (
+  items: OnecItem[],
+  existing: { key: string; code: string | null }[]
+): { items: OnecItem[]; assigned: number } => {
+  const codeByKey = new Map<string, string>()
+  for (const row of existing) {
+    if (row.code) {
+      codeByKey.set(row.key, row.code)
+    }
+  }
+  const used = new Set<string>()
+  for (const code of [
+    ...existing.map((row) => row.code),
+    ...items.map((item) => item.code),
+    ...items.map((item) => item.article),
+  ]) {
+    if (code) {
+      used.add(code)
+    }
+  }
+  let next = 1
+  let assigned = 0
+  const coded = items.map((item) => {
+    if (item.code || item.article) {
+      return item
+    }
+    const own = codeByKey.get(item.key)
+    if (own) {
+      return { ...item, code: own }
+    }
+    while (used.has(String(next))) {
+      next += 1
+    }
+    const code = String(next)
+    used.add(code)
+    assigned += 1
+    return { ...item, code }
+  })
+  return { items: coded, assigned }
 }
 
 const sameNumber = (a: number | null, b: number | null): boolean =>
@@ -336,6 +404,15 @@ export const diffProduct = (
   if (existing.category !== desired.category) {
     update.product.category = desired.category
   }
+  if (existing.brand !== desired.brand) {
+    update.product.brand = desired.brand
+  }
+  // Код меняем только у каталога из Excel: там его присваивает площадка
+  // (порядковый номер позиции без кода). Артикулы товаров 1С не трогаем —
+  // по ним продавец уже работает.
+  if (desired.feed === "file" && desired.code && existing.code !== desired.code) {
+    update.code = { code: desired.code, sku: desired.sku }
+  }
   if (existing.product_card_id && existing.unit !== desired.unit) {
     update.unit = desired.unit
   }
@@ -363,6 +440,7 @@ export const diffProduct = (
 
   const changed =
     Object.keys(update.product).length > 0 ||
+    update.code !== undefined ||
     update.unit !== undefined ||
     update.price !== undefined ||
     update.stock !== undefined ||

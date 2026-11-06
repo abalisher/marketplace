@@ -29,6 +29,9 @@ export type OnecItem = {
   cost: number | null
   barcode: string | null
   group: string | null
+  // Бренд (торговая марка, производитель); null — не передан. Одноимённые
+  // товары разных брендов — разные позиции, и покупатель выбирает по бренду.
+  brand: string | null
 }
 
 export type OnecParseIssue = {
@@ -52,6 +55,7 @@ export type OnecField =
   // Учётная цена (себестоимость) — не цена продажи; из неё цена продажи
   // не получается: её ставит продавец («Себестоимость» — только справка).
   | "cost"
+  | "brand"
 
 export type OnecParseResult = {
   items: OnecItem[]
@@ -160,6 +164,23 @@ const ALIASES: Record<OnecField, string[]> = {
     "закупочная",
     "ценазакупочная",
     "входящаяцена",
+  ],
+  brand: [
+    "бренд",
+    "брэнд",
+    "торговаямарка",
+    "тм",
+    "марка",
+    "маркатовара",
+    "производитель",
+    "изготовитель",
+    "фирма",
+    "brand",
+    "brandname",
+    "trademark",
+    "manufacturer",
+    "vendor",
+    "maker",
   ],
 }
 
@@ -413,6 +434,14 @@ const positiveMoney = (value: number | null): number | null =>
 
 const MAX_ISSUES = 100
 
+// Наименование с брендом: бренд дописывается в конец, если его в наименовании
+// ещё нет. По названию ищут покупатель и ассистент, а в выгрузках «Затирка
+// FIXLINE» одного бренда и другого иначе выглядели бы одинаково.
+export const withBrand = (name: string, brand: string | null): string =>
+  brand && !name.toLowerCase().includes(brand.toLowerCase())
+    ? `${name} ${brand}`
+    : name
+
 export const parseOnecItems = (payload: unknown): OnecParseResult => {
   const list = locateOnecList(payload)
   if (!list) {
@@ -485,6 +514,7 @@ export const parseOnecItems = (payload: unknown): OnecParseResult => {
     const article = toText(pick("article"))
     const guid = toText(pick("key")) ?? toText(raw.__map_key)
     const key = guid ?? code ?? article
+    const brand = toText(pick("brand"))
 
     if (!name) {
       issue({ index, key, name: null, message: "Нет наименования — пропущено" })
@@ -500,7 +530,13 @@ export const parseOnecItems = (payload: unknown): OnecParseResult => {
       return
     }
     if (seen.has(key)) {
-      issue({ index, key, name, message: "Повтор позиции — взята первая" })
+      issue({
+        index,
+        key,
+        name,
+        message:
+          "Повтор позиции — взята первая. Если это другой бренд или фасовка, укажите их в колонке «Бренд» / «Характеристика» или дайте строке свой код",
+      })
       return
     }
     seen.add(key)
@@ -512,7 +548,7 @@ export const parseOnecItems = (payload: unknown): OnecParseResult => {
       key,
       code,
       article,
-      name,
+      name: withBrand(name, brand),
       description,
       unit,
       price: price != null && price >= 0 ? Math.round(price * 100) / 100 : null,
@@ -520,6 +556,7 @@ export const parseOnecItems = (payload: unknown): OnecParseResult => {
       cost: positiveMoney(parseOnecNumber(pick("cost"))),
       barcode: toText(pick("barcode")),
       group: toText(pick("group")),
+      brand,
     })
   })
 

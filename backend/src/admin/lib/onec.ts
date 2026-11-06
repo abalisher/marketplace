@@ -116,6 +116,7 @@ export const ONEC_FIELDS = [
   "code",
   "article",
   "name",
+  "brand",
   "unit",
   "price",
   "cost",

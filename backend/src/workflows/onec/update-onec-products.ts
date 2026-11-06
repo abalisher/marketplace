@@ -6,7 +6,10 @@ import {
   WorkflowResponse,
 } from "@medusajs/framework/workflows-sdk"
 import { ProductStatus } from "@medusajs/framework/utils"
-import { updateProductsWorkflow } from "@medusajs/medusa/core-flows"
+import {
+  updateProductsWorkflow,
+  updateProductVariantsWorkflow,
+} from "@medusajs/medusa/core-flows"
 import {
   updateOnecItemsStep,
   updateOnecProductCardsStep,
@@ -22,9 +25,17 @@ export type UpdateOnecProductsWorkflowInput = {
     category_ids?: string[]
     metadata?: Record<string, unknown>
   }[]
+  // Артикул варианта: у позиций Excel без кода он строится из присвоенного
+  // порядкового номера.
+  variants?: { id: string; sku: string }[]
   cards: { product_card_id: string; unit: string }[]
-  // Отметки позиций 1С: есть ли в ответе и себестоимость.
-  items: { id: string; present?: boolean; cost?: number | null }[]
+  // Отметки позиций 1С: есть ли в ответе, себестоимость и код позиции.
+  items: {
+    id: string
+    present?: boolean
+    cost?: number | null
+    external_code?: string | null
+  }[]
 }
 
 // Привести товары компании к данным 1С: название, описание, категория, статус
@@ -61,6 +72,13 @@ export const updateOnecProductsWorkflow = createWorkflow(
 
     when({ products }, ({ products }) => products.length > 0).then(() => {
       updateProductsWorkflow.runAsStep({ input: { products } })
+    })
+
+    const variants = transform({ input }, ({ input }) => input.variants ?? [])
+    when({ variants }, ({ variants }) => variants.length > 0).then(() => {
+      updateProductVariantsWorkflow.runAsStep({
+        input: { product_variants: variants },
+      })
     })
 
     updateOnecProductCardsStep(

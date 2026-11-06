@@ -43,13 +43,13 @@ const CANONICAL_KEY: Record<OnecField, string> = {
   barcode: "штрихкод",
   group: "группа",
   cost: "себестоимость",
+  brand: "бренд",
 }
 
 // Колонки, которые дополняют наименование. В прайсах одно «Бур по бетону» —
-// десятки строк, различает их «Характеристика» (6*110, 8*160), иногда ещё бренд
-// отдельной колонкой. Без них позиции слились бы в одну: товар на витрине —
-// «Бур по бетону DUHENG MAX 6*110».
-const BRAND_HEADERS = ["бренд", "марка", "торговаямарка", "производитель", "brand", "manufacturer"]
+// десятки строк, различает их «Характеристика» (6*110, 8*160) и бренд
+// отдельной колонкой (поле brand, синонимы — в parse-items). Без них позиции
+// слились бы в одну: товар на витрине — «Бур по бетону DUHENG MAX 6*110».
 const VARIANT_HEADERS = [
   "характеристика",
   "характеристики",
@@ -62,7 +62,8 @@ const VARIANT_HEADERS = [
 ]
 
 // Строки-итоги внизу таблицы — не товары.
-const TOTAL_ROW = /^(итого|всего|total)\b/i
+// \b в JS без флага u кириллицу буквой не считает — граница слова задана явно.
+const TOTAL_ROW = /^(итого|всего|total)(?![\p{L}\p{N}])/iu
 
 export type OnecFileFeed = {
   items: OnecItem[]
@@ -124,7 +125,8 @@ const findHeader = (rows: Cell[][]): HeaderMatch | null => {
         )
         return column < 0 ? null : column
       }
-      return { row, columns, brand: extra(BRAND_HEADERS), variant: extra(VARIANT_HEADERS) }
+      const brand = [...columns].find(([, field]) => field === "brand")?.[0] ?? null
+      return { row, columns, brand, variant: extra(VARIANT_HEADERS) }
     }
   }
   return null
@@ -212,8 +214,13 @@ export const readOnecFile = (
       (column): column is number => column !== null
     )
     // Нет ни кода, ни артикула — позиции связываем по наименованию: иначе
-    // файл не с чем было бы сверять при следующей загрузке.
+    // файл не с чем было бы сверять при следующей загрузке. Код такой позиции
+    // синхронизация присваивает сама — порядковым номером (assignFileCodes).
+    // То же для отдельной строки с пустой клеткой кода в файле, где колонка
+    // кода есть: раньше такая строка отбрасывалась.
     const byName = !fields.code && !fields.article && !fields.key
+    const idKeys = [CANONICAL_KEY.key, CANONICAL_KEY.code, CANONICAL_KEY.article]
+    let withoutCode = 0
 
     const body = rows.slice(header.row + 1)
     if (body.length > ONEC_FILE_MAX_ROWS) {
@@ -244,8 +251,9 @@ export const readOnecFile = (
       if (TOTAL_ROW.test(name)) {
         continue
       }
-      if (byName && name) {
+      if (name && !idKeys.some((id) => cellText(record[id] as Cell))) {
         record.__map_key = name
+        withoutCode += 1
       }
       records.push(record)
     }
@@ -261,7 +269,13 @@ export const readOnecFile = (
         key: null,
         name: null,
         message:
-          "В файле нет колонки «Код» или «Артикул» — позиции связаны по наименованию: переименованная в файле позиция станет новым товаром",
+          "В файле нет колонки «Код» или «Артикул» — коды присвоены автоматически (порядковые номера), позиции связаны по наименованию: переименованная в файле позиция станет новым товаром",
+      })
+    } else if (withoutCode) {
+      issues.unshift({
+        key: null,
+        name: null,
+        message: `У ${withoutCode} строк не заполнен код — коды присвоены автоматически (порядковые номера), такие позиции связаны по наименованию`,
       })
     }
 
